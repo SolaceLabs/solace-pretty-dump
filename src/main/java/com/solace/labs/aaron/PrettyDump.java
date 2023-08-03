@@ -30,6 +30,7 @@ import org.json.JSONObject;
 import com.solacesystems.jcsmp.BytesMessage;
 import com.solacesystems.jcsmp.BytesXMLMessage;
 import com.solacesystems.jcsmp.JCSMPChannelProperties;
+import com.solacesystems.jcsmp.ConsumerFlowProperties;
 import com.solacesystems.jcsmp.JCSMPException;
 import com.solacesystems.jcsmp.JCSMPFactory;
 import com.solacesystems.jcsmp.JCSMPProperties;
@@ -41,6 +42,18 @@ import com.solacesystems.jcsmp.TextMessage;
 import com.solacesystems.jcsmp.XMLMessage;
 import com.solacesystems.jcsmp.XMLMessageConsumer;
 import com.solacesystems.jcsmp.XMLMessageListener;
+import com.solacesystems.jcsmp.FlowEventArgs;
+import com.solacesystems.jcsmp.FlowEventHandler;
+import com.solacesystems.jcsmp.FlowReceiver;
+import com.solacesystems.jcsmp.JCSMPChannelProperties;
+import com.solacesystems.jcsmp.JCSMPErrorResponseException;
+import com.solacesystems.jcsmp.JCSMPException;
+import com.solacesystems.jcsmp.JCSMPFactory;
+import com.solacesystems.jcsmp.JCSMPProperties;
+import com.solacesystems.jcsmp.JCSMPSession;
+import com.solacesystems.jcsmp.JCSMPTransportException;
+import com.solacesystems.jcsmp.OperationNotSupportedException;
+import com.solacesystems.jcsmp.Queue;
 
 /** This is a more detailed subscriber sample. */
 public class PrettyDump {
@@ -48,12 +61,13 @@ public class PrettyDump {
     private static final String SAMPLE_NAME = PrettyDump.class.getSimpleName();
 
     private static volatile boolean isShutdown = false;          // are we done yet?
-    private static volatile String topic = null;
+    private static volatile String[] topics = null;
 
     /** the main method. */
     public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
         if (args.length != 5) {  // Check command line arguments
-            System.out.printf("Usage: %s <host:port> <message-vpn> <client-username> <password> <topic>%n%n", SAMPLE_NAME);
+            System.out.printf("Usage: %s <host:port> <message-vpn> <client-username> <password> <topics | q:queue>%n", SAMPLE_NAME);
+            System.out.println("Either: comma separated list of topics, or \"q:queueName\" for a queue");
             System.exit(-1);
         }
         System.out.println(SAMPLE_NAME + " initializing...");
@@ -63,7 +77,7 @@ public class PrettyDump {
         properties.setProperty(JCSMPProperties.VPN_NAME,  args[1]);     // message-vpn
         properties.setProperty(JCSMPProperties.USERNAME, args[2]);      // client-username
         properties.setProperty(JCSMPProperties.PASSWORD, args[3]);  // client-password
-        topic = args[4];
+        topics = args[4].split(",");
         properties.setProperty(JCSMPProperties.REAPPLY_SUBSCRIPTIONS, true);  // subscribe Direct subs after reconnect
         JCSMPChannelProperties channelProps = new JCSMPChannelProperties();
         channelProps.setReconnectRetries(20);      // recommended settings
@@ -79,73 +93,52 @@ public class PrettyDump {
         });
         session.connect();  // connect to the broker
 
-        // Anonymous inner-class for MessageListener, this demonstrates the async threaded message callback
-        final XMLMessageConsumer consumer = session.getMessageConsumer(new XMLMessageListener() {
-            @Override
-            public void onReceive(BytesXMLMessage message) {
-            	System.out.println("^^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");
-            	if (message instanceof TextMessage) {
-            		String payload = ((TextMessage)message).getText().trim();
-            		if (payload.startsWith("{")) {
-            			try {
-            				JSONObject jo = new JSONObject(payload);
-                        	System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-            				System.out.println("TextMessage JSON: " + jo.toString(4));
-            			} catch (JSONException e) {
-            				System.err.println("Couldn't parse JSON");
-                        	System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
-            			}
-            		} else {
-//            			System.out.println("Text message, not {");
-                    	System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
-            		}
-            	} else if (message instanceof BytesMessage) {
-//            		String payload = new String(((BytesMessage)message).getData(), Charset.forName("UTF-8"));
-            		CharsetDecoder decoder = Charset.forName("UTF-8").newDecoder();
-            		try {
-            			ByteBuffer buffer = ByteBuffer.wrap(((BytesMessage)message).getData());
-            			CharBuffer cb = decoder.decode(buffer);
-            			String payload = cb.toString().trim();
-	            		if (payload.startsWith("{")) {
-	            			try {
-	            				JSONObject jo = new JSONObject(payload);
-	                        	System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-	            				System.out.println("BytesMessage JSON: " + jo.toString(4));
-	            			} catch (JSONException e) {
-	            				System.err.println("Couldn't parse JSON");
-	                        	System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
-	            			}
-	            		} else {
-	            			System.out.println("BytesMessage with text content:");
-	                    	System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
-	            		}
-            		} catch (Exception e) {  // means it's probably an actual binary message
-//            			System.out.println("Binary");
-                    	System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
-            		}
-            		
-            	} else {
-            		System.out.println("Got a message not text or binary");
-                	System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
-            	}
-            	System.out.println("^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");
-            }
+        // is it a queue?
+        if (topics.length == 1 && topics[0].startsWith("q:") && topics[0].length() > 2) {
+            // configure the queue API object locally
+            String queueName = topics[0].substring(2);
+            final Queue queue = JCSMPFactory.onlyInstance().createQueue(queueName);
+            // Create a Flow be able to bind to and consume messages from the Queue.
+            final ConsumerFlowProperties flow_prop = new ConsumerFlowProperties();
+            flow_prop.setEndpoint(queue);
+            flow_prop.setAckMode(JCSMPProperties.SUPPORTED_MESSAGE_ACK_CLIENT);  // best practice
+            flow_prop.setActiveFlowIndication(true);  // Flow events will advise when
 
-            @Override
-            public void onException(JCSMPException e) {  // uh oh!
-                System.out.printf("### MessageListener's onException(): %s%n",e);
-                if (e instanceof JCSMPTransportException) {  // all reconnect attempts failed
-                    isShutdown = true;  // let's quit; or, could initiate a new connection attempt
-                }
+            System.out.printf("Attempting to bind to queue '%s' on the broker.%n", queueName);
+            FlowReceiver flowQueueReceiver = null;
+            try {
+                // see bottom of file for QueueFlowListener class, which receives the messages from the queue
+                flowQueueReceiver = session.createFlow(new PrinterHelper(), flow_prop, null, new FlowEventHandler() {
+                    @Override
+                    public void handleEvent(Object source, FlowEventArgs event) {
+                        // Flow events are usually: active, reconnecting (i.e. unbound), reconnected, active
+                        // logger.info("### Received a Flow event: " + event);
+                        // try disabling and re-enabling the queue to see in action
+                    }
+                });
+                // tell the broker to start sending messages on this queue receiver
+                flowQueueReceiver.start();
+                System.out.println("Success!");
+            } catch (OperationNotSupportedException e) {  // not allowed to do this
+                throw e;
+            } catch (JCSMPErrorResponseException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
+                // logger.error(e);
+                return;
             }
-        });
+        } else {
+            // Anonymous inner-class for MessageListener, this demonstrates the async threaded message callback
+            final XMLMessageConsumer consumer = session.getMessageConsumer(new PrinterHelper());
+    
+            for (String topic : topics) {
+                session.addSubscription(JCSMPFactory.onlyInstance().createTopic(topic));
+                System.out.println("Subscribed to Direct topic: " + topic);
+            }
+            // add more subscriptions here if you want
+            consumer.start();
+        }
 
-        session.addSubscription(JCSMPFactory.onlyInstance().createTopic(topic));
-        // add more subscriptions here if you want
-        consumer.start();
         System.out.println();
         System.out.println(SAMPLE_NAME + " connected, and running. Press Ctrl-C to quit.");
-
 
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             public void run() {
@@ -165,5 +158,66 @@ public class PrettyDump {
         isShutdown = true;
         session.closeSession();  // will also close consumer object
         System.out.println("Main thread quitting.");
+    }
+
+    private static class PrinterHelper implements XMLMessageListener {
+        @Override
+        public void onReceive(BytesXMLMessage message) {
+            System.out.println("^^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+            if (message instanceof TextMessage) {
+                String payload = ((TextMessage)message).getText();
+                if (payload != null && payload.startsWith("{")) {
+                    try {
+                        JSONObject jo = new JSONObject(payload);
+                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
+                        System.out.println("TextMessage JSON: " + jo.toString(4));
+                    } catch (JSONException e) {
+                        System.err.println("Couldn't parse JSON");
+                        System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
+                    }
+                } else {
+//            			System.out.println("Text message, not {");
+                    System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
+                }
+            } else if (message instanceof BytesMessage) {
+//            		String payload = new String(((BytesMessage)message).getData(), Charset.forName("UTF-8"));
+                CharsetDecoder decoder = Charset.forName("UTF-8").newDecoder();
+                try {
+                    ByteBuffer buffer = ByteBuffer.wrap(((BytesMessage)message).getData());
+                    CharBuffer cb = decoder.decode(buffer);
+                    String payload = cb.toString().trim();
+                    if (payload.startsWith("{")) {
+                        try {
+                            JSONObject jo = new JSONObject(payload);
+                            System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
+                            System.out.println("BytesMessage JSON: " + jo.toString(4));
+                        } catch (JSONException e) {
+                            System.err.println("Couldn't parse JSON");
+                            System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
+                        }
+                    } else {
+                        System.out.println("BytesMessage with text content:");
+                        System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
+                    }
+                } catch (Exception e) {  // means it's probably an actual binary message
+//            			System.out.println("Binary");
+                    System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
+                }
+                
+            } else {
+                System.out.println("Got a message not text or binary");
+                System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
+            }
+            System.out.println("^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+            message.ackMessage();
+        }
+
+        @Override
+        public void onException(JCSMPException e) {  // uh oh!
+            System.out.printf("### MessageListener's onException(): %s%n",e);
+            if (e instanceof JCSMPTransportException) {  // all reconnect attempts failed
+                isShutdown = true;  // let's quit; or, could initiate a new connection attempt
+            }
+        }
     }
 }

@@ -23,15 +23,15 @@ repositories {
 
 dependencies {
 
-    implementation("com.solacesystems:sol-jcsmp:10.19+")
+    implementation("com.solacesystems:sol-jcsmp:10.+")
     implementation("org.json:json:20230227")
 
-    implementation("org.apache.logging.log4j:log4j-api:2.19+")
-    implementation("org.apache.logging.log4j:log4j-core:2.19+")
+    implementation("org.apache.logging.log4j:log4j-api:2.+")
+    implementation("org.apache.logging.log4j:log4j-core:2.+")
     // needed to 'bridge' the JCSMP API logs from JCL to log4j
-    implementation("org.apache.logging.log4j:log4j-jcl:2.19.0")
+    implementation("org.apache.logging.log4j:log4j-jcl:2.+")
     
-    implementation(fileTree(mapOf("dir" to "lib", "include" to listOf("*.jar"))))
+    //implementation(fileTree(mapOf("dir" to "lib", "include" to listOf("*.jar"))))
 
 }
 
