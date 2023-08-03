@@ -13,7 +13,7 @@ Java
 cd build/distributions
 unzip pretty-dump.zip
 cd pretty-dump
-./bin/pretty-dump <host:port> <message-vpn> <client-username> <password> <topics | q:queue>
+./bin/pretty-dump <host:port> <message-vpn> <client-username> <password> <topics | q:queue> [indent]
 ```
 
 Either:
