@@ -25,6 +25,7 @@ dependencies {
 
     implementation("com.solacesystems:sol-jcsmp:10.+")
     implementation("org.json:json:20230227")
+    implementation("org.dom4j:dom4j:2.1.4")
 
     implementation("org.apache.logging.log4j:log4j-api:2.+")
     implementation("org.apache.logging.log4j:log4j-core:2.+")

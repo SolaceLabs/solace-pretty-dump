@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Solace Corporation. All rights reserved.
+ * Copyright 2021-2023 Solace Corporation. All rights reserved.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -17,31 +17,21 @@
 package com.solace.labs.aaron;
 
 import java.io.IOException;
+import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
-import java.nio.charset.UnmappableCharacterException;
 
-import org.json.JSONException;
+import org.dom4j.Document;
+import org.dom4j.DocumentHelper;
+import org.dom4j.io.OutputFormat;
+import org.dom4j.io.XMLWriter;
 import org.json.JSONObject;
 
 import com.solacesystems.jcsmp.BytesMessage;
 import com.solacesystems.jcsmp.BytesXMLMessage;
-import com.solacesystems.jcsmp.JCSMPChannelProperties;
 import com.solacesystems.jcsmp.ConsumerFlowProperties;
-import com.solacesystems.jcsmp.JCSMPException;
-import com.solacesystems.jcsmp.JCSMPFactory;
-import com.solacesystems.jcsmp.JCSMPProperties;
-import com.solacesystems.jcsmp.JCSMPSession;
-import com.solacesystems.jcsmp.JCSMPTransportException;
-import com.solacesystems.jcsmp.SessionEventArgs;
-import com.solacesystems.jcsmp.SessionEventHandler;
-import com.solacesystems.jcsmp.TextMessage;
-import com.solacesystems.jcsmp.XMLMessage;
-import com.solacesystems.jcsmp.XMLMessageConsumer;
-import com.solacesystems.jcsmp.XMLMessageListener;
 import com.solacesystems.jcsmp.FlowEventArgs;
 import com.solacesystems.jcsmp.FlowEventHandler;
 import com.solacesystems.jcsmp.FlowReceiver;
@@ -54,6 +44,12 @@ import com.solacesystems.jcsmp.JCSMPSession;
 import com.solacesystems.jcsmp.JCSMPTransportException;
 import com.solacesystems.jcsmp.OperationNotSupportedException;
 import com.solacesystems.jcsmp.Queue;
+import com.solacesystems.jcsmp.SessionEventArgs;
+import com.solacesystems.jcsmp.SessionEventHandler;
+import com.solacesystems.jcsmp.TextMessage;
+import com.solacesystems.jcsmp.XMLMessage;
+import com.solacesystems.jcsmp.XMLMessageConsumer;
+import com.solacesystems.jcsmp.XMLMessageListener;
 
 /** This is a more detailed subscriber sample. */
 public class PrettyDump {
@@ -159,57 +155,66 @@ public class PrettyDump {
         session.closeSession();  // will also close consumer object
         System.out.println("Main thread quitting.");
     }
+//
+//    
+//    private static String getPrettyPrintJson(String json) {
+//    	
+//    }
+//    
+//    
+
+    
+    private static final OutputFormat XML_FORMAT = OutputFormat.createPrettyPrint();
+    static {
+	    XML_FORMAT.setIndentSize(2);
+	    XML_FORMAT.setSuppressDeclaration(true);  // hides <?xml version="1.0"?>
+	    XML_FORMAT.setEncoding("UTF-8");
+    }
 
     private static class PrinterHelper implements XMLMessageListener {
         @Override
         public void onReceive(BytesXMLMessage message) {
             System.out.println("^^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");
-            if (message instanceof TextMessage) {
-                String payload = ((TextMessage)message).getText();
-                if (payload != null && payload.startsWith("{")) {
-                    try {
-                        JSONObject jo = new JSONObject(payload);
-                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-                        System.out.println("TextMessage JSON: " + jo.toString(4));
-                    } catch (JSONException e) {
-                        System.err.println("Couldn't parse JSON");
-                        System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
-                    }
-                } else {
-//            			System.out.println("Text message, not {");
-                    System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
-                }
-            } else if (message instanceof BytesMessage) {
-//            		String payload = new String(((BytesMessage)message).getData(), Charset.forName("UTF-8"));
-                CharsetDecoder decoder = Charset.forName("UTF-8").newDecoder();
-                try {
+            String payload = null;
+            String type = message.getClass().getSimpleName();
+            try {
+	            if (message instanceof TextMessage) {
+	                payload = ((TextMessage)message).getText().trim();
+	                type = "TextMessage";
+	            } else if (message instanceof BytesMessage) {
+	//        		String payload = new String(((BytesMessage)message).getData(), Charset.forName("UTF-8"));
+	            	CharsetDecoder decoder = Charset.forName("UTF-8").newDecoder();
                     ByteBuffer buffer = ByteBuffer.wrap(((BytesMessage)message).getData());
                     CharBuffer cb = decoder.decode(buffer);
-                    String payload = cb.toString().trim();
-                    if (payload.startsWith("{")) {
-                        try {
-                            JSONObject jo = new JSONObject(payload);
-                            System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-                            System.out.println("BytesMessage JSON: " + jo.toString(4));
-                        } catch (JSONException e) {
-                            System.err.println("Couldn't parse JSON");
-                            System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
-                        }
-                    } else {
-                        System.out.println("BytesMessage with text content:");
-                        System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
-                    }
-                } catch (Exception e) {  // means it's probably an actual binary message
-//            			System.out.println("Binary");
+                    payload = cb.toString().trim();
+                    type = "BytesMessage";
+	            } else {  // Map or Stream mesage
+                    System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
+	            }
+                if (payload != null && !payload.isEmpty()) {  // means we've been initialized
+                	if (payload.startsWith("{") && payload.endsWith("}")) {  // try JSON
+                        JSONObject jo = new JSONObject(payload);
+                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
+                        System.out.println(type + " JSON: " + jo.toString(4));
+                	} else if (payload.startsWith("<") && payload.endsWith(">")) {  // try XML
+                        Document document = DocumentHelper.parseText(payload);
+                        StringWriter sw = new StringWriter();
+                        XMLWriter writer = new XMLWriter(sw, XML_FORMAT);
+                        writer.write(document);
+                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
+                        System.out.println(type + " XML: " + sw.toString());
+                	} else {  // it's neither JSON or XML, but has text content
+                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
+                        System.out.println(type + " text: " + payload);
+                	}
+                } else {  // empty string?
                     System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
                 }
-                
-            } else {
-                System.out.println("Got a message not text or binary");
+            } catch (Exception e) {  // means it's probably an actual binary message
                 System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
             }
             System.out.println("^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");
-            message.ackMessage();
+            message.ackMessage();  // if required, if it's a queue
         }
 
         @Override
