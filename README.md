@@ -1,4 +1,4 @@
-# pretty-dump
+# pretty-dump for JSON and XML Solace messages
 A useful utility that emulates SdkPerf `-md` output, echoing received Solace messages to the console, but pretty-printed for JSON and XML.
 
 
