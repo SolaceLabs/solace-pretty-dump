@@ -24,9 +24,11 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 
 import org.dom4j.Document;
+import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
 import org.dom4j.io.OutputFormat;
 import org.dom4j.io.XMLWriter;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import com.solacesystems.jcsmp.BytesMessage;
@@ -61,10 +63,11 @@ public class PrettyDump {
 
     /** the main method. */
     public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
-        if (args.length != 5) {  // Check command line arguments
-            System.out.printf("Usage: %s <host:port> <message-vpn> <client-username> <password> <topics | q:queue>%n", SAMPLE_NAME);
-            System.out.println("Either: comma separated list of topics, or \"q:queueName\" for a queue");
-            System.exit(-1);
+        if (args.length < 5) {  // Check command line arguments
+            System.out.printf("Usage: %s <host:port> <message-vpn> <client-username> <password> <topics | q:queue> [indent]%n", SAMPLE_NAME);
+            System.out.println("  Either: comma separated list of topics, or \"q:queueName\" for a queue");
+            System.out.println("  Optional indent: integer, default==4");
+            System.exit(0);
         }
         System.out.println(SAMPLE_NAME + " initializing...");
 
@@ -74,6 +77,15 @@ public class PrettyDump {
         properties.setProperty(JCSMPProperties.USERNAME, args[2]);      // client-username
         properties.setProperty(JCSMPProperties.PASSWORD, args[3]);  // client-password
         topics = args[4].split(",");
+        if (args.length > 5) {
+        	try {
+        		int indent = Integer.parseInt(args[5]);
+        		if (indent < 0 || indent > 20) throw new NumberFormatException();
+        		INDENT = indent;
+        	} catch (NumberFormatException e) {
+        		System.out.printf("Invalid value for indent: '%s', using default %d instead.", args[5], INDENT);
+        	}
+        }
         properties.setProperty(JCSMPProperties.REAPPLY_SUBSCRIPTIONS, true);  // subscribe Direct subs after reconnect
         JCSMPChannelProperties channelProps = new JCSMPChannelProperties();
         channelProps.setReconnectRetries(20);      // recommended settings
@@ -164,14 +176,18 @@ public class PrettyDump {
 //    
 
     
-    private static final OutputFormat XML_FORMAT = OutputFormat.createPrettyPrint();
-    static {
-	    XML_FORMAT.setIndentSize(2);
-	    XML_FORMAT.setSuppressDeclaration(true);  // hides <?xml version="1.0"?>
-	    XML_FORMAT.setEncoding("UTF-8");
-    }
+    private static int INDENT = 4;
 
     private static class PrinterHelper implements XMLMessageListener {
+    	
+    	private static final CharsetDecoder DECODER = Charset.forName("UTF-8").newDecoder();
+    	private static final OutputFormat XML_FORMAT = OutputFormat.createPrettyPrint();
+    	static {
+    		XML_FORMAT.setIndentSize(INDENT);
+    		XML_FORMAT.setSuppressDeclaration(true);  // hides <?xml version="1.0"?>
+    		XML_FORMAT.setEncoding("UTF-8");
+    	}
+    	
         @Override
         public void onReceive(BytesXMLMessage message) {
             System.out.println("^^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");
@@ -183,34 +199,43 @@ public class PrettyDump {
 	                type = "TextMessage";
 	            } else if (message instanceof BytesMessage) {
 	//        		String payload = new String(((BytesMessage)message).getData(), Charset.forName("UTF-8"));
-	            	CharsetDecoder decoder = Charset.forName("UTF-8").newDecoder();
                     ByteBuffer buffer = ByteBuffer.wrap(((BytesMessage)message).getData());
-                    CharBuffer cb = decoder.decode(buffer);
+                    CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of exceptions
                     payload = cb.toString().trim();
                     type = "BytesMessage";
-	            } else {  // Map or Stream mesage
-                    System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
+	            } else {  // Map or Stream message
+	            	// the "else" block below will print this out in full
 	            }
                 if (payload != null && !payload.isEmpty()) {  // means we've been initialized
                 	if (payload.startsWith("{") && payload.endsWith("}")) {  // try JSON
-                        JSONObject jo = new JSONObject(payload);
-                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-                        System.out.println(type + " JSON: " + jo.toString(4));
+                		try {
+	                        JSONObject jo = new JSONObject(payload);
+	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
+	                        System.out.printf("JSON %s: %s%n", type, jo.toString(INDENT));
+                		} catch (JSONException e) {  // parsing error
+	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
+	                        System.out.printf("INVALID JSON %s:%n%s%n", type, payload);
+                		}
                 	} else if (payload.startsWith("<") && payload.endsWith(">")) {  // try XML
-                        Document document = DocumentHelper.parseText(payload);
-                        StringWriter sw = new StringWriter();
-                        XMLWriter writer = new XMLWriter(sw, XML_FORMAT);
-                        writer.write(document);
-                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-                        System.out.println(type + " XML: " + sw.toString());
+                		try {
+	                        Document document = DocumentHelper.parseText(payload);
+	                        StringWriter sw = new StringWriter();
+	                        XMLWriter writer = new XMLWriter(sw, XML_FORMAT);
+	                        writer.write(document);
+	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
+	                        System.out.printf("XML %s: %s%n", type, sw.toString());
+                		} catch (DocumentException | IOException e) {  // parsing error
+	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
+	                        System.out.printf("INVALID XML %s:%n%s%n", type, payload);
+                		}
                 	} else {  // it's neither JSON or XML, but has text content
                         System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-                        System.out.println(type + " text: " + payload);
+                        System.out.printf("UTF-8 String %s:%n%s%n", type, payload);
                 	}
-                } else {  // empty string?
+                } else {  // empty string?  or Map or Stream
                     System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
                 }
-            } catch (Exception e) {  // means it's probably an actual binary message
+            } catch (Exception e) {  // parsing error, or means it's probably an actual binary message
                 System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
             }
             System.out.println("^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");
