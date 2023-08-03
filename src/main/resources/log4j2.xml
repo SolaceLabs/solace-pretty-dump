@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="warn" monitorInterval="30" xmlns:xi="http://www.w3.org/2001/XInclude" packages="com.solace.samples.jcsmp">
+<Configuration status="warn" monitorInterval="30" xmlns:xi="http://www.w3.org/2001/XInclude">
   <Appenders>
     <Console name="console" target="SYSTEM_OUT">
       <PatternLayout pattern="~LOG %level~ %d{HH:mm:ss.SSS} [%t] %-5level %logger{5.} - %msg%n"/>
