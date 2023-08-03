@@ -1,5 +1,5 @@
 # pretty-dump for JSON and XML Solace messages
-A useful utility that emulates SdkPerf `-md` output, echoing received Solace messages to the console, but pretty-printed for JSON and XML.
+A useful utility that emulates SdkPerf `-md` output, echoing received Solace messages to the console, but pretty-printed for *JSON* and *XML*.
 
 
 ## Requirements
@@ -33,9 +33,9 @@ Binary Attachment:                      len=78
 
 BytesMessage XML:
 <apps>
-  <version>23</version>
-  <another>hello</another>
-  <stick>this</stick>
+    <version>23</version>
+    <another>hello</another>
+    <stick>this</stick>
 </apps>
 
 ^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
