@@ -222,15 +222,16 @@ public class PrettyDump {
 	                        StringWriter sw = new StringWriter();
 	                        XMLWriter writer = new XMLWriter(sw, XML_FORMAT);
 	                        writer.write(document);
+	                        writer.flush();
 	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-	                        System.out.printf("XML %s: %s%n", type, sw.toString());
+	                        System.out.printf("XML %s:%n%s%n", type, sw.toString());
                 		} catch (DocumentException | IOException e) {  // parsing error
 	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
 	                        System.out.printf("INVALID XML %s:%n%s%n", type, payload);
                 		}
                 	} else {  // it's neither JSON or XML, but has text content
                         System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-                        System.out.printf("UTF-8 String %s:%n%s%n", type, payload);
+                        System.out.printf("UTF-8 String %s:%n%s%n%n", type, payload);
                 	}
                 } else {  // empty string?  or Map or Stream
                     System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
