@@ -6,6 +6,7 @@ A useful utility that emulates SdkPerf `-md` output, echoing received Solace mes
 
 Java
 
+
 ## Building
 
 ```
@@ -13,12 +14,23 @@ Java
 cd build/distributions
 unzip pretty-dump.zip
 cd pretty-dump
-./bin/pretty-dump <host:port> <message-vpn> <client-username> <password> <topics | q:queue> [indent]
 ```
 
-Either:
+Or just download a Release zipfile with everything built.
+
+
+## Running
+
+```
+./bin/PrettyDump <host:port> <message-vpn> <client-username> <password> <topics | q:queue> [indent]
+```
+
+**Either:**
 - comma separated list of topics
 - or "q:queueName" for a queue
+
+**Optional**
+- indent: default=4; specifying 0 compresses output
 
 
 ```
@@ -35,7 +47,7 @@ BytesMessage XML:
 <apps>
     <version>23</version>
     <another>hello</another>
-    <stick>this</stick>
+    <that>this</that>
 </apps>
 
 ^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
