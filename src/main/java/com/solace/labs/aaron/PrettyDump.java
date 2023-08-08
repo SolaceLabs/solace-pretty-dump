@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 Solace Corporation. All rights reserved.
+ * Copyright 2023 Solace Corporation. All rights reserved.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -28,6 +28,7 @@ import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
 import org.dom4j.io.OutputFormat;
 import org.dom4j.io.XMLWriter;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -53,7 +54,7 @@ import com.solacesystems.jcsmp.XMLMessage;
 import com.solacesystems.jcsmp.XMLMessageConsumer;
 import com.solacesystems.jcsmp.XMLMessageListener;
 
-/** This is a more detailed subscriber sample. */
+/** Based on DirectSubscriber sample from https://github.com/SolaceSamples/solace-samples-java-jcsmp */
 public class PrettyDump {
 
     private static final String SAMPLE_NAME = PrettyDump.class.getSimpleName();
@@ -65,6 +66,7 @@ public class PrettyDump {
     public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
         if (args.length < 5) {  // Check command line arguments
             System.out.printf("Usage: %s <host:port> <message-vpn> <client-username> <password> <topics | q:queue> [indent]%n", SAMPLE_NAME);
+            System.out.println("  If using TLS, remember \"tcps://\" before host");
             System.out.println("  Either: comma separated list of topics, or \"q:queueName\" for a queue");
             System.out.println("  Optional indent: integer, default==4");
             System.exit(0);
@@ -167,13 +169,6 @@ public class PrettyDump {
         session.closeSession();  // will also close consumer object
         System.out.println("Main thread quitting.");
     }
-//
-//    
-//    private static String getPrettyPrintJson(String json) {
-//    	
-//    }
-//    
-//    
 
     
     private static int INDENT = 4;
@@ -216,6 +211,17 @@ public class PrettyDump {
 	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
 	                        System.out.printf("INVALID JSON %s:%n%s%n", type, payload);
                 		}
+                	} else if (payload.startsWith("[") && payload.endsWith("]")) {  // try JSON array
+                		try {
+	                        JSONArray ja = new JSONArray(payload);
+	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
+	                        System.out.printf("JSON %s: %s%n", type, ja.toString(INDENT));
+                		} catch (JSONException e) {  // parsing error
+	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
+	                        System.out.printf("INVALID JSON %s:%n%s%n", type, payload);
+                		}
+                	} else if (payload.startsWith("<") && payload.endsWith(">")) {  // try XML
+
                 	} else if (payload.startsWith("<") && payload.endsWith(">")) {  // try XML
                 		try {
 	                        Document document = DocumentHelper.parseText(payload);
