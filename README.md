@@ -4,7 +4,7 @@ A useful utility that emulates SdkPerf `-md` output, echoing received Solace mes
 
 ## Requirements
 
-Java
+Java 8
 
 
 ## Building
