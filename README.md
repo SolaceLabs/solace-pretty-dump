@@ -43,7 +43,7 @@ DeliveryMode:                           DIRECT
 Message Id:                             4
 Binary Attachment:                      len=78
 
-BytesMessage XML:
+XML BytesMessage:
 <apps>
     <version>23</version>
     <another>hello</another>
@@ -59,7 +59,8 @@ DeliveryMode:                           DIRECT
 Message Id:                             5
 Binary Attachment:                      len=159
 
-TextMessage JSON: {
+JSON TextMessage:
+{
     "firstName": "Aaron",
     "lastName": "Lee",
     "zipCode": "12345",
