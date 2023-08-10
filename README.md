@@ -26,7 +26,7 @@ bin/PrettyDump <host:port> <message-vpn> <client-username> <password> <topics | 
 
  - If using TLS, remember "tcps://" before host
  - One of:
-    - comma-separated list of topics
+    - comma-separated list of Direct topic subscriptions
     - "q:queueName" to consume from queue
     - "b:queueName" to browse a queue
  - Optional indent: integer, default==4; specifying 0 compresses output
