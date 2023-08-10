@@ -22,16 +22,19 @@ Or just download a Release zipfile with everything built.
 ## Running
 
 ```
-./bin/PrettyDump <host:port> <message-vpn> <client-username> <password> <topics | q:queue> [indent]
+./bin/PrettyDump <host:port> <message-vpn> <client-username> <password> <topics | q:queue | b:queue> [indent]
+
+ - If using TLS, remember "tcps://" before host
+ - One of:
+    - separated list of topics
+    - "q:queueName" to consume from queue
+    - "qb:queueName" to browse a queue
+ - Optional indent: integer, default==4; specifying 0 compresses output
+ - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever
 ```
 
-**Either:**
-- comma separated list of topics
-- or "q:queueName" for a queue
 
-**Optional**
-- indent: default=4; specifying 0 compresses output
-
+## Output
 
 ```
 PrettyDump connected, and running. Press Ctrl-C to quit.
