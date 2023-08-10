@@ -16,7 +16,7 @@ unzip PrettyDump.zip
 cd PrettyDump
 ```
 
-Or just download a Release zipfile with everything built.
+Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-dump/releases) with everything built.
 
 
 ## Running
