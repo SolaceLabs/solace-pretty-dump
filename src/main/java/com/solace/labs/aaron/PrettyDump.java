@@ -16,12 +16,15 @@
 
 package com.solace.labs.aaron;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
+import java.nio.charset.StandardCharsets;
 
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -32,9 +35,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.solacesystems.jcsmp.Browser;
+import com.solacesystems.jcsmp.BrowserProperties;
 import com.solacesystems.jcsmp.BytesMessage;
 import com.solacesystems.jcsmp.BytesXMLMessage;
 import com.solacesystems.jcsmp.ConsumerFlowProperties;
+import com.solacesystems.jcsmp.DeliveryMode;
 import com.solacesystems.jcsmp.FlowEventArgs;
 import com.solacesystems.jcsmp.FlowEventHandler;
 import com.solacesystems.jcsmp.FlowReceiver;
@@ -60,15 +66,20 @@ public class PrettyDump {
     private static final String SAMPLE_NAME = PrettyDump.class.getSimpleName();
 
     private static volatile boolean isShutdown = false;          // are we done yet?
-    private static volatile String[] topics = null;
+    private static String[] topics = null;
+    private static Browser browser = null;  // in case we need it, can't do async, is a blocking/looping pull
 
     /** the main method. */
     public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
         if (args.length < 5) {  // Check command line arguments
-            System.out.printf("Usage: %s <host:port> <message-vpn> <client-username> <password> <topics | q:queue> [indent]%n", SAMPLE_NAME);
-            System.out.println("  If using TLS, remember \"tcps://\" before host");
-            System.out.println("  Either: comma separated list of topics, or \"q:queueName\" for a queue");
-            System.out.println("  Optional indent: integer, default==4");
+            System.out.printf("Usage: %s <host:port> <message-vpn> <client-username> <password> <topics | q:queue | b:queue> [indent]%n%n", SAMPLE_NAME);
+            System.out.println(" - If using TLS, remember \"tcps://\" before host");
+            System.out.println(" - One of:");
+            System.out.println("    - comma-separated list of topics");
+            System.out.println("    - \"q:queueName\" to consume from queue");
+            System.out.println("    - \"b:queueName\" to browse a queue");
+            System.out.println(" - Optional indent: integer, default==4");
+            System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever");
             System.exit(0);
         }
         System.out.println(SAMPLE_NAME + " initializing...");
@@ -108,6 +119,16 @@ public class PrettyDump {
             // configure the queue API object locally
             String queueName = topics[0].substring(2);
             final Queue queue = JCSMPFactory.onlyInstance().createQueue(queueName);
+            // double-check
+            System.out.printf("%nWill consume/ACK all messages on queue '" + queueName + "'. Use browse 'b:' otherwise.%nAre you sure? [y|yes]: ");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+            String answer = reader.readLine().trim().toLowerCase();
+            if (!"y".equals(answer) && !"yes".equals(answer)) {
+            	System.out.println("Exiting.");
+            	System.exit(0);
+            }
+            reader.close();
+            
             // Create a Flow be able to bind to and consume messages from the Queue.
             final ConsumerFlowProperties flow_prop = new ConsumerFlowProperties();
             flow_prop.setEndpoint(queue);
@@ -132,9 +153,23 @@ public class PrettyDump {
             } catch (OperationNotSupportedException e) {  // not allowed to do this
                 throw e;
             } catch (JCSMPErrorResponseException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
-                // logger.error(e);
-                return;
+                throw e;
             }
+        } else if (topics.length == 1 && topics[0].startsWith("b:") && topics[0].length() > 2) {
+            String queueName = topics[0].substring(2);
+            final Queue queue = JCSMPFactory.onlyInstance().createQueue(queueName);
+
+            final BrowserProperties bp = new BrowserProperties();
+	        bp.setEndpoint(queue);
+            bp.setTransportWindowSize(255);
+            bp.setWaitTimeout(1000);
+            System.out.printf("Attempting to browse queue '%s' on the broker.%n", queueName);
+	        try {
+	        	browser = session.createBrowser(bp);
+                System.out.println("Success!");
+	        } catch (JCSMPErrorResponseException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
+	        	throw e;
+	        }
         } else {
             // Anonymous inner-class for MessageListener, this demonstrates the async threaded message callback
             final XMLMessageConsumer consumer = session.getMessageConsumer(new PrinterHelper());
@@ -152,7 +187,7 @@ public class PrettyDump {
 
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             public void run() {
-                System.out.println(" Shutdown detected, quitting...");
+                System.out.println("Shutdown detected, quitting...");
                 isShutdown = true;
                 session.closeSession();  // will also close consumer object
                 try {
@@ -162,12 +197,26 @@ public class PrettyDump {
             }
         }));  	
 
-        while (!isShutdown) {
-            Thread.sleep(500);
+        if (browser != null) {
+            PrinterHelper printer = new PrinterHelper();
+            // hasMore() is useless! from JavaDocs: Returns true if there is at least one message available in the Browser's local message buffer. Note: If this method returns false, it does not mean that the queue is empty; subsequent calls to Browser.hasMore() or Browser.getNext() might return true and a message respectively.
+//        	while (browser.hasMore()) {
+//        		BytesXMLMessage nextMsg = browser.getNext();
+//        		printer.onReceive(nextMsg);
+//        	}
+            BytesXMLMessage nextMsg;
+        	while ((nextMsg = browser.getNext()) != null) {
+        		printer.onReceive(nextMsg);
+        	}
+        	System.out.println("Browsing finished!");
+        	browser.close();
+        } else {
+        	while (!isShutdown) {
+        		Thread.sleep(50);
+        	}
         }
         isShutdown = true;
-        session.closeSession();  // will also close consumer object
-        System.out.println("Main thread quitting.");
+        System.out.println("Main thread exiting.");
     }
 
     
@@ -175,12 +224,26 @@ public class PrettyDump {
 
     private static class PrinterHelper implements XMLMessageListener {
     	
-    	private static final CharsetDecoder DECODER = Charset.forName("UTF-8").newDecoder();
+//    	private static final CharsetDecoder DECODER = Charset.forName("UTF-8").newDecoder();
+    	private static final CharsetDecoder DECODER;
     	private static final OutputFormat XML_FORMAT = OutputFormat.createPrettyPrint();
     	static {
     		XML_FORMAT.setIndentSize(INDENT);
     		XML_FORMAT.setSuppressDeclaration(true);  // hides <?xml version="1.0"?>
-    		XML_FORMAT.setEncoding("UTF-8");
+    		if (System.getProperty("charset") != null) {
+    			try {
+    				DECODER = Charset.forName(System.getProperty("charset")).newDecoder();
+    				XML_FORMAT.setEncoding(System.getProperty("charset"));
+    			} catch (Exception e) {
+    				System.err.println("Invalid charset specified!");
+    				e.printStackTrace();
+    				System.exit(1);
+    				throw e;  // will never get here, but stops Java from complaining about not initializing final DECODER variable
+    			}
+    		} else {
+    			DECODER = StandardCharsets.UTF_8.newDecoder();
+    			XML_FORMAT.setEncoding("UTF-8");
+    		}
     	}
     	
         @Override
@@ -201,12 +264,20 @@ public class PrettyDump {
 	            } else {  // Map or Stream message
 	            	// the "else" block below will print this out in full
 	            }
+                if (payload == null || payload.isEmpty() && message.hasContent()) {  // try the XML portion of the payload (OLD SCHOOL!!!)
+                	byte[] attachment = new byte[message.getContentLength()];
+                	message.readContentBytes(attachment);
+                	ByteBuffer buffer = ByteBuffer.wrap(attachment);
+                    CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of exceptions
+                    payload = cb.toString().trim();
+                    type = "XML Payload (should really be using Binary attachment)";
+                }
                 if (payload != null && !payload.isEmpty()) {  // means we've been initialized
                 	if (payload.startsWith("{") && payload.endsWith("}")) {  // try JSON
                 		try {
 	                        JSONObject jo = new JSONObject(payload);
 	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-	                        System.out.printf("JSON %s: %s%n", type, jo.toString(INDENT));
+	                        System.out.printf("JSON %s:%n%s%n", type, jo.toString(INDENT));
                 		} catch (JSONException e) {  // parsing error
 	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
 	                        System.out.printf("INVALID JSON %s:%n%s%n", type, payload);
@@ -215,7 +286,7 @@ public class PrettyDump {
                 		try {
 	                        JSONArray ja = new JSONArray(payload);
 	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-	                        System.out.printf("JSON %s: %s%n", type, ja.toString(INDENT));
+	                        System.out.printf("JSON %s:%n%s%n", type, ja.toString(INDENT));
                 		} catch (JSONException e) {  // parsing error
 	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
 	                        System.out.printf("INVALID JSON %s:%n%s%n", type, payload);
@@ -237,7 +308,7 @@ public class PrettyDump {
                 		}
                 	} else {  // it's neither JSON or XML, but has text content
                         System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-                        System.out.printf("UTF-8 String %s:%n%s%n%n", type, payload);
+                        System.out.printf("Text String %s:%n%s%n%n", type, payload);
                 	}
                 } else {  // empty string?  or Map or Stream
                     System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
@@ -246,7 +317,8 @@ public class PrettyDump {
                 System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
             }
             System.out.println("^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");
-            message.ackMessage();  // if required, if it's a queue
+            // if we're not browsing, and it's not a Direct message (doesn't matter if we ACK a Direct message anyhow)
+            if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
         }
 
         @Override
