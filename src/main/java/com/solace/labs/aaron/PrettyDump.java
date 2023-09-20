@@ -22,6 +22,7 @@ import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.StandardCharsets;
@@ -37,7 +38,6 @@ import org.json.JSONObject;
 
 import com.solacesystems.jcsmp.Browser;
 import com.solacesystems.jcsmp.BrowserProperties;
-import com.solacesystems.jcsmp.BytesMessage;
 import com.solacesystems.jcsmp.BytesXMLMessage;
 import com.solacesystems.jcsmp.ConsumerFlowProperties;
 import com.solacesystems.jcsmp.DeliveryMode;
@@ -63,7 +63,7 @@ import com.solacesystems.jcsmp.XMLMessageListener;
 /** Based on DirectSubscriber sample from https://github.com/SolaceSamples/solace-samples-java-jcsmp */
 public class PrettyDump {
 
-    private static final String SAMPLE_NAME = PrettyDump.class.getSimpleName();
+    private static final String APP_NAME = PrettyDump.class.getSimpleName();
 
     private static volatile boolean isShutdown = false;          // are we done yet?
     private static String[] topics = null;
@@ -72,17 +72,19 @@ public class PrettyDump {
     /** the main method. */
     public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
         if (args.length < 5) {  // Check command line arguments
-            System.out.printf("Usage: %s <host:port> <message-vpn> <client-username> <password> <topics | q:queue | b:queue> [indent]%n%n", SAMPLE_NAME);
+            System.out.printf("Usage: %s <host:port> <message-vpn> <client-username> <password> <topics | q:queue | b:queue> [indent]%n%n", APP_NAME);
             System.out.println(" - If using TLS, remember \"tcps://\" before host");
             System.out.println(" - One of:");
             System.out.println("    - comma-separated list of Direct topic subscriptions");
             System.out.println("    - \"q:queueName\" to consume from queue");
             System.out.println("    - \"b:queueName\" to browse a queue");
-            System.out.println(" - Optional indent: integer, default==4; specifying 0 compresses output");
+            System.out.println(" - Optional indent: integer, default==4; specifying 0 compresses payload formatting");
+            System.out.println("    - Use negative indent value (column width) for ultra-compact topic & payload only");
             System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever");
+            System.out.println("    - e.g. export PRETTY_DUMP_OPTS=-Dcharset=Shift_JIS  (or \"set\" on Windows)");
             System.exit(0);
         }
-        System.out.println(SAMPLE_NAME + " initializing...");
+        System.out.println(APP_NAME + " initializing...");
 
         final JCSMPProperties properties = new JCSMPProperties();
         properties.setProperty(JCSMPProperties.HOST, args[0]);          // host:port
@@ -93,10 +95,13 @@ public class PrettyDump {
         if (args.length > 5) {
         	try {
         		int indent = Integer.parseInt(args[5]);
-        		if (indent < 0 || indent > 20) throw new NumberFormatException();
+        		if (indent < -80 || indent > 20) throw new NumberFormatException();
         		INDENT = indent;
+        		if (INDENT < 0) {
+        			COMPACT_STRING_FORMAT = "%-" + Math.abs(INDENT) + "s  %s%n";
+        		}
         	} catch (NumberFormatException e) {
-        		System.out.printf("Invalid value for indent: '%s', using default %d instead.", args[5], INDENT);
+        		System.out.printf("Invalid value for indent: '%s', using default %d instead.%n", args[5], INDENT);
         	}
         }
         properties.setProperty(JCSMPProperties.REAPPLY_SUBSCRIPTIONS, true);  // subscribe Direct subs after reconnect
@@ -183,7 +188,7 @@ public class PrettyDump {
         }
 
         System.out.println();
-        System.out.println(SAMPLE_NAME + " connected, and running. Press Ctrl-C to quit.");
+        System.out.println(APP_NAME + " connected, and running. Press Ctrl-C to quit.");
 
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             public void run() {
@@ -221,6 +226,7 @@ public class PrettyDump {
 
     
     private static int INDENT = 4;
+    private static String COMPACT_STRING_FORMAT;
 
     private static class PrinterHelper implements XMLMessageListener {
     	
@@ -228,7 +234,7 @@ public class PrettyDump {
     	private static final CharsetDecoder DECODER;
     	private static final OutputFormat XML_FORMAT = OutputFormat.createPrettyPrint();
     	static {
-    		XML_FORMAT.setIndentSize(INDENT);
+    		XML_FORMAT.setIndentSize(Math.max(INDENT, 0));
     		XML_FORMAT.setSuppressDeclaration(true);  // hides <?xml version="1.0"?>
     		if (System.getProperty("charset") != null) {
     			try {
@@ -248,27 +254,39 @@ public class PrettyDump {
     	
         @Override
         public void onReceive(BytesXMLMessage message) {
-            System.out.println("^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^");
+            if (INDENT >= 0) System.out.println("^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^");
             String payload = null;
             String trimmedPayload = null;
             String msgType = message.getClass().getSimpleName();  // will be "Impl" unless overridden below
             String payloadType = "";  // TBD later
+            ByteBuffer buffer = null;  // if it's a binary message
             try {
 	            if (message instanceof TextMessage) {
 	                payload = ((TextMessage)message).getText();
 	                msgType = "TextMessage";
-	            } else if (message instanceof BytesMessage) {
-                    ByteBuffer buffer = ByteBuffer.wrap(((BytesMessage)message).getData());
-                    CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of exceptions
-                    payload = cb.toString();
+	            } else {  // bytes, stream, map
+//                    buffer = ByteBuffer.wrap(((BytesMessage)message).getData());  // save this for later (might be a map or stream)
+                    buffer = message.getAttachmentByteBuffer();
+//	                if (message instanceof BytesMessage) {
+                    if (buffer != null) {
+	                    CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of exceptions
+	                    payload = cb.toString();
+                    }
                     msgType = "BytesMessage";
-	            } else {  // Map or Stream message
-	            	// the "else" block below will print this out in full
+//		            } else if (message instanceof MapMessage) {
+//		            	payload = "SDTMap";
+//		            	msgType = "MapMessage";
+//		            } else if (message instanceof StreamMessage) {
+//		            	payload = "SDTStream";
+//		            	msgType = "StreamMessage";
+//		            } else {  // what else could it be?
+//		            	// the "else" block below will print this out in full
+//		            }
 	            }
                 if (payload == null || payload.isEmpty() && message.hasContent()) {  // try the XML portion of the payload (OLD SCHOOL!!!)
                 	byte[] attachment = new byte[message.getContentLength()];
                 	message.readContentBytes(attachment);
-                	ByteBuffer buffer = ByteBuffer.wrap(attachment);
+                	buffer = ByteBuffer.wrap(attachment);
                     CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of exceptions
                     payload = cb.toString();
                     msgType = "XML Payload (should really be using Binary attachment)";
@@ -280,7 +298,7 @@ public class PrettyDump {
 	                        JSONObject jo = new JSONObject(trimmedPayload);
 	                        // success in parsing JSON!
 	                        payloadType = "JSON Object";
-	                        payload = jo.toString(INDENT).trim();  // overwrite
+	                        payload = jo.toString(Math.max(INDENT, 0)).trim();  // overwrite
                 		} catch (JSONException e) {  // parsing error
                 			payloadType = "INVALID JSON";
                 		}
@@ -288,7 +306,7 @@ public class PrettyDump {
                 		try {
 	                        JSONArray ja = new JSONArray(trimmedPayload);
 	                        payloadType = "JSON Array";
-	                        payload = ja.toString(INDENT).trim();  // overwrite
+	                        payload = ja.toString(Math.max(INDENT, 0)).trim();  // overwrite
                 		} catch (JSONException e) {  // parsing error
                 			payloadType = "INVALID JSON";
                 		}
@@ -308,15 +326,35 @@ public class PrettyDump {
                 		payloadType = DECODER.charset().displayName() + " String";
                 	}
 	                // all done parsing what we can and initializing the vars, so print it out!
-	                System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF).trim());
-	                System.out.printf("%s, %s:%n%s%n", payloadType, msgType, payload);
+                	if (INDENT >= 0) {
+		                System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF).trim());
+		                System.out.printf("%s, %s:%n%s%n", payloadType, msgType, payload);
+                	} else {
+                		System.out.printf(COMPACT_STRING_FORMAT, message.getDestination().getName(), payload);
+                	}
                 } else {  // empty string?  or Map or Stream
-                    System.out.println(message.dump(XMLMessage.MSGDUMP_FULL).trim());
+                	if (INDENT >= 0) {
+                		System.out.println(message.dump(XMLMessage.MSGDUMP_FULL).trim());
+                	} else {  // compact form
+                		if (payload == null) payload = "";
+                		System.out.printf(COMPACT_STRING_FORMAT, message.getDestination().getName(), payload);
+                	}
                 }
-            } catch (Exception e) {  // parsing error, or means it's probably an actual binary message
-                System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
+            } catch (CharacterCodingException e) {  // parsing error, or means it's probably an actual binary message
+            	if (INDENT >= 0) {
+            		System.out.println(message.dump(XMLMessage.MSGDUMP_FULL).trim());
+            	} else {
+            		byte[] bytes = buffer.array();
+            		for (int i=0; i < bytes.length; i++) {
+            			if ((bytes[i] >= 0 && bytes[i] < 32) || bytes[i] == 127) {  // control char
+            				bytes[i] = 46;
+            			}
+            		}
+            		payload = new String(buffer.array(), StandardCharsets.UTF_8);  // this doesn't seem to throw off errors for unprintable chars
+            		System.out.printf(COMPACT_STRING_FORMAT, message.getDestination().getName(), payload);
+            	}
             }
-            System.out.println("^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+            if (INDENT >= 0) System.out.println("^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");
             // if we're not browsing, and it's not a Direct message (doesn't matter if we ACK a Direct message anyhow)
             if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
         }
