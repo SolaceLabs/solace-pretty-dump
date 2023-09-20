@@ -76,17 +76,17 @@ JSON Object, TextMessage:
 ^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
-### Compact, indent = -30
+### Compact, indent = -35
 
 ```
-pq-demo/stats/pq/sub-pq_3-c222  {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0,"ackd":0,"gaps":0,"flow":"FLOW_ACTIVE"}
+pq-demo/stats/pq/sub-pq_3-c222       {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0,"ackd":0,"gaps":0,"flow":"FLOW_ACTIVE"}
 pq/3/pub-44e7/e7-7/0/_          
-pq-demo/stats/pq/pub-44e7       {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2,"resendQ":0,"keys":8,"activeFlow":true}
+pq-demo/stats/pq/pub-44e7            {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2,"resendQ":0,"keys":8,"activeFlow":true}
 pq/3/pub-44e7/e7-5/0/_          
-pq-demo/stats/pq/sub-pq_3-c222  {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0,"ackd":0,"gaps":0,"flow":"FLOW_ACTIVE"}
-solace/samples/jcsmp/hello/aaron  +...4..probability...>���..from...aaron...age.......
+pq-demo/stats/pq/sub-pq_3-c222       {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0,"ackd":0,"gaps":0,"flow":"FLOW_ACTIVE"}
+solace/samples/jcsmp/hello/aaron     +...4..probability...>���..from...aaron...age.......
 pq/3/pub-44e7/e7-3/0/_          
-pq-demo/stats/pq/pub-44e7       {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2,"resendQ":0,"keys":8,"activeFlow":true}
+pq-demo/stats/pq/pub-44e7            {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2,"resendQ":0,"keys":8,"activeFlow":true}
 pq/3/pub-44e7/e7-0/0/_          
 ```
 
