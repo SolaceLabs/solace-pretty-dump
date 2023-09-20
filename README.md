@@ -38,15 +38,14 @@ bin/PrettyDump <host:port> <message-vpn> <client-username> <password> <topics | 
 
 ```
 PrettyDump connected, and running. Press Ctrl-C to quit.
-^^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Message Id:                             4
 Binary Attachment:                      len=78
-
-XML BytesMessage:
+XML, BytesMessage:
 <apps>
     <version>23</version>
     <another>hello</another>
@@ -54,15 +53,14 @@ XML BytesMessage:
 </apps>
 
 ^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-^^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Message Id:                             5
 Binary Attachment:                      len=159
-
-JSON TextMessage:
+JSON Object, TextMessage:
 {
     "firstName": "Aaron",
     "lastName": "Lee",
