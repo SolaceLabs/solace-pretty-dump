@@ -75,10 +75,10 @@ public class PrettyDump {
             System.out.printf("Usage: %s <host:port> <message-vpn> <client-username> <password> <topics | q:queue | b:queue> [indent]%n%n", SAMPLE_NAME);
             System.out.println(" - If using TLS, remember \"tcps://\" before host");
             System.out.println(" - One of:");
-            System.out.println("    - comma-separated list of topics");
+            System.out.println("    - comma-separated list of Direct topic subscriptions");
             System.out.println("    - \"q:queueName\" to consume from queue");
             System.out.println("    - \"b:queueName\" to browse a queue");
-            System.out.println(" - Optional indent: integer, default==4");
+            System.out.println(" - Optional indent: integer, default==4; specifying 0 compresses output");
             System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever");
             System.exit(0);
         }
@@ -248,19 +248,20 @@ public class PrettyDump {
     	
         @Override
         public void onReceive(BytesXMLMessage message) {
-            System.out.println("^^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+            System.out.println("^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^");
             String payload = null;
-            String type = message.getClass().getSimpleName();
+            String trimmedPayload = null;
+            String msgType = message.getClass().getSimpleName();  // will be "Impl" unless overridden below
+            String payloadType = "";  // TBD later
             try {
 	            if (message instanceof TextMessage) {
-	                payload = ((TextMessage)message).getText().trim();
-	                type = "TextMessage";
+	                payload = ((TextMessage)message).getText();
+	                msgType = "TextMessage";
 	            } else if (message instanceof BytesMessage) {
-	//        		String payload = new String(((BytesMessage)message).getData(), Charset.forName("UTF-8"));
                     ByteBuffer buffer = ByteBuffer.wrap(((BytesMessage)message).getData());
                     CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of exceptions
-                    payload = cb.toString().trim();
-                    type = "BytesMessage";
+                    payload = cb.toString();
+                    msgType = "BytesMessage";
 	            } else {  // Map or Stream message
 	            	// the "else" block below will print this out in full
 	            }
@@ -269,49 +270,48 @@ public class PrettyDump {
                 	message.readContentBytes(attachment);
                 	ByteBuffer buffer = ByteBuffer.wrap(attachment);
                     CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of exceptions
-                    payload = cb.toString().trim();
-                    type = "XML Payload (should really be using Binary attachment)";
+                    payload = cb.toString();
+                    msgType = "XML Payload (should really be using Binary attachment)";
                 }
-                if (payload != null && !payload.isEmpty()) {  // means we've been initialized
-                	if (payload.startsWith("{") && payload.endsWith("}")) {  // try JSON
+                if (payload != null && !payload.isEmpty()) {  // means a detected String payload
+                	trimmedPayload = payload.trim();
+                	if (trimmedPayload.startsWith("{") && trimmedPayload.endsWith("}")) {  // try JSON
                 		try {
-	                        JSONObject jo = new JSONObject(payload);
-	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-	                        System.out.printf("JSON %s:%n%s%n", type, jo.toString(INDENT));
+	                        JSONObject jo = new JSONObject(trimmedPayload);
+	                        // success in parsing JSON!
+	                        payloadType = "JSON Object";
+	                        payload = jo.toString(INDENT).trim();  // overwrite
                 		} catch (JSONException e) {  // parsing error
-	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-	                        System.out.printf("INVALID JSON %s:%n%s%n", type, payload);
+                			payloadType = "INVALID JSON";
                 		}
-                	} else if (payload.startsWith("[") && payload.endsWith("]")) {  // try JSON array
+                	} else if (trimmedPayload.startsWith("[") && trimmedPayload.endsWith("]")) {  // try JSON array
                 		try {
-	                        JSONArray ja = new JSONArray(payload);
-	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-	                        System.out.printf("JSON %s:%n%s%n", type, ja.toString(INDENT));
+	                        JSONArray ja = new JSONArray(trimmedPayload);
+	                        payloadType = "JSON Array";
+	                        payload = ja.toString(INDENT).trim();  // overwrite
                 		} catch (JSONException e) {  // parsing error
-	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-	                        System.out.printf("INVALID JSON %s:%n%s%n", type, payload);
+                			payloadType = "INVALID JSON";
                 		}
-                	} else if (payload.startsWith("<") && payload.endsWith(">")) {  // try XML
-
-                	} else if (payload.startsWith("<") && payload.endsWith(">")) {  // try XML
+                	} else if (trimmedPayload.startsWith("<") && trimmedPayload.endsWith(">")) {  // try XML
                 		try {
-	                        Document document = DocumentHelper.parseText(payload);
-	                        StringWriter sw = new StringWriter();
-	                        XMLWriter writer = new XMLWriter(sw, XML_FORMAT);
-	                        writer.write(document);
-	                        writer.flush();
-	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-	                        System.out.printf("XML %s:%n%s%n", type, sw.toString());
+	                        Document document = DocumentHelper.parseText(trimmedPayload);
+	                        StringWriter stringWriter = new StringWriter();
+	                        XMLWriter xmlWriter = new XMLWriter(stringWriter, XML_FORMAT);
+	                        xmlWriter.write(document);
+	                        xmlWriter.flush();
+	                        payloadType = "XML";
+	                        payload = stringWriter.toString().trim();  // overwrite
                 		} catch (DocumentException | IOException e) {  // parsing error
-	                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-	                        System.out.printf("INVALID XML %s:%n%s%n", type, payload);
+                			payloadType = "INVALID XML";
                 		}
                 	} else {  // it's neither JSON or XML, but has text content
-                        System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF));
-                        System.out.printf("Text String %s:%n%s%n%n", type, payload);
+                		payloadType = DECODER.charset().displayName() + " String";
                 	}
+	                // all done parsing what we can and initializing the vars, so print it out!
+	                System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF).trim());
+	                System.out.printf("%s, %s:%n%s%n", payloadType, msgType, payload);
                 } else {  // empty string?  or Map or Stream
-                    System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
+                    System.out.println(message.dump(XMLMessage.MSGDUMP_FULL).trim());
                 }
             } catch (Exception e) {  // parsing error, or means it's probably an actual binary message
                 System.out.println(message.dump(XMLMessage.MSGDUMP_FULL));
