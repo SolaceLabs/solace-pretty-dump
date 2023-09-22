@@ -29,6 +29,7 @@ Usage: PrettyDump <host:port> <message-vpn> <client-username> <password> <topics
     - comma-separated list of Direct topic subscriptions
     - "q:queueName" to consume from queue
     - "b:queueName" to browse a queue
+       - Can browse all messages, or specific messages by ID
  - Optional indent: integer, default=4; specifying 0 compresses payload formatting
     - Use negative indent value (column width) for ultra-compact topic & payload only
  - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever
@@ -47,7 +48,7 @@ Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
-Message Id:                             4
+Message Id:                             4728274
 Binary Attachment:                      len=78
 XML, BytesMessage:
 <apps>
@@ -62,7 +63,7 @@ Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
-Message Id:                             5
+Message Id:                             4728275
 Binary Attachment:                      len=159
 JSON Object, TextMessage:
 {

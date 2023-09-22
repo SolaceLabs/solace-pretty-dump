@@ -68,9 +68,12 @@ public class PrettyDump {
     private static volatile boolean isShutdown = false;          // are we done yet?
     private static String[] topics = null;
     private static Browser browser = null;  // in case we need it, can't do async, is a blocking/looping pull
+    private static long browseFrom = -1;
+    private static long browseTo = Long.MAX_VALUE;
 
     /** the main method. */
-    public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
+    @SuppressWarnings("deprecation")
+	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
         if (args.length < 5) {  // Check command line arguments
             System.out.printf("Usage: %s <host:port> <message-vpn> <client-username> <password> <topics | q:queue | b:queue> [indent]%n%n", APP_NAME);
             System.out.println(" - If using TLS, remember \"tcps://\" before host");
@@ -78,6 +81,7 @@ public class PrettyDump {
             System.out.println("    - comma-separated list of Direct topic subscriptions");
             System.out.println("    - \"q:queueName\" to consume from queue");
             System.out.println("    - \"b:queueName\" to browse a queue");
+            System.out.println("       - Can browse all messages, or specific messages by ID");
             System.out.println(" - Optional indent: integer, default==4; specifying 0 compresses payload formatting");
             System.out.println("    - Use negative indent value (column width) for ultra-compact topic & payload only");
             System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever");
@@ -85,7 +89,6 @@ public class PrettyDump {
             System.exit(0);
         }
         System.out.println(APP_NAME + " initializing...");
-
         final JCSMPProperties properties = new JCSMPProperties();
         properties.setProperty(JCSMPProperties.HOST, args[0]);          // host:port
         properties.setProperty(JCSMPProperties.VPN_NAME,  args[1]);     // message-vpn
@@ -161,6 +164,28 @@ public class PrettyDump {
                 throw e;
             }
         } else if (topics.length == 1 && topics[0].startsWith("b:") && topics[0].length() > 2) {
+            // double-check
+            System.out.printf("%nBrowse all messages (press [ENTER]), or enter specific Message ID or range of IDs (e.g. 25909-26183): ");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+            String answer = reader.readLine().trim().toLowerCase();
+            if (answer.isEmpty()) {  // all messages
+            	
+            } else {
+            	try {
+            		browseFrom = Integer.parseInt(answer);
+            	} catch (NumberFormatException e) {
+            		if (answer.matches("\\d+-\\d+")) {
+            			String[] numbers = answer.split("-");
+            			browseFrom = Integer.parseInt(numbers[0]);
+            			browseTo = Integer.parseInt(numbers[1]);
+            		} else {
+            			System.out.println("Invalid format, must be either integer, or range xxxxx-yyyyyy");
+            			System.exit(0);
+            		}
+            	}
+            }
+            reader.close();
+        	
             String queueName = topics[0].substring(2);
             final Queue queue = JCSMPFactory.onlyInstance().createQueue(queueName);
 
@@ -194,9 +219,10 @@ public class PrettyDump {
             public void run() {
                 System.out.println("Shutdown detected, quitting...");
                 isShutdown = true;
-                session.closeSession();  // will also close consumer object
                 try {
-                    Thread.sleep(500);
+                	Thread.sleep(100);
+                	session.closeSession();  // will also close consumer object
+                    Thread.sleep(400);
                 } catch (InterruptedException e) { }
                 System.out.println();
             }
@@ -210,9 +236,31 @@ public class PrettyDump {
 //        		printer.onReceive(nextMsg);
 //        	}
             BytesXMLMessage nextMsg;
-        	while ((nextMsg = browser.getNext()) != null) {
-        		printer.onReceive(nextMsg);
-        	}
+            try {
+	        	while (!isShutdown && (nextMsg = browser.getNext()) != null) {
+	        		if (browseFrom == -1) {
+	        			printer.onReceive(nextMsg);  // print all messages
+	        		} else {
+	        			try {
+		        			long msgId = nextMsg.getMessageIdLong();  // deprecated, shouldn't be using this, but oh well!
+		        			if (msgId <= 0) {
+		        				System.out.println("Message received with no Message ID set!");
+		        				printer.onReceive(nextMsg);
+		        				break;
+		        			}
+		        			if (msgId >= browseFrom && msgId <= browseTo) {
+		        				printer.onReceive(nextMsg);
+		        			} else if (msgId > browseTo) break;  // done!
+	        			} catch (Exception e) {
+	        				System.out.println("Exception on message trying to get Message ID!");
+	        				printer.onReceive(nextMsg);
+	        				break;
+	        			}
+	        		}
+	        	}
+            } catch (JCSMPTransportException e) {
+            	// probably quitting, ignore, just fall out...
+            }
         	System.out.println("Browsing finished!");
         	browser.close();
         } else {

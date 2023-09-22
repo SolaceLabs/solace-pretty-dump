@@ -2,7 +2,7 @@
 <Configuration status="warn" monitorInterval="30" xmlns:xi="http://www.w3.org/2001/XInclude">
   <Appenders>
     <Console name="console" target="SYSTEM_OUT">
-      <PatternLayout pattern="~LOG %level~ %d{HH:mm:ss.SSS} [%t] %-5level %logger{5.} - %msg%n"/>
+      <PatternLayout pattern="> %d{HH:mm:ss.SSS} [%t] %-5level %logger{5.} - %msg%n"/>
     </Console>
     <File name="logfile" fileName="log/pretty.log">  <!-- will be relative to wherever you run -->
       <PatternLayout>
