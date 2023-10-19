@@ -19,7 +19,7 @@ unzip PrettyDump.zip
 cd PrettyDump
 ```
 
-Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-dump/releases) with everything built.
+Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-dump/releases) with everything already built.
 
 
 ## Running
@@ -56,13 +56,14 @@ Usage: PrettyDump [host:port] [message-vpn] [username] [password] [topics|q:queu
 
  - If using TLS, remember "tcps://" before host
  - Default parameters will be: localhost default aaron pw "#noexport/>" 4
+    - If 'default' client-username is enabled in VPN, you can use any username
  - Subscribing options, one of:
     - comma-separated list of Direct topic subscriptions
     - "q:queueName" to consume from queue
     - "b:queueName" to browse a queue
        - Can browse all messages, or specific messages by ID
  - Optional indent: integer, default=4; specifying 0 compresses payload formatting
-    - Use negative indent value (column width) for ultra-compact topic & payload only
+    - Use negative indent value (column width) for one-line topic & payload only
        - Use negative zero ("-0") for only topic, no payload
  - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever
     - e.g. export PRETTY_DUMP_OPTS=-Dcharset=Shift_JIS  (or "set" on Windows)
