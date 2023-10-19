@@ -52,10 +52,12 @@ import com.solacesystems.jcsmp.JCSMPProperties;
 import com.solacesystems.jcsmp.JCSMPReconnectEventHandler;
 import com.solacesystems.jcsmp.JCSMPSession;
 import com.solacesystems.jcsmp.JCSMPTransportException;
+import com.solacesystems.jcsmp.MapMessage;
 import com.solacesystems.jcsmp.OperationNotSupportedException;
 import com.solacesystems.jcsmp.Queue;
 import com.solacesystems.jcsmp.SessionEventArgs;
 import com.solacesystems.jcsmp.SessionEventHandler;
+import com.solacesystems.jcsmp.StreamMessage;
 import com.solacesystems.jcsmp.TextMessage;
 import com.solacesystems.jcsmp.XMLMessage;
 import com.solacesystems.jcsmp.XMLMessageConsumer;
@@ -82,7 +84,7 @@ public class PrettyDump {
                 System.out.printf("Usage: %s [host:port] [message-vpn] [username] [password] [topics|q:queue|b:queue] [indent]%n%n", APP_NAME);
                 System.out.println(" - If using TLS, remember \"tcps://\" before host");
                 System.out.println(" - Default parameters will be: localhost default aaron pw \"#noexport/>\" 4");
-                System.out.println("    - If 'default' client-username is enabled in VPN, you can use any username");
+                System.out.println("    - If client-username 'default' is enabled in VPN, you can use any username");
                 System.out.println(" - Subscribing options, one of:");
                 System.out.println("    - comma-separated list of Direct topic subscriptions");
                 System.out.println("    - q:queueName to consume from queue");
@@ -112,7 +114,7 @@ public class PrettyDump {
         		if (indent < -250 || indent > 20) throw new NumberFormatException();  // use -200 and then use Linux util 'cut -c204-' for payload only (there are some spaces after topic)
         		INDENT = indent;
         		if (INDENT < 0) {
-        			COMPACT_STRING_FORMAT = "%-" + Math.abs(INDENT) + "s - %s%n";
+        			COMPACT_STRING_FORMAT = "%-" + Math.max(1, Math.abs(INDENT) - 2) + "s  %s%n";  // minus 2 because we have two spaces between topic & payload
         		} else if (INDENT == 0) {
         			if (args[5].equals("-0")) {  // special case, topic only
         				INDENT = Integer.MIN_VALUE;
@@ -305,7 +307,7 @@ public class PrettyDump {
     	
 //    	private static final CharsetDecoder DECODER = Charset.forName("UTF-8").newDecoder();
     	private static final CharsetDecoder DECODER;
-    	private static final OutputFormat XML_FORMAT = OutputFormat.createPrettyPrint();
+    	private static final OutputFormat XML_FORMAT = INDENT < 0 ? OutputFormat.createCompactFormat() : OutputFormat.createPrettyPrint();
     	static {
     		XML_FORMAT.setIndentSize(Math.max(INDENT, 0));
     		XML_FORMAT.setSuppressDeclaration(true);  // hides <?xml version="1.0"?>
@@ -327,7 +329,8 @@ public class PrettyDump {
     	
         @Override
         public void onReceive(BytesXMLMessage message) {
-        	if (INDENT == Integer.MIN_VALUE) {  // special case, topic only, don't need to parse the payload
+            // if doing topic only, or if there's no payload in compressed (<0) mode, then just print the topic
+        	if (INDENT == Integer.MIN_VALUE || (INDENT < 1 && !message.hasContent() && !message.hasAttachment())) {
         		System.out.println(message.getDestination().getName());
                 if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
                 return;
@@ -350,16 +353,13 @@ public class PrettyDump {
 	                    CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of exceptions
 	                    payload = cb.toString();
                     }
-                    msgType = "BytesMessage";
-//		            } else if (message instanceof MapMessage) {
-//		            	payload = "SDTMap";
-//		            	msgType = "MapMessage";
-//		            } else if (message instanceof StreamMessage) {
-//		            	payload = "SDTStream";
-//		            	msgType = "StreamMessage";
-//		            } else {  // what else could it be?
-//		            	// the "else" block below will print this out in full
-//		            }
+		            if (message instanceof MapMessage) {
+		            	msgType = "MapMessage";
+		            } else if (message instanceof StreamMessage) {
+		            	msgType = "StreamMessage";
+		            } else {
+		            	msgType = "BytesMessage";
+		            }
 	            }
                 if (payload == null || payload.isEmpty() && message.hasContent()) {  // try the XML portion of the payload (OLD SCHOOL!!!)
                 	byte[] attachment = new byte[message.getContentLength()];
@@ -404,9 +404,16 @@ public class PrettyDump {
                 		payloadType = DECODER.charset().displayName() + " String";
                 	}
 	                // all done parsing what we can and initializing the vars, so print it out!
-                	if (INDENT >= 0) {
+                	if (INDENT >= 0) {  // postive indent, so print out the standard SdkPerf -md type header stuff first
 		                System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF).trim());
-		                System.out.printf("%s, %s:%n%s%n", payloadType, msgType, payload);
+		                // now the payload part
+//		                if (INDENT == 0 || (!payloadType.startsWith("XML") && (!payloadType.startsWith("JSON")))) {  // i.e. if it's invalid or just a string, then save the carriage return
+		                if (INDENT == 0) {
+		                	String combined = msgType + ", " + payloadType + ":";
+		                	System.out.printf("%-40s%s%n", combined, payload);
+		                } else {
+		                	System.out.printf("%s, %s:%n%s%n", msgType, payloadType, payload);
+		                }
                 	} else {
                 		System.out.printf(COMPACT_STRING_FORMAT, message.getDestination().getName(), payload);
                 	}
@@ -432,7 +439,7 @@ public class PrettyDump {
             		System.out.printf(COMPACT_STRING_FORMAT, message.getDestination().getName(), payload);
             	}
             }
-            if (INDENT >= 0) System.out.println("^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+            if (INDENT > 0) System.out.println("^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");  // if == 0, then skip b/c we're compact!
             // if we're not browsing, and it's not a Direct message (doesn't matter if we ACK a Direct message anyhow)
             if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
         }

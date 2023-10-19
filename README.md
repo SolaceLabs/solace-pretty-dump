@@ -56,7 +56,7 @@ Usage: PrettyDump [host:port] [message-vpn] [username] [password] [topics|q:queu
 
  - If using TLS, remember "tcps://" before host
  - Default parameters will be: localhost default aaron pw "#noexport/>" 4
-    - If 'default' client-username is enabled in VPN, you can use any username
+    - If client-username 'default' is enabled in VPN, you can use any username
  - Subscribing options, one of:
     - comma-separated list of Direct topic subscriptions
     - q:queueName to consume from queue
@@ -93,8 +93,8 @@ Subscribed to Direct topic: '#*/>'
 #### Event Mesh / DMR / MNR considerations
 
 If connecting to a mesh of brokers, take care that adding subscriptions could pull (lots of?) data from remote brokers.  This is because
-subscriptions (by default) are automatically propagated to other brokers in the mesh.  To ensure you
-only subscribe to data from the broker you connect to, prefix each subscriptions with `#noexport/`.  E.g. `"#noexport/>, #noexport/*/>, #noexport/#*/>"`
+subscriptions (by default) are automatically propagated (exported) to other brokers in the mesh.  To ensure you
+only subscribe to data from the broker you connect to, prefix each subscription with `#noexport/`.  E.g. `"#noexport/>, #noexport/*/>, #noexport/#*/>"`
 or `"#noexport/bus_trak/>"`. 
 See the [Solace docs](https://docs.solace.com/Messaging/No-Export.htm) for more details.
 
@@ -121,7 +121,7 @@ To find the ID of the messages on a queue, either use PubSub+ Manager, CLI, or S
 ![View Message IDs in PubSubPlus Manager](https://github.com/SolaceLabs/pretty-dump/blob/main/src/browse-msgs.png)
 
 
-Or, to just browse the first/oldest message on the queue, enter "1" or some other low number.
+Or to just browse the first/oldest message on the queue, enter "1" or some other low number.
 
 ```
 $ bin/PrettyDump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1
@@ -166,7 +166,7 @@ Shutdown detected, quitting...
 
 ### Regular, indent > 0
 
-indent = 4 in this example:
+Valid vales are between 1 and 20.  Indent is 4 in this example:
 ```
 PrettyDump connected, and running. Press Ctrl-C to quit.
 ^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -232,17 +232,17 @@ JSON Object, TextMessage:
 
 ### One-Line, indent < 0
 
-indent = -35 in this example
+Valid values are between -1 and -250, and specify how far right to indent the payload.  indent = -35 in this example
 ```
 pq-demo/stats/pq/sub-pq_3-c222       {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0,"ackd":0,"gaps":0,"flow":"FLOW_ACTIVE"}
-pq/3/pub-44e7/e7-7/0/_          
+pq/3/pub-44e7/e7-7/0/_
 pq-demo/stats/pq/pub-44e7            {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2,"resendQ":0,"keys":8,"activeFlow":true}
-pq/3/pub-44e7/e7-5/0/_          
+pq/3/pub-44e7/e7-5/0/_
 pq-demo/stats/pq/sub-pq_3-c222       {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0,"ackd":0,"gaps":0,"flow":"FLOW_ACTIVE"}
 solace/samples/jcsmp/hello/aaron     +...4..probability...>���..from...aaron...age.......
-pq/3/pub-44e7/e7-3/0/_          
+pq/3/pub-44e7/e7-3/0/_
 pq-demo/stats/pq/pub-44e7            {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2,"resendQ":0,"keys":8,"activeFlow":true}
-pq/3/pub-44e7/e7-0/0/_          
+pq/3/pub-44e7/e7-0/0/_
 ```
 
 ### One-Line, Topic only, indent = "-0"
