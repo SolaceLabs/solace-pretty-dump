@@ -199,7 +199,7 @@ public class PrettyDump {
 	        	browser = session.createBrowser(bp);
                 System.out.println("success!");
                 // double-check
-                System.out.printf("%nBrowse all messages (press [ENTER]),%n or enter specific Message ID,%n or range of IDs (e.g. \"25909-26183\" or \"3717384-\"): ");
+                System.out.printf("%nBrowse all messages -> press [ENTER],%n or enter specific Message ID,%n or range of IDs (e.g. \"25909-26183\" or \"9517-\"): ");
                 BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
                 String answer = reader.readLine().trim().toLowerCase();
                 reader.close();

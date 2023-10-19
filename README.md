@@ -4,12 +4,12 @@ Now also with a display option for a compressed, one-line-per-message view.
 
 **Latest release:** 2023/10/19
 
-- Building
-- Running
-- Command-line parameters
-- Subscribing options
-- Output Indent options
-- Error checking
+- [Building](#building)
+- [Running](#running)
+- [Command-line parameters](#command-line-parameters)
+- [Subscribing options](#subscribing-options---the-5th-argument)
+- [Output Indent options](#output-indent-options---the-6th-argument)
+- [Error checking](#error-checking)
 
 ## Requirements
 
@@ -99,7 +99,7 @@ Subscribed to Direct topic: '#*/>'
 #### Event Mesh / DMR / MNR considerations
 
 If connecting to a mesh of brokers, take care that adding subscriptions could pull (lots of?) data from remote brokers.  This is because
-subscriptions (by default) are automatically propagated (exported) to other brokers in the mesh.  To ensure you
+subscriptions, by default, are automatically propagated (exported) to other brokers in the mesh.  To ensure you
 only subscribe to data from the broker you connect to, prefix each subscription with `#noexport/`.  E.g. `"#noexport/>, #noexport/*/>, #noexport/#*/>"`
 or `"#noexport/bus_trak/>"`. 
 See the [Solace docs](https://docs.solace.com/Messaging/No-Export.htm) for more details.
@@ -136,9 +136,9 @@ PrettyDump initializing...
 PrettyDump connected to VPN 'aaron-demo-singapore' on broker 'aaron.messaging.solace.cloud'.
 Attempting to browse queue 'q1' on the broker... success!
 
-Browse all messages (press [ENTER]),
+Browse all messages -> press [ENTER],
  or enter specific Message ID,
- or range of IDs (e.g. "25909-26183" or "3717384-"): 31737085
+ or range of IDs (e.g. "25909-26183" or "9517-"): 31737085
 
 Starting. Press Ctrl-C to quit.
 ^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -170,9 +170,9 @@ Shutdown detected, quitting...
 
 ## Output Indent options - the 6th argument
 
-### Regular, indent > 0
+### Regular: indent > 0
 
-Valid vales are between 1 and 20.  Indent is 4 in this example:
+Valid vales are between 1 and 20.  Indent is default 4 in these examples:
 ```
 PrettyDump connected, and running. Press Ctrl-C to quit.
 ^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -181,12 +181,14 @@ Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Message Id:                             4728274
-Binary Attachment:                      len=78
+Binary Attachment:                      len=100
 BytesMessage, XML:
 <apps>
     <version>23</version>
-    <another>hello</another>
-    <that>this</that>
+    <stick>this</stick>
+    <nested>
+        <level>deeper</level>
+    </nested>
 </apps>
 ^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -208,7 +210,7 @@ TextMessage, JSON Object:
 ^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
-### Compact, indent = 0
+### Compact: indent = 0
 
 ```
 PrettyDump connected, and running. Press Ctrl-C to quit.
@@ -217,17 +219,17 @@ Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
-Message Id:                             4728274
-Binary Attachment:                      len=78
+Message Id:                             4729017
+Binary Attachment:                      len=58
 BytesMessage, XML:
-<apps><version>23</version><another>hello</another><that>this</that></apps>
+<apps><another>hello</another><that>this</that></apps>
 ^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
-Message Id:                             4728275
+Message Id:                             4729156
 Binary Attachment:                      len=159
 TextMessage, JSON Object:
 {"firstName": "Aaron","lastName": "Lee","zipCode": "12345","streetAddress": "Singapore","birthdayDate": "1999/01/02","customerId": "12345"}
@@ -236,7 +238,7 @@ TextMessage, JSON Object:
 
 
 
-### One-Line, indent < 0
+### One-Line: indent < 0
 
 Valid values are between -1 and -250, and specify how far right to indent the payload.  indent = -36 in this example.
 
@@ -252,9 +254,9 @@ pq-demo/stats/pq/pub-44e7           {"prob":0,"paused":false,"delay":0,"nacks":0
 pq/3/pub-44e7/e7-0/0/_
 ```
 
-### One-Line, Topic only, indent = "-0"
+### One-Line, Topic only: indent = "-0"
 
-Specifying -0 for the indent only prints out the topic.  I've often used ` | grep Destination` a lot with SdkPerf `-md` output,
+Specifying -0 for the indent only prints out the topic.  I've often used ` | grep Destination` with SdkPerf `-md` output,
 this does essentially the same thing.
 
 ```
