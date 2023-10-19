@@ -2,6 +2,9 @@
 A useful utility that emulates SdkPerf `-md` output, echoing received Solace messages to the console, but pretty-printed for **JSON** and **XML**.
 Now also with a display option for a compressed, one-line-per-message view.
 
+**Latest release:** 2023/10/19
+
+
 ## Requirements
 
 Java 8+
@@ -23,15 +26,28 @@ Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-d
 
 ```
 $ bin/PrettyDump
+
 PrettyDump initializing...
 PrettyDump connected to VPN 'default' on broker 'localhost'.
-Subscribed to Direct topic: '>'
+Subscribed to Direct topic: '#noexport/>'
 
 Starting. Press Ctrl-C to quit.
+^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
+Destination:                            Topic 'hello/world'
+Priority:                               4
+Class Of Service:                       USER_COS_1
+DeliveryMode:                           DIRECT
+Message Id:                             42
+Binary Attachment:                      len=26
+JSON Object, TextMessage:
+{
+    "hello": "world"
+}
+^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
 
-## Command line parameters
+## Command-line parameters
 
 ```
 $ bin/PrettyDump -h   or --help
@@ -39,15 +55,15 @@ $ bin/PrettyDump -h   or --help
 Usage: PrettyDump [host:port] [message-vpn] [username] [password] [topics|q:queue|b:queue] [indent]
 
  - If using TLS, remember "tcps://" before host
- - Default parameters will be: localhost default aaron pw ">" 4
- - One of:
+ - Default parameters will be: localhost default aaron pw "#noexport/>" 4
+ - Subscribing options, one of:
     - comma-separated list of Direct topic subscriptions
     - "q:queueName" to consume from queue
     - "b:queueName" to browse a queue
        - Can browse all messages, or specific messages by ID
- - Optional indent: integer, default==4; specifying 0 compresses payload formatting
+ - Optional indent: integer, default=4; specifying 0 compresses payload formatting
     - Use negative indent value (column width) for ultra-compact topic & payload only
-    - Use negative zero (-0) for only topic
+       - Use negative zero ("-0") for only topic, no payload
  - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever
     - e.g. export PRETTY_DUMP_OPTS=-Dcharset=Shift_JIS  (or "set" on Windows)
 ```
@@ -57,13 +73,15 @@ Usage: PrettyDump [host:port] [message-vpn] [username] [password] [topics|q:queu
 
 ### Direct Subscription(s)
 
-By default, PrettyDump will subscribe to the "catch-all" multi-level wildcard topic `>`, which will show most (not all!) messages going through your VPN.
+By default, PrettyDump will subscribe to the "catch-all" multi-level wildcard topic `>` with the `#noexport/` prefix
+(see [Event Mesh considerations](#event-mesh--dmr-considerations) below).
+This subscription will show most (not all!) messages going through your VPN.
 
 Specify a single topic subscription, or a comma-separated list: e.g. `"bus_trak/door/v1/007*/>, bus_trak/gps/v2/>"` (spaces will be stripped out).
  Remember to "quote" the whole argument if using the `>` wildcard as most shells treat this as a special character.
 
-If you want to see *all* messages going through the VPN, then override the 5th argument with `">, */>, #*/>"` and this will also display any "hidden" messages
-such as those published directly to queues, point-to-point messages, request-reply, REST responses in gateway mode, etc.
+If you want to see ***all*** messages going through the VPN, then override the 5th argument with `">, */>, #*/>"` and this will also display any "hidden" messages
+such as those published directly to queues, point-to-point messages, request-reply, REST responses in gateway mode, SolCache communication messages, etc.
 
 ```
 Subscribed to Direct topic: '>'
@@ -71,15 +89,24 @@ Subscribed to Direct topic: '*/>'
 Subscribed to Direct topic: '#*/>'
 ```
 
+#### Event Mesh / DMR / MNR considerations
+
+If connecting to a mesh of brokers, take care that adding subscriptions could pull (lots of?) data from remote brokers.  This is because
+subscriptions (by default) are automatically propagated to other brokers in the mesh.  To ensure you
+only subscribe to data from the broker you connect to, prefix each subscriptions with `#noexport/`.  E.g. `"#noexport/>, #noexport/*/>, #noexport/#*/>"`
+or `"#noexport/bus_trak/>"`. 
+See the [Solace docs](https://docs.solace.com/Messaging/No-Export.htm) for more details.
+
+
 ### Queue Consume
 
 To connect to a queue and consume (e.g. the messages will be ACKed and removed), then override the 5th argument with
 `q:queueName`, e.g. `q:q1`.  You will receive a warning that messages will be removed from the queue after they are received.
 
 ```
-Attempting to bind to queue 'q1' on the broker... Success!
+Attempting to bind to queue 'q1' on the broker... success!
 
-Will consume/ACK all messages on queue 'q1'. Use browse 'b:' otherwise.
+Will consume/ACK all messages on queue 'q1'. Use browse 'b:' command-line option otherwise.
 Are you sure? [y|yes]: 
 ```
 
@@ -88,20 +115,19 @@ Are you sure? [y|yes]:
 To non-destructively view the messages on a queue, use the browse option: `b:queueName`.  You have the option of browsing
 all messages, a single message based on Message ID, or a range of messages (either closed "`12345-67890`" or open-ended "`12345-`").
 
-To find the ID of the messages on a queue, either use PubSub+ Manager, or use CLI or SEMP:
+To find the ID of the messages on a queue, either use PubSub+ Manager, CLI, or SEMP:
 
 ![View Message IDs in PubSubPlus Manager](https://github.com/SolaceLabs/pretty-dump/blob/main/browse-msgs.png)
 
 
-Or, to just browse the first / oldest message on the queue, enter "`1`" or some other low number.
+Or, to just browse the first/oldest message on the queue, enter "1" or some other low number.
 
 ```
 $ bin/PrettyDump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1
 
-
 PrettyDump initializing...
 PrettyDump connected to VPN 'aaron-demo-singapore' on broker 'aaron.messaging.solace.cloud'.
-Attempting to browse queue 'q1' on the broker... Success!
+Attempting to browse queue 'q1' on the broker... success!
 
 Browse all messages (press [ENTER]),
  or enter specific Message ID,
