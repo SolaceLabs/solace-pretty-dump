@@ -4,6 +4,12 @@ Now also with a display option for a compressed, one-line-per-message view.
 
 **Latest release:** 2023/10/19
 
+- Building
+- Running
+- Command-line parameters
+- Subscribing options
+- Output Indent options
+- Error checking
 
 ## Requirements
 
@@ -39,7 +45,7 @@ Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Message Id:                             42
 Binary Attachment:                      len=26
-JSON Object, TextMessage:
+TextMessage, JSON Object:
 {
     "hello": "world"
 }
@@ -143,7 +149,7 @@ DeliveryMode:                           NON_PERSISTENT
 Message Id:                             31737085
 Replication Group Message ID:           rmid1:102ee-0b5760c9706-00000000-01e444fd
 Binary Attachment:                      len=173
-JSON Object, TextMessage:
+TextMessage, JSON Object:
 {
     "psgrCap": 1,
     "heading": 228,
@@ -176,7 +182,7 @@ Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Message Id:                             4728274
 Binary Attachment:                      len=78
-XML, BytesMessage:
+BytesMessage, XML:
 <apps>
     <version>23</version>
     <another>hello</another>
@@ -190,7 +196,7 @@ Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Message Id:                             4728275
 Binary Attachment:                      len=159
-JSON Object, TextMessage:
+TextMessage, JSON Object:
 {
     "firstName": "Aaron",
     "lastName": "Lee",
@@ -213,7 +219,7 @@ Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Message Id:                             4728274
 Binary Attachment:                      len=78
-XML, BytesMessage:
+BytesMessage, XML:
 <apps><version>23</version><another>hello</another><that>this</that></apps>
 ^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -223,7 +229,7 @@ Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Message Id:                             4728275
 Binary Attachment:                      len=159
-JSON Object, TextMessage:
+TextMessage, JSON Object:
 {"firstName": "Aaron","lastName": "Lee","zipCode": "12345","streetAddress": "Singapore","birthdayDate": "1999/01/02","customerId": "12345"}
 ^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
@@ -232,20 +238,24 @@ JSON Object, TextMessage:
 
 ### One-Line, indent < 0
 
-Valid values are between -1 and -250, and specify how far right to indent the payload.  indent = -35 in this example
+Valid values are between -1 and -250, and specify how far right to indent the payload.  indent = -36 in this example.
+
 ```
-pq-demo/stats/pq/sub-pq_3-c222       {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0,"ackd":0,"gaps":0,"flow":"FLOW_ACTIVE"}
+pq-demo/stats/pq/sub-pq_3-c222      {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0,"ackd":0,"gaps":0,"flow":"FLOW_ACTIVE"}
 pq/3/pub-44e7/e7-7/0/_
-pq-demo/stats/pq/pub-44e7            {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2,"resendQ":0,"keys":8,"activeFlow":true}
+pq-demo/stats/pq/pub-44e7           {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2,"resendQ":0,"keys":8,"activeFlow":true}
 pq/3/pub-44e7/e7-5/0/_
-pq-demo/stats/pq/sub-pq_3-c222       {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0,"ackd":0,"gaps":0,"flow":"FLOW_ACTIVE"}
-solace/samples/jcsmp/hello/aaron     +...4..probability...>���..from...aaron...age.......
+pq-demo/stats/pq/sub-pq_3-c222      {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0,"ackd":0,"gaps":0,"flow":"FLOW_ACTIVE"}
+solace/samples/jcsmp/hello/aaron    +...4..probability...>���..from...aaron...age.......
 pq/3/pub-44e7/e7-3/0/_
-pq-demo/stats/pq/pub-44e7            {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2,"resendQ":0,"keys":8,"activeFlow":true}
+pq-demo/stats/pq/pub-44e7           {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2,"resendQ":0,"keys":8,"activeFlow":true}
 pq/3/pub-44e7/e7-0/0/_
 ```
 
 ### One-Line, Topic only, indent = "-0"
+
+Specifying -0 for the indent only prints out the topic.  I've often used ` | grep Destination` a lot with SdkPerf `-md` output,
+this does essentially the same thing.
 
 ```
 bus_trak/gps/v2/013B/01058/001.37463/0103.93459/13/STOPPED
@@ -257,4 +267,24 @@ bus_trak/gps/v2/011X/01390/001.39620/0103.84082/11/OK
 bus_trak/gps/v2/035B/01286/001.40101/0103.88913/12/OK
 bus_trak/door/v1/005B/01464/open
 bus_trak/gps/v2/006A/01291/001.29687/0103.78305/21/STOPPED
+```
+
+
+## Error checking
+
+As part of the parsing for JSON and XML, it detects if the payload is malformed and prints out some text to indicate that.
+This can be helpful if trying to hand-code a payload and don't get it quite right.
+
+```
+^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
+Destination:                            Topic 'xml/bad/test'
+Priority:                               4
+Class Of Service:                       USER_COS_1
+DeliveryMode:                           DIRECT
+Message Id:                             9
+Binary Attachment:                      len=43
+BytesMessage, INVALID XML:
+<bad>not having</bad><a>closing bracket/a>
+
+^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
