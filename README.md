@@ -223,7 +223,6 @@ Message Id:                             4729017
 Binary Attachment:                      len=58
 BytesMessage, XML:
 <apps><another>hello</another><that>this</that></apps>
-^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
@@ -233,7 +232,6 @@ Message Id:                             4729156
 Binary Attachment:                      len=159
 TextMessage, JSON Object:
 {"firstName": "Aaron","lastName": "Lee","zipCode": "12345","streetAddress": "Singapore","birthdayDate": "1999/01/02","customerId": "12345"}
-^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
 
