@@ -85,10 +85,10 @@ public class PrettyDump {
                 System.out.println("    - If 'default' client-username is enabled in VPN, you can use any username");
                 System.out.println(" - Subscribing options, one of:");
                 System.out.println("    - comma-separated list of Direct topic subscriptions");
-                System.out.println("    - \"q:queueName\" to consume from queue");
-                System.out.println("    - \"b:queueName\" to browse a queue");
+                System.out.println("    - q:queueName to consume from queue");
+                System.out.println("    - b:queueName to browse a queue");
                 System.out.println("       - Can browse all messages, or specific messages by ID");
-                System.out.println(" - Optional indent: integer, default=4; specifying 0 compresses payload formatting");
+                System.out.println(" - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting");
                 System.out.println("    - Use negative indent value (column width) for one-line topic & payload only");
                 System.out.println("       - Use negative zero (\"-0\") for only topic, no payload");
                 System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever");

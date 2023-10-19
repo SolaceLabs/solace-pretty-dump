@@ -59,10 +59,10 @@ Usage: PrettyDump [host:port] [message-vpn] [username] [password] [topics|q:queu
     - If 'default' client-username is enabled in VPN, you can use any username
  - Subscribing options, one of:
     - comma-separated list of Direct topic subscriptions
-    - "q:queueName" to consume from queue
-    - "b:queueName" to browse a queue
+    - q:queueName to consume from queue
+    - b:queueName to browse a queue
        - Can browse all messages, or specific messages by ID
- - Optional indent: integer, default=4; specifying 0 compresses payload formatting
+ - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting
     - Use negative indent value (column width) for one-line topic & payload only
        - Use negative zero ("-0") for only topic, no payload
  - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever
