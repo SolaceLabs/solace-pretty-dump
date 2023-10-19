@@ -204,7 +204,6 @@ TextMessage, JSON Object:
     "lastName": "Lee",
     "zipCode": "12345",
     "streetAddress": "Singapore",
-    "birthdayDate": "1999/01/02",
     "customerId": "12345"
 }
 ^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -231,7 +230,7 @@ DeliveryMode:                           DIRECT
 Message Id:                             4729156
 Binary Attachment:                      len=159
 TextMessage, JSON Object:
-{"firstName": "Aaron","lastName": "Lee","zipCode": "12345","streetAddress": "Singapore","birthdayDate": "1999/01/02","customerId": "12345"}
+{"firstName": "Aaron","lastName": "Lee","zipCode": "12345","streetAddress": "Singapore","customerId": "12345"}
 ```
 
 
