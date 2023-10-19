@@ -74,7 +74,7 @@ Usage: PrettyDump [host:port] [message-vpn] [username] [password] [topics|q:queu
 ### Direct Subscription(s)
 
 By default, PrettyDump will subscribe to the "catch-all" multi-level wildcard topic `>` with the `#noexport/` prefix
-(see [Event Mesh considerations](#event-mesh--dmr-considerations) below).
+(see [Event Mesh considerations](#event-mesh--dmr--mnr-considerations) below).
 This subscription will show most (not all!) messages going through your VPN.
 
 Specify a single topic subscription, or a comma-separated list: e.g. `"bus_trak/door/v1/007*/>, bus_trak/gps/v2/>"` (spaces will be stripped out).
