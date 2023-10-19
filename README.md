@@ -19,6 +19,18 @@ cd PrettyDump
 Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-dump/releases) with everything built.
 
 
+## Running
+
+```
+$ bin/PrettyDump
+PrettyDump initializing...
+PrettyDump connected to VPN 'default' on broker 'localhost'.
+Subscribed to Direct topic: '>'
+
+Starting. Press Ctrl-C to quit.
+```
+
+
 ## Command line parameters
 
 ```
@@ -38,18 +50,6 @@ Usage: PrettyDump [host:port] [message-vpn] [username] [password] [topics|q:queu
     - Use negative zero (-0) for only topic
  - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever
     - e.g. export PRETTY_DUMP_OPTS=-Dcharset=Shift_JIS  (or "set" on Windows)
-```
-
-
-## Running
-
-```
-$ bin/PrettyDump
-PrettyDump initializing...
-PrettyDump connected to VPN 'default' on broker 'localhost'.
-Subscribed to Direct topic: '>'
-
-Starting. Press Ctrl-C to quit.
 ```
 
 
@@ -96,7 +96,7 @@ To find the ID of the messages on a queue, either use PubSub+ Manager, or use CL
 Or, to just browse the first / oldest message on the queue, enter "`1`" or some other low number.
 
 ```
-$ bin/PrettyDump aaron.messaging.solace.cloud aaron-demo-singapore aaron pw b:q1
+$ bin/PrettyDump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1
 
 
 PrettyDump initializing...
