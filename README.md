@@ -118,7 +118,7 @@ all messages, a single message based on Message ID, or a range of messages (eith
 
 To find the ID of the messages on a queue, either use PubSub+ Manager, CLI, or SEMP:
 
-![View Message IDs in PubSubPlus Manager](https://github.com/SolaceLabs/pretty-dump/blob/main/browse-msgs.png)
+![View Message IDs in PubSubPlus Manager](https://github.com/SolaceLabs/pretty-dump/blob/main/src/browse-msgs.png)
 
 
 Or, to just browse the first/oldest message on the queue, enter "1" or some other low number.
