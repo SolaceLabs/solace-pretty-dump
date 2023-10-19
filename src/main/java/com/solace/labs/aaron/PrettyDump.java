@@ -49,6 +49,7 @@ import com.solacesystems.jcsmp.JCSMPErrorResponseException;
 import com.solacesystems.jcsmp.JCSMPException;
 import com.solacesystems.jcsmp.JCSMPFactory;
 import com.solacesystems.jcsmp.JCSMPProperties;
+import com.solacesystems.jcsmp.JCSMPReconnectEventHandler;
 import com.solacesystems.jcsmp.JCSMPSession;
 import com.solacesystems.jcsmp.JCSMPTransportException;
 import com.solacesystems.jcsmp.OperationNotSupportedException;
@@ -65,85 +66,96 @@ public class PrettyDump {
 
     private static final String APP_NAME = PrettyDump.class.getSimpleName();
 
+    private static int INDENT = 4;
+    private static String COMPACT_STRING_FORMAT;
+
     private static volatile boolean isShutdown = false;          // are we done yet?
-    private static String[] topics = null;
+    private static String[] topics = new String[] { "#noexport/>" };  // default starting topic
     private static Browser browser = null;  // in case we need it, can't do async, is a blocking/looping pull
     private static long browseFrom = -1;
     private static long browseTo = Long.MAX_VALUE;
 
-    /** the main method. */
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("deprecation")  // this is for our use of Message ID for the browser
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
-        if (args.length < 5) {  // Check command line arguments
-            System.out.printf("Usage: %s <host:port> <message-vpn> <client-username> <password> <topics | q:queue | b:queue> [indent]%n%n", APP_NAME);
-            System.out.println(" - If using TLS, remember \"tcps://\" before host");
-            System.out.println(" - One of:");
-            System.out.println("    - comma-separated list of Direct topic subscriptions");
-            System.out.println("    - \"q:queueName\" to consume from queue");
-            System.out.println("    - \"b:queueName\" to browse a queue");
-            System.out.println("       - Can browse all messages, or specific messages by ID");
-            System.out.println(" - Optional indent: integer, default==4; specifying 0 compresses payload formatting");
-            System.out.println("    - Use negative indent value (column width) for ultra-compact topic & payload only");
-            System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever");
-            System.out.println("    - e.g. export PRETTY_DUMP_OPTS=-Dcharset=Shift_JIS  (or \"set\" on Windows)");
-            System.exit(0);
-        }
-        System.out.println(APP_NAME + " initializing...");
-        final JCSMPProperties properties = new JCSMPProperties();
-        properties.setProperty(JCSMPProperties.HOST, args[0]);          // host:port
-        properties.setProperty(JCSMPProperties.VPN_NAME,  args[1]);     // message-vpn
-        properties.setProperty(JCSMPProperties.USERNAME, args[2]);      // client-username
-        properties.setProperty(JCSMPProperties.PASSWORD, args[3]);  // client-password
-        topics = args[4].split(",");
+    	for (String arg : args) {
+    		if (arg.equals("-h") || arg.equals("--help") || args.length > 6) {
+                System.out.printf("Usage: %s [host:port] [message-vpn] [username] [password] [topics|q:queue|b:queue] [indent]%n%n", APP_NAME);
+                System.out.println(" - If using TLS, remember \"tcps://\" before host");
+                System.out.println(" - Default parameters will be: localhost default aaron pw \"#noexport/>\" 4");
+                System.out.println("    - If 'default' client-username is enabled in VPN, you can use any username");
+                System.out.println(" - Subscribing options, one of:");
+                System.out.println("    - comma-separated list of Direct topic subscriptions");
+                System.out.println("    - \"q:queueName\" to consume from queue");
+                System.out.println("    - \"b:queueName\" to browse a queue");
+                System.out.println("       - Can browse all messages, or specific messages by ID");
+                System.out.println(" - Optional indent: integer, default=4; specifying 0 compresses payload formatting");
+                System.out.println("    - Use negative indent value (column width) for one-line topic & payload only");
+                System.out.println("       - Use negative zero (\"-0\") for only topic, no payload");
+                System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever");
+                System.out.println("    - e.g. export PRETTY_DUMP_OPTS=-Dcharset=Shift_JIS  (or \"set\" on Windows)");
+                System.exit(0);
+    		}
+    	}
+    	String host = "localhost";
+    	if (args.length > 0) host = args[0];
+    	String vpn = "default";
+    	if (args.length > 1) vpn = args[1];
+    	String username = "aaron";
+    	if (args.length > 2) username = args[2];
+    	String password = "pw";
+    	if (args.length > 3) password = args[3];
+    	topics = new String[] { ">" };
+    	if (args.length > 4) topics = args[4].split("\\s*,\\s*");  // split on commas, remove any whitespace around them 
         if (args.length > 5) {
         	try {
         		int indent = Integer.parseInt(args[5]);
-        		if (indent < -80 || indent > 20) throw new NumberFormatException();
+        		if (indent < -250 || indent > 20) throw new NumberFormatException();  // use -200 and then use Linux util 'cut -c204-' for payload only (there are some spaces after topic)
         		INDENT = indent;
         		if (INDENT < 0) {
-        			COMPACT_STRING_FORMAT = "%-" + Math.abs(INDENT) + "s  %s%n";
+        			COMPACT_STRING_FORMAT = "%-" + Math.abs(INDENT) + "s - %s%n";
+        		} else if (INDENT == 0) {
+        			if (args[5].equals("-0")) {  // special case, topic only
+        				INDENT = Integer.MIN_VALUE;
+        			}
         		}
         	} catch (NumberFormatException e) {
         		System.out.printf("Invalid value for indent: '%s', using default %d instead.%n", args[5], INDENT);
         	}
         }
+        System.out.println(APP_NAME + " initializing...");
+        final JCSMPProperties properties = new JCSMPProperties();
+        properties.setProperty(JCSMPProperties.HOST, host);          // host:port
+        properties.setProperty(JCSMPProperties.VPN_NAME, vpn);     // message-vpn
+        properties.setProperty(JCSMPProperties.USERNAME, username);      // client-username
+        properties.setProperty(JCSMPProperties.PASSWORD, password);  // client-password
         properties.setProperty(JCSMPProperties.REAPPLY_SUBSCRIPTIONS, true);  // subscribe Direct subs after reconnect
         JCSMPChannelProperties channelProps = new JCSMPChannelProperties();
-        channelProps.setReconnectRetries(20);      // recommended settings
-        channelProps.setConnectRetriesPerHost(5);  // recommended settings
-        // https://docs.solace.com/Solace-PubSub-Messaging-APIs/API-Developer-Guide/Configuring-Connection-T.htm
+        // die quickly
+        channelProps.setConnectRetries(0);
+        channelProps.setReconnectRetries(5);
+        channelProps.setConnectRetriesPerHost(1);
         properties.setProperty(JCSMPProperties.CLIENT_CHANNEL_PROPERTIES, channelProps);
         final JCSMPSession session;
         session = JCSMPFactory.onlyInstance().createSession(properties, null, new SessionEventHandler() {
             @Override
             public void handleEvent(SessionEventArgs event) {  // could be reconnecting, connection lost, etc.
-                System.out.printf("### Received a Session event: %s%n", event);
+                System.out.printf(" ### Received a Session event: %s%n", event);
             }
         });
-        session.connect();  // connect to the broker
+        session.connect();  // connect to the broker... could throw JCSMPException, so best practice would be to try-catch here..!
+        System.out.printf("%s connected to VPN '%s' on broker '%s'.%n", APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE), session.getProperty(JCSMPProperties.HOST));
 
         // is it a queue?
-        if (topics.length == 1 && topics[0].startsWith("q:") && topics[0].length() > 2) {
+        if (topics.length == 1 && topics[0].startsWith("q:") && topics[0].length() > 2) {  // QUEUE CONSUME!
             // configure the queue API object locally
             String queueName = topics[0].substring(2);
             final Queue queue = JCSMPFactory.onlyInstance().createQueue(queueName);
-            // double-check
-            System.out.printf("%nWill consume/ACK all messages on queue '" + queueName + "'. Use browse 'b:' otherwise.%nAre you sure? [y|yes]: ");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            String answer = reader.readLine().trim().toLowerCase();
-            if (!"y".equals(answer) && !"yes".equals(answer)) {
-            	System.out.println("Exiting.");
-            	System.exit(0);
-            }
-            reader.close();
-            
             // Create a Flow be able to bind to and consume messages from the Queue.
             final ConsumerFlowProperties flow_prop = new ConsumerFlowProperties();
             flow_prop.setEndpoint(queue);
             flow_prop.setAckMode(JCSMPProperties.SUPPORTED_MESSAGE_ACK_CLIENT);  // best practice
-            flow_prop.setActiveFlowIndication(true);  // Flow events will advise when
-
-            System.out.printf("Attempting to bind to queue '%s' on the broker.%n", queueName);
+            flow_prop.setActiveFlowIndication(true);
+            System.out.printf("Attempting to bind to queue '%s' on the broker... ", queueName);
             FlowReceiver flowQueueReceiver = null;
             try {
                 // see bottom of file for QueueFlowListener class, which receives the messages from the queue
@@ -151,69 +163,76 @@ public class PrettyDump {
                     @Override
                     public void handleEvent(Object source, FlowEventArgs event) {
                         // Flow events are usually: active, reconnecting (i.e. unbound), reconnected, active
-                        // logger.info("### Received a Flow event: " + event);
-                        // try disabling and re-enabling the queue to see in action
+//                        System.out.printf(" ### Received a Flow event: %s%n", event);  // hide this, don't really need to show in this app
                     }
                 });
+                System.out.println("success!");
+                // double-check
+                System.out.printf("%nWill consume/ACK all messages on queue '" + queueName + "'. Use browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ");
+                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+                String answer = reader.readLine().trim().toLowerCase();
+                if (!"y".equals(answer) && !"yes".equals(answer)) {
+                	System.out.println("Exiting.");
+                	System.exit(0);
+                }
+                reader.close();
                 // tell the broker to start sending messages on this queue receiver
                 flowQueueReceiver.start();
-                System.out.println("Success!");
             } catch (OperationNotSupportedException e) {  // not allowed to do this
-                throw e;
+            	System.err.printf("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getMessage(), e.toString());
+    			System.exit(1);
             } catch (JCSMPErrorResponseException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
-                throw e;
+            	System.err.printf("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getResponsePhrase(), e.toString());
+    			System.exit(1);
             }
-        } else if (topics.length == 1 && topics[0].startsWith("b:") && topics[0].length() > 2) {
-            // double-check
-            System.out.printf("%nBrowse all messages (press [ENTER]), or enter specific Message ID or range of IDs (e.g. 25909-26183): ");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            String answer = reader.readLine().trim().toLowerCase();
-            if (answer.isEmpty()) {  // all messages
-            	
-            } else {
-            	try {
-            		browseFrom = Integer.parseInt(answer);
-            	} catch (NumberFormatException e) {
-            		if (answer.matches("\\d+-\\d+")) {
-            			String[] numbers = answer.split("-");
-            			browseFrom = Integer.parseInt(numbers[0]);
-            			browseTo = Integer.parseInt(numbers[1]);
-            		} else {
-            			System.out.println("Invalid format, must be either integer, or range xxxxx-yyyyyy");
-            			System.exit(0);
-            		}
-            	}
-            }
-            reader.close();
-        	
+        } else if (topics.length == 1 && topics[0].startsWith("b:") && topics[0].length() > 2) {  // BROWSING!
             String queueName = topics[0].substring(2);
             final Queue queue = JCSMPFactory.onlyInstance().createQueue(queueName);
-
             final BrowserProperties bp = new BrowserProperties();
 	        bp.setEndpoint(queue);
             bp.setTransportWindowSize(255);
             bp.setWaitTimeout(1000);
-            System.out.printf("Attempting to browse queue '%s' on the broker.%n", queueName);
+            System.out.printf("Attempting to browse queue '%s' on the broker... ", queueName);
 	        try {
 	        	browser = session.createBrowser(bp);
-                System.out.println("Success!");
+                System.out.println("success!");
+                // double-check
+                System.out.printf("%nBrowse all messages (press [ENTER]),%n or enter specific Message ID,%n or range of IDs (e.g. \"25909-26183\" or \"3717384-\"): ");
+                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+                String answer = reader.readLine().trim().toLowerCase();
+                reader.close();
+                if (answer.isEmpty()) {  // all messages
+                	
+                } else {
+                	try {  // assume only one integer (message ID) inputed
+                		browseFrom = Integer.parseInt(answer);
+                		browseTo = Integer.parseInt(answer);
+                	} catch (NumberFormatException e) {
+                		if (answer.matches("\\d+-\\d*")) {  // either 1234-5678  or  1234-
+                			String[] numbers = answer.split("-");
+                			browseFrom = Integer.parseInt(numbers[0]);
+                			if (numbers.length > 1) browseTo = Integer.parseInt(numbers[1]);
+                		} else {
+                			System.out.println("Invalid format, must be either integer, or range xxxxx-yyyyyy");
+                			System.exit(0);
+                		}
+                	}
+                }
 	        } catch (JCSMPErrorResponseException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
-	        	throw e;
+            	System.err.printf("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getResponsePhrase(), e.toString());
+    			System.exit(1);
 	        }
         } else {
-            // Anonymous inner-class for MessageListener, this demonstrates the async threaded message callback
-            final XMLMessageConsumer consumer = session.getMessageConsumer(new PrinterHelper());
-    
+            // Regular Direct topic consumer, using async / callback to receive
+            final XMLMessageConsumer consumer = session.getMessageConsumer((JCSMPReconnectEventHandler)null, new PrinterHelper());
             for (String topic : topics) {
                 session.addSubscription(JCSMPFactory.onlyInstance().createTopic(topic));
-                System.out.println("Subscribed to Direct topic: " + topic);
+                System.out.printf("Subscribed to Direct topic: '%s'%n", topic);
             }
-            // add more subscriptions here if you want
             consumer.start();
         }
-
         System.out.println();
-        System.out.println(APP_NAME + " connected, and running. Press Ctrl-C to quit.");
+        System.out.println("Starting. Press Ctrl-C to quit.");
 
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             public void run() {
@@ -223,12 +242,12 @@ public class PrettyDump {
                 	Thread.sleep(100);
                 	session.closeSession();  // will also close consumer object
                     Thread.sleep(400);
-                } catch (InterruptedException e) { }
+                } catch (InterruptedException e) { }  // ignore, we're quitting anyway
                 System.out.println();
             }
         }));  	
 
-        if (browser != null) {
+        if (browser != null) {  // ok, so we're browsing... can't use async msg receive callback, have to poll the queue
             PrinterHelper printer = new PrinterHelper();
             // hasMore() is useless! from JavaDocs: Returns true if there is at least one message available in the Browser's local message buffer. Note: If this method returns false, it does not mean that the queue is empty; subsequent calls to Browser.hasMore() or Browser.getNext() might return true and a message respectively.
 //        	while (browser.hasMore()) {
@@ -250,7 +269,12 @@ public class PrettyDump {
 		        			}
 		        			if (msgId >= browseFrom && msgId <= browseTo) {
 		        				printer.onReceive(nextMsg);
-		        			} else if (msgId > browseTo) break;  // done!
+		        				if (browseFrom == browseTo) break;  // just looking for one specific message, so done!
+		        			} else if (msgId > browseTo) {
+		        				if (browseFrom == browseTo) printer.onReceive(nextMsg);  // just looking for one specific message, so print this one to show the last
+		        				System.out.printf("Message with ID '%d' received, greater than than browse range '%d'. Done.%n", msgId, browseTo);
+		        				break;  // done!
+		        			}
 	        			} catch (Exception e) {
 	        				System.out.println("Exception on message trying to get Message ID!");
 	        				printer.onReceive(nextMsg);
@@ -258,12 +282,12 @@ public class PrettyDump {
 	        			}
 	        		}
 	        	}
-            } catch (JCSMPTransportException e) {
-            	// probably quitting, ignore, just fall out...
+	        // getNext() can throw a JCSMPException, but we'll just throw from main() if that happens...
+            } finally {
+            	System.out.println("Browsing finished!");
+            	browser.close();
             }
-        	System.out.println("Browsing finished!");
-        	browser.close();
-        } else {
+        } else {  // async receive, either Direct sub or from a queue, so just wait here until Ctrl+C pressed
         	while (!isShutdown) {
         		Thread.sleep(50);
         	}
@@ -272,9 +296,10 @@ public class PrettyDump {
         System.out.println("Main thread exiting.");
     }
 
+
     
-    private static int INDENT = 4;
-    private static String COMPACT_STRING_FORMAT;
+    
+    // Helper class, for printing message to the console ///////////////////////////////////////
 
     private static class PrinterHelper implements XMLMessageListener {
     	
@@ -302,6 +327,11 @@ public class PrettyDump {
     	
         @Override
         public void onReceive(BytesXMLMessage message) {
+        	if (INDENT == Integer.MIN_VALUE) {  // special case, topic only, don't need to parse the payload
+        		System.out.println(message.getDestination().getName());
+                if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
+                return;
+        	}
             if (INDENT >= 0) System.out.println("^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^");
             String payload = null;
             String trimmedPayload = null;
@@ -409,7 +439,7 @@ public class PrettyDump {
 
         @Override
         public void onException(JCSMPException e) {  // uh oh!
-            System.out.printf("### MessageListener's onException(): %s%n",e);
+            System.out.printf(" ### MessageListener's onException(): %s%n",e);
             if (e instanceof JCSMPTransportException) {  // all reconnect attempts failed
                 isShutdown = true;  // let's quit; or, could initiate a new connection attempt
             }

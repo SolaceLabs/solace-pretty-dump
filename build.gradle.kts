@@ -21,6 +21,15 @@ repositories {
     }
 }
 
+sourceSets {
+    main {
+        java {
+            srcDir("src/main/java")
+            // srcDir("src/dist/config")  // so eclipse can find the log4j2.xml file (not in src/main/resources)
+        }
+    }
+}
+
 dependencies {
 
     implementation("com.solacesystems:sol-jcsmp:10.+")
@@ -33,20 +42,10 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-jcl:2.+")
     
     //implementation(fileTree(mapOf("dir" to "lib", "include" to listOf("*.jar"))))
-
-}
-
-
-sourceSets {
-    main {
-        java {
-            srcDir("src/main/java")
-            srcDir("src/dist/config")  // so eclipse can find the log4j2.xml file
-        }
-    }
 }
 
 application {
     // Define the main class for the application.
     mainClass.set("com.solace.labs.aaron.PrettyDump")
 }
+
