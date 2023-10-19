@@ -1,7 +1,0 @@
-
-
-
-bin/PrettyDump tcps://swim.messaging.solace.cloud:55443 scds aaron aaron "FDPS/position/KB83657100/>"
-
-
-
