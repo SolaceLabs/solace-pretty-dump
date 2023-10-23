@@ -145,7 +145,7 @@ public class PrettyDump {
             }
         });
         session.connect();  // connect to the broker... could throw JCSMPException, so best practice would be to try-catch here..!
-        System.out.printf("%s connected to VPN '%s' on broker '%s'.%n", APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE), session.getProperty(JCSMPProperties.HOST));
+        System.out.printf("%s connected to VPN '%s' on broker '%s'.%n%n", APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE), session.getProperty(JCSMPProperties.HOST));
 
         // is it a queue?
         if (topics.length == 1 && topics[0].startsWith("q:") && topics[0].length() > 2) {  // QUEUE CONSUME!
