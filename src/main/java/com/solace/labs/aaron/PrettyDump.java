@@ -48,6 +48,7 @@ import com.solacesystems.jcsmp.JCSMPChannelProperties;
 import com.solacesystems.jcsmp.JCSMPErrorResponseException;
 import com.solacesystems.jcsmp.JCSMPException;
 import com.solacesystems.jcsmp.JCSMPFactory;
+import com.solacesystems.jcsmp.JCSMPGlobalProperties;
 import com.solacesystems.jcsmp.JCSMPProperties;
 import com.solacesystems.jcsmp.JCSMPReconnectEventHandler;
 import com.solacesystems.jcsmp.JCSMPSession;
@@ -59,6 +60,8 @@ import com.solacesystems.jcsmp.SessionEventArgs;
 import com.solacesystems.jcsmp.SessionEventHandler;
 import com.solacesystems.jcsmp.StreamMessage;
 import com.solacesystems.jcsmp.TextMessage;
+import com.solacesystems.jcsmp.Topic;
+import com.solacesystems.jcsmp.TopicProperties;
 import com.solacesystems.jcsmp.XMLMessage;
 import com.solacesystems.jcsmp.XMLMessageConsumer;
 import com.solacesystems.jcsmp.XMLMessageListener;
@@ -80,7 +83,7 @@ public class PrettyDump {
     @SuppressWarnings("deprecation")  // this is for our use of Message ID for the browser
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
     	for (String arg : args) {
-    		if (arg.equals("-h") || arg.equals("--help") || args.length > 6) {
+    		if (arg.equals("-h") || arg.startsWith("--h") || args.length > 6) {
                 System.out.printf("Usage: %s [host:port] [message-vpn] [username] [password] [topics|q:queue|b:queue] [indent]%n%n", APP_NAME);
                 System.out.println(" - If using TLS, remember \"tcps://\" before host");
                 System.out.println(" - Default parameters will be: localhost default aaron pw \"#noexport/>\" 4");
@@ -93,35 +96,48 @@ public class PrettyDump {
                 System.out.println(" - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting");
                 System.out.println("    - Use negative indent value (column width) for one-line topic & payload only");
                 System.out.println("       - Use negative zero (\"-0\") for only topic, no payload");
+                System.out.println(" - Shortcut mode: if the first argument contains '>', assume topics and localhost default broker");
+                System.out.println("    - e.g. ./bin/PrettyDump \"test/>\" -30");
+                System.out.println("    - If zero parameters, assume localhost default broker and subscribe to \"#noexport/>\"");
                 System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever");
                 System.out.println("    - e.g. export PRETTY_DUMP_OPTS=-Dcharset=Shift_JIS  (or \"set\" on Windows)");
+                System.out.println();
                 System.exit(0);
     		}
     	}
     	String host = "localhost";
-    	if (args.length > 0) host = args[0];
+    	boolean shortcut = false;
+    	// new shortcut mode... if first arg has a > in it, assume topic wildcard, and assume localhost default connectivity for rest
+    	if (args.length > 0) {
+    		if (args[0].contains(">")) {  // shortcut mode
+    			shortcut = true;
+    			topics = args[0].split("\\s*,\\s*");  // split on commas, remove any whitespace around them
+    		} else {
+    			host = args[0];
+    		}
+    	}
     	String vpn = "default";
-    	if (args.length > 1) vpn = args[1];
+    	if (args.length > 1 && !shortcut) vpn = args[1];
     	String username = "aaron";
-    	if (args.length > 2) username = args[2];
+    	if (args.length > 2 && !shortcut) username = args[2];
     	String password = "pw";
-    	if (args.length > 3) password = args[3];
-    	topics = new String[] { ">" };
-    	if (args.length > 4) topics = args[4].split("\\s*,\\s*");  // split on commas, remove any whitespace around them 
-        if (args.length > 5) {
+    	if (args.length > 3 && !shortcut) password = args[3];
+    	if (args.length > 4 && !shortcut) topics = args[4].split("\\s*,\\s*");  // split on commas, remove any whitespace around them 
+        if ((args.length > 5 && !shortcut) || (shortcut && args.length > 1)) {
+        	String indentStr = args[shortcut ? 1 : 5];  // grab the correct command-line argument
         	try {
-        		int indent = Integer.parseInt(args[5]);
+        		int indent = Integer.parseInt(indentStr);
         		if (indent < -250 || indent > 20) throw new NumberFormatException();  // use -200 and then use Linux util 'cut -c204-' for payload only (there are some spaces after topic)
         		INDENT = indent;
         		if (INDENT < 0) {
         			COMPACT_STRING_FORMAT = "%-" + Math.max(1, Math.abs(INDENT) - 2) + "s  %s%n";  // minus 2 because we have two spaces between topic & payload
         		} else if (INDENT == 0) {
-        			if (args[5].equals("-0")) {  // special case, topic only
+        			if (indentStr.equals("-0")) {  // special case, topic only
         				INDENT = Integer.MIN_VALUE;
         			}
         		}
         	} catch (NumberFormatException e) {
-        		System.out.printf("Invalid value for indent: '%s', using default %d instead.%n", args[5], INDENT);
+        		System.out.printf("Invalid value for indent: '%s', using default %d instead.%n", indentStr, INDENT);
         	}
         }
         System.out.println(APP_NAME + " initializing...");
@@ -225,10 +241,18 @@ public class PrettyDump {
     			System.exit(1);
 	        }
         } else {
+        	JCSMPGlobalProperties.setShouldDropInternalReplyMessages(false);  // neat trick 
+//        	JCSMPGlobalProperties gp = new JCSMPGlobalProperties();
+//
+//        	JCSMPFactory.onlyInstance().setGlobalProperties(gp);
             // Regular Direct topic consumer, using async / callback to receive
             final XMLMessageConsumer consumer = session.getMessageConsumer((JCSMPReconnectEventHandler)null, new PrinterHelper());
             for (String topic : topics) {
-                session.addSubscription(JCSMPFactory.onlyInstance().createTopic(topic));
+                TopicProperties tp = new TopicProperties();
+                tp.setName(topic);
+                tp.setRxAllDeliverToOne(true);  // ensure DTO-override / DA is enabled for this sub
+                Topic t = JCSMPFactory.onlyInstance().createTopic(tp);
+                session.addSubscription(t, true);  // true == wait for confirm
                 System.out.printf("Subscribed to Direct topic: '%s'%n", topic);
             }
             consumer.start();
@@ -329,9 +353,15 @@ public class PrettyDump {
     	
         @Override
         public void onReceive(BytesXMLMessage message) {
+        	String msgDestName;
+        	if (message.getDestination() instanceof Queue) {
+        		msgDestName = "Queue '" + message.getDestination().getName() + "'";
+        	} else {
+        		msgDestName = message.getDestination().getName();
+        	}
             // if doing topic only, or if there's no payload in compressed (<0) mode, then just print the topic
         	if (INDENT == Integer.MIN_VALUE || (INDENT < 1 && !message.hasContent() && !message.hasAttachment())) {
-        		System.out.println(message.getDestination().getName());
+        		System.out.println(msgDestName);
                 if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
                 return;
         	}
@@ -346,11 +376,9 @@ public class PrettyDump {
 	                payload = ((TextMessage)message).getText();
 	                msgType = "TextMessage";
 	            } else {  // bytes, stream, map
-//                    buffer = ByteBuffer.wrap(((BytesMessage)message).getData());  // save this for later (might be a map or stream)
                     buffer = message.getAttachmentByteBuffer();
-//	                if (message instanceof BytesMessage) {
                     if (buffer != null) {
-	                    CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of exceptions
+	                    CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of exceptions if it's binary or a different charset
 	                    payload = cb.toString();
                     }
 		            if (message instanceof MapMessage) {
@@ -362,8 +390,7 @@ public class PrettyDump {
 		            }
 	            }
                 if (payload == null || payload.isEmpty() && message.hasContent()) {  // try the XML portion of the payload (OLD SCHOOL!!!)
-                	byte[] attachment = new byte[message.getContentLength()];
-                	message.readContentBytes(attachment);
+                	byte[] attachment = message.getBytes();  // XML?
                 	buffer = ByteBuffer.wrap(attachment);
                     CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of exceptions
                     payload = cb.toString();
@@ -415,14 +442,14 @@ public class PrettyDump {
 		                	System.out.printf("%s, %s:%n%s%n", msgType, payloadType, payload);
 		                }
                 	} else {
-                		System.out.printf(COMPACT_STRING_FORMAT, message.getDestination().getName(), payload);
+                		System.out.printf(COMPACT_STRING_FORMAT, msgDestName, payload);
                 	}
                 } else {  // empty string?  or Map or Stream
                 	if (INDENT >= 0) {
                 		System.out.println(message.dump(XMLMessage.MSGDUMP_FULL).trim());
                 	} else {  // compact form
                 		if (payload == null) payload = "";
-                		System.out.printf(COMPACT_STRING_FORMAT, message.getDestination().getName(), payload);
+                		System.out.printf(COMPACT_STRING_FORMAT, msgDestName, payload);
                 	}
                 }
             } catch (CharacterCodingException e) {  // parsing error, or means it's probably an actual binary message
@@ -436,12 +463,24 @@ public class PrettyDump {
             			}
             		}
             		payload = new String(buffer.array(), StandardCharsets.UTF_8);  // this doesn't seem to throw off errors for unprintable chars
-            		System.out.printf(COMPACT_STRING_FORMAT, message.getDestination().getName(), payload);
+            		System.out.printf(COMPACT_STRING_FORMAT, msgDestName, payload);
             	}
             }
             if (INDENT > 0) System.out.println("^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");  // if == 0, then skip b/c we're compact!
             // if we're not browsing, and it's not a Direct message (doesn't matter if we ACK a Direct message anyhow)
             if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
+            
+            // new test
+            BytesXMLMessage copy;
+			try {
+				copy = SolaceMessageCopy.copy(message, true, true, true);
+				System.out.println("COPY:");
+	            System.out.println(copy.dump());
+			} catch (JCSMPException e) {
+				e.printStackTrace();
+			}
+			System.out.println("ORIG:");
+            System.out.println(message.dump());
         }
 
         @Override
