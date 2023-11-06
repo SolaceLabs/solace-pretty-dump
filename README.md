@@ -1,8 +1,8 @@
-# pretty-dump for JSON and XML Solace messages
+# PrettyDump for JSON and XML Solace messages
 A useful utility that emulates SdkPerf `-md` output, echoing received Solace messages to the console, but pretty-printed for **JSON** and **XML**.
 Now also with a display option for a compressed, one-line-per-message view.
 
-**Latest release:** 2023/10/19
+**Latest release: 2023/10/23**
 
 - [Building](#building)
 - [Running](#running)
@@ -84,15 +84,14 @@ By default, PrettyDump will subscribe to the "catch-all" multi-level wildcard to
 (see [Event Mesh considerations](#event-mesh--dmr--mnr-considerations) below).
 This subscription will show most (not all!) messages going through your VPN.
 
-Specify a single topic subscription, or a comma-separated list: e.g. `"bus_trak/door/v1/007*/>, bus_trak/gps/v2/>"` (spaces will be stripped out).
+Specify a single topic subscription, or a comma-separated list: e.g. `"bus_trak/door/v1/>, bus_trak/gps/v2/007/*/>"` (spaces will be stripped out).
  Remember to "quote" the whole argument if using the `>` wildcard as most shells treat this as a special character.
 
-If you want to see ***all*** messages going through the VPN, then override the 5th argument with `">, */>, #*/>"` and this will also display any "hidden" messages
+If you want to see ***all*** messages going through the VPN, then override the 5th argument with `">, #*/>"` and this will also display any "hidden" messages
 such as those published directly to queues, point-to-point messages, request-reply, REST responses in gateway mode, SolCache communication messages, etc.
 
 ```
 Subscribed to Direct topic: '>'
-Subscribed to Direct topic: '*/>'
 Subscribed to Direct topic: '#*/>'
 ```
 
@@ -100,7 +99,7 @@ Subscribed to Direct topic: '#*/>'
 
 If connecting to a mesh of brokers, take care that adding subscriptions could pull (lots of?) data from remote brokers.  This is because
 subscriptions, by default, are automatically propagated (exported) to other brokers in the mesh.  To ensure you
-only subscribe to data from the broker you connect to, prefix each subscription with `#noexport/`.  E.g. `"#noexport/>, #noexport/*/>, #noexport/#*/>"`
+only subscribe to data from the broker you connect to, prefix each subscription with `#noexport/`.  E.g. `"#noexport/>, #noexport/#*/>"`
 or `"#noexport/bus_trak/>"`. 
 See the [Solace docs](https://docs.solace.com/Messaging/No-Export.htm) for more details.
 
