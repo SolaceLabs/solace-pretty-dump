@@ -52,11 +52,29 @@ TextMessage, JSON Object:
 ^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
+```
+$ bin/PrettyDump demo.messaging.solace.cloud demo-vpn user pw q:q1
+
+PrettyDump initializing...
+PrettyDump connected to VPN 'demo-vpn' on broker 'demo.messaging.solace.cloud'.
+Attempting to bind to queue 'q1' on the broker... success!
+```
+
+```
+$ bin/PrettyDump "shortcut/>" -30
+
+PrettyDump initializing...
+PrettyDump connected to VPN 'default' on broker 'localhost'.
+Subscribed to Direct topic: 'shortcut/>'
+```
+
+
+
 
 ## Command-line parameters
 
 ```
-$ bin/PrettyDump -h   or --help
+$ bin/PrettyDump -h   or  --help
 
 Usage: PrettyDump [host:port] [message-vpn] [username] [password] [topics|q:queue|b:queue] [indent]
 
@@ -71,6 +89,9 @@ Usage: PrettyDump [host:port] [message-vpn] [username] [password] [topics|q:queu
  - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting
     - Use negative indent value (column width) for one-line topic & payload only
        - Use negative zero ("-0") for only topic, no payload
+ - Shortcut mode: if the first argument contains '>', assume topics and localhost default broker
+    - e.g. ./bin/PrettyDump "test/>" -30
+    - If zero parameters, assume localhost default broker and subscribe to "#noexport/>"
  - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever
     - e.g. export PRETTY_DUMP_OPTS=-Dcharset=Shift_JIS  (or "set" on Windows)
 ```
@@ -94,6 +115,8 @@ such as those published directly to queues, point-to-point messages, request-rep
 Subscribed to Direct topic: '>'
 Subscribed to Direct topic: '#*/>'
 ```
+
+**NOTE:** all subscriptions are added as *Deliver Always* (DA) so as not to interfere with any DTO / round-robin messaging.
 
 #### Event Mesh / DMR / MNR considerations
 
