@@ -142,7 +142,8 @@ Are you sure? [y|yes]:
 
 ### Browsing a Queue
 
-To non-destructively view the messages on a queue, use the browse option: `b:<queueName>`.  You have the option of browsing
+To non-destructively view the messages on a queue, use the browse option: `b:<queueName>`.  Once the app starts up
+and initializes, you have the option of browsing
 all messages, a single message based on Message ID, or a range of messages (either closed "`12345-67890`" or open-ended "`12345-`").
 
 To find the ID of the messages on a queue, either use PubSub+ Manager, CLI, or SEMP:
