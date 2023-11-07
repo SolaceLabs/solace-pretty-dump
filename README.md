@@ -7,7 +7,7 @@ Now also with a display option for a compressed, one-line-per-message view.
 - [Building](#building)
 - [Running](#running)
 - [Command-line parameters](#command-line-parameters)
-- Subscribing options]: [Direct topic subscriptions](#direct-subscriptions), [Queue consume](#queue-consume), [Browsing a queue](#browsing-a-queue)
+- Subscribing options: [Direct topic subscriptions](#direct-subscriptions), [Queue consume](#queue-consume), [Browsing a queue](#browsing-a-queue)
 - [Output Indent options](#output-indent-options---the-6th-argument)
 - [Error checking](#error-checking)
 
