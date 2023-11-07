@@ -90,6 +90,7 @@ public class PrettyDump {
                 System.out.println("    - If client-username 'default' is enabled in VPN, you can use any username");
                 System.out.println(" - Subscribing options, one of:");
                 System.out.println("    - comma-separated list of Direct topic subscriptions");
+                System.out.println("       - strongly consider prefixing with '#noexport/' if using DMR or MNR");
                 System.out.println("    - q:queueName to consume from queue");
                 System.out.println("    - b:queueName to browse a queue");
                 System.out.println("       - Can browse all messages, or specific messages by ID");

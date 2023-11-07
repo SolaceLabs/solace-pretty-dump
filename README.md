@@ -8,6 +8,9 @@ Now also with a display option for a compressed, one-line-per-message view.
 - [Running](#running)
 - [Command-line parameters](#command-line-parameters)
 - [Subscribing options](#subscribing-options---the-5th-argument)
+   - [Direct topic subscriptions](#direct-subscriptions)
+   - [Queue consume](#queue-consume)
+   - [Browsing a queue](#browsing-a-queue)
 - [Output Indent options](#output-indent-options---the-6th-argument)
 - [Error checking](#error-checking)
 
@@ -83,6 +86,7 @@ Usage: PrettyDump [host:port] [message-vpn] [username] [password] [topics|q:queu
     - If client-username 'default' is enabled in VPN, you can use any username
  - Subscribing options, one of:
     - comma-separated list of Direct topic subscriptions
+       - strongly consider prefixing with '#noexport/' if using DMR or MNR
     - q:queueName to consume from queue
     - b:queueName to browse a queue
        - Can browse all messages, or specific messages by ID
