@@ -235,6 +235,8 @@ TextMessage, JSON Object:
 
 ### Compact: indent = 0
 
+Specifying "0" as the indent value will cause JSON and XML strings to be compressed, with all indentation and carriage returns removed.  Also, "`^^^ End Message ^^^`" breaks will be removed.
+
 ```
 PrettyDump connected, and running. Press Ctrl-C to quit.
 ^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -261,6 +263,7 @@ TextMessage, JSON Object:
 
 ### One-Line: indent < 0
 
+Removes the majority of SdkPerf-like message metadata printing, only showing the topic and payload per-line.
 Valid values are between -1 and -250, and specify how far right to indent the payload.  indent = -36 in this example.
 
 ```
