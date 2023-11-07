@@ -131,7 +131,7 @@ See the [Solace docs](https://docs.solace.com/Messaging/No-Export.htm) for more 
 ### Queue Consume
 
 To connect to a queue and consume (e.g. the messages will be ACKed and removed), then override the 5th argument with
-`q:queueName`, e.g. `q:q1`.  You will receive a warning that messages will be removed from the queue after they are received.
+`q:<queueName>`, e.g. `q:q1`.  You will receive a warning that messages will be removed from the queue after they are received.
 
 ```
 Attempting to bind to queue 'q1' on the broker... success!
@@ -142,7 +142,7 @@ Are you sure? [y|yes]:
 
 ### Browsing a Queue
 
-To non-destructively view the messages on a queue, use the browse option: `b:queueName`.  You have the option of browsing
+To non-destructively view the messages on a queue, use the browse option: `b:<queueName>`.  You have the option of browsing
 all messages, a single message based on Message ID, or a range of messages (either closed "`12345-67890`" or open-ended "`12345-`").
 
 To find the ID of the messages on a queue, either use PubSub+ Manager, CLI, or SEMP:
