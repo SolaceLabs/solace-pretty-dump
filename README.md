@@ -2,7 +2,7 @@
 A useful utility that emulates SdkPerf `-md` output, echoing received Solace messages to the console, but pretty-printed for **JSON** and **XML**.
 Now also with a display option for a compressed, one-line-per-message view.
 
-**Latest release: 2023/10/23**
+**Latest release: v0.0.10  2023/11/06**
 
 - [Building](#building)
 - [Running](#running)
