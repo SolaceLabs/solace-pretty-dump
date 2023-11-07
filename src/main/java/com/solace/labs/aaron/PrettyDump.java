@@ -472,7 +472,7 @@ public class PrettyDump {
             if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
             
             // new test
-            BytesXMLMessage copy;
+/*            BytesXMLMessage copy;
 			try {
 				copy = SolaceMessageCopy.copy(message, true, true, true);
 				System.out.println("COPY:");
@@ -482,6 +482,8 @@ public class PrettyDump {
 			}
 			System.out.println("ORIG:");
             System.out.println(message.dump());
+*/
+            
         }
 
         @Override
