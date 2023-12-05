@@ -25,16 +25,32 @@ sourceSets {
     main {
         java {
             srcDir("src/main/java")
-            // srcDir("src/dist/config")  // so eclipse can find the log4j2.xml file (not in src/main/resources)
         }
     }
 }
 
+
+tasks.register<Copy>("copyReadme") {
+    //from(layout.buildDirectory.file("reports/my-report.pdf"))
+    from("README.md")
+    into(layout.buildDirectory.dir("toArchive"))
+    //into(layout.buildDirectory.dir)
+}
+
+//tasks.withType<Copy> {
+//  dependsOn("assemble")
+//}
+
+
 dependencies {
 
     implementation("com.solacesystems:sol-jcsmp:10.+")
-    implementation("org.json:json:20230227")
-    implementation("org.dom4j:dom4j:2.1.4")
+    //implementation("org.json:json:20230227")
+    // XML stuff...
+    implementation("org.dom4j:dom4j:2+")
+
+    implementation("org.fusesource.jansi:jansi:2+")
+    implementation("com.google.code.gson:gson:2.10.1")
 
     implementation("org.apache.logging.log4j:log4j-api:2.+")
     implementation("org.apache.logging.log4j:log4j-core:2.+")
@@ -42,6 +58,13 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-jcl:2.+")
     
     //implementation(fileTree(mapOf("dir" to "lib", "include" to listOf("*.jar"))))
+}
+
+
+tasks.jar {
+    manifest {
+        archiveBaseName.set("aa-pretty-dump-0.0.9")
+    }
 }
 
 application {
