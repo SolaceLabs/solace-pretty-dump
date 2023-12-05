@@ -32,9 +32,8 @@ import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
 import org.dom4j.io.OutputFormat;
 import org.dom4j.io.XMLWriter;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import org.fusesource.jansi.Ansi;
+import org.fusesource.jansi.AnsiConsole;
 
 import com.solacesystems.jcsmp.Browser;
 import com.solacesystems.jcsmp.BrowserProperties;
@@ -56,6 +55,7 @@ import com.solacesystems.jcsmp.JCSMPTransportException;
 import com.solacesystems.jcsmp.MapMessage;
 import com.solacesystems.jcsmp.OperationNotSupportedException;
 import com.solacesystems.jcsmp.Queue;
+import com.solacesystems.jcsmp.SDTException;
 import com.solacesystems.jcsmp.SessionEventArgs;
 import com.solacesystems.jcsmp.SessionEventHandler;
 import com.solacesystems.jcsmp.StreamMessage;
@@ -72,6 +72,8 @@ public class PrettyDump {
     private static final String APP_NAME = PrettyDump.class.getSimpleName();
 
     private static int INDENT = 4;
+    private static boolean autoResizeIndent = false;  // specify -1 as indent for this mode
+    private static LinkedListOfIntegers maxLengthTopics = new LinkedListOfIntegers();
     private static String COMPACT_STRING_FORMAT;
 
     private static volatile boolean isShutdown = false;          // are we done yet?
@@ -79,12 +81,25 @@ public class PrettyDump {
     private static Browser browser = null;  // in case we need it, can't do async, is a blocking/looping pull
     private static long browseFrom = -1;
     private static long browseTo = Long.MAX_VALUE;
+    private static long msgCount = 0;
+    
+    private static void updateCompactStringFormat(int maxTopicLength) {
+    	if (!autoResizeIndent) return;
+    	maxLengthTopics.insert(maxTopicLength);
+//    	System.out.println(maxLengthTopics.toString());
+//    	if (maxTopicLength + 2 > Math.abs(INDENT)) {
+    	if (maxLengthTopics.getMax() + 2 != Math.abs(INDENT)) {  // changed our current max
+    		INDENT = -1 * (maxTopicLength + 2);
+    		COMPACT_STRING_FORMAT = "%s%-" + Math.max(1, Math.abs(INDENT) - 2) + "s%s  %s%n";  // minus 2 because we have two spaces between topic & payload
+//    		System.out.println("** changing indent to " + INDENT + "**");
+    	}
+    }
 
     @SuppressWarnings("deprecation")  // this is for our use of Message ID for the browser
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
     	for (String arg : args) {
     		if (arg.equals("-h") || arg.startsWith("--h") || args.length > 6) {
-                System.out.printf("Usage: %s [host:port] [message-vpn] [username] [password] [topics|q:queue|b:queue] [indent]%n%n", APP_NAME);
+                System.out.printf("Usage: %s [host:port] [message-vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]%n%n", APP_NAME);
                 System.out.println(" - If using TLS, remember \"tcps://\" before host");
                 System.out.println(" - Default parameters will be: localhost default aaron pw \"#noexport/>\" 4");
                 System.out.println("    - If client-username 'default' is enabled in VPN, you can use any username");
@@ -94,6 +109,7 @@ public class PrettyDump {
                 System.out.println("    - q:queueName to consume from queue");
                 System.out.println("    - b:queueName to browse a queue");
                 System.out.println("       - Can browse all messages, or specific messages by ID");
+                System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
                 System.out.println(" - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting");
                 System.out.println("    - Use negative indent value (column width) for one-line topic & payload only");
                 System.out.println("       - Use negative zero (\"-0\") for only topic, no payload");
@@ -113,8 +129,11 @@ public class PrettyDump {
     		if (args[0].contains(">")) {  // shortcut mode
     			shortcut = true;
     			topics = args[0].split("\\s*,\\s*");  // split on commas, remove any whitespace around them
+    		} else if (args[0].matches("^[qbf]:.*")) {  // either browse, queue consume, or browse first to localhost
+    			shortcut = true;
+    			topics = new String[] { args[0] };  // just the one, queue name will get parsed out later
     		} else {
-    			host = args[0];
+				host = args[0];
     		}
     	}
     	String vpn = "default";
@@ -131,9 +150,11 @@ public class PrettyDump {
         		if (indent < -250 || indent > 20) throw new NumberFormatException();  // use -200 and then use Linux util 'cut -c204-' for payload only (there are some spaces after topic)
         		INDENT = indent;
         		if (INDENT < 0) {
-        			COMPACT_STRING_FORMAT = "%-" + Math.max(1, Math.abs(INDENT) - 2) + "s  %s%n";  // minus 2 because we have two spaces between topic & payload
+        			updateCompactStringFormat(Math.abs(INDENT));
+//        			COMPACT_STRING_FORMAT = "%-" + Math.max(1, Math.abs(INDENT) - 2) + "s  %s%n";  // minus 2 because we have two spaces between topic & payload
+        			if (INDENT == -1) autoResizeIndent = true;
         		} else if (INDENT == 0) {
-        			if (indentStr.equals("-0")) {  // special case, topic only
+        			if (indentStr.equals("-0")) {  // special case, print topic only
         				INDENT = Integer.MIN_VALUE;
         			}
         		}
@@ -161,6 +182,7 @@ public class PrettyDump {
                 System.out.printf(" ### Received a Session event: %s%n", event);
             }
         });
+		AnsiConsole.systemInstall();
         session.connect();  // connect to the broker... could throw JCSMPException, so best practice would be to try-catch here..!
         System.out.printf("%s connected to VPN '%s' on broker '%s'.%n%n", APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE), session.getProperty(JCSMPProperties.HOST));
 
@@ -204,7 +226,7 @@ public class PrettyDump {
             	System.err.printf("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getResponsePhrase(), e.toString());
     			System.exit(1);
             }
-        } else if (topics.length == 1 && topics[0].startsWith("b:") && topics[0].length() > 2) {  // BROWSING!
+        } else if (topics.length == 1 && (topics[0].startsWith("b:") || topics[0].startsWith("f:")) && topics[0].length() > 2) {  // BROWSING!
             String queueName = topics[0].substring(2);
             final Queue queue = JCSMPFactory.onlyInstance().createQueue(queueName);
             final BrowserProperties bp = new BrowserProperties();
@@ -215,27 +237,31 @@ public class PrettyDump {
 	        try {
 	        	browser = session.createBrowser(bp);
                 System.out.println("success!");
-                // double-check
-                System.out.printf("%nBrowse all messages -> press [ENTER],%n or enter specific Message ID,%n or range of IDs (e.g. \"25909-26183\" or \"9517-\"): ");
-                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-                String answer = reader.readLine().trim().toLowerCase();
-                reader.close();
-                if (answer.isEmpty()) {  // all messages
-                	
-                } else {
-                	try {  // assume only one integer (message ID) inputed
-                		browseFrom = Integer.parseInt(answer);
-                		browseTo = Integer.parseInt(answer);
-                	} catch (NumberFormatException e) {
-                		if (answer.matches("\\d+-\\d*")) {  // either 1234-5678  or  1234-
-                			String[] numbers = answer.split("-");
-                			browseFrom = Integer.parseInt(numbers[0]);
-                			if (numbers.length > 1) browseTo = Integer.parseInt(numbers[1]);
-                		} else {
-                			System.out.println("Invalid format, must be either integer, or range xxxxx-yyyyyy");
-                			System.exit(0);
-                		}
-                	}
+                if (topics[0].startsWith("b:")) {  // regular browse, prompt for msg IDs
+	                System.out.printf("%nBrowse all messages -> press [ENTER],%n or enter specific Message ID,%n or range of IDs (e.g. \"25909-26183\" or \"9517-\"): ");
+	                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+	                String answer = reader.readLine().trim().toLowerCase();
+	                reader.close();
+	                if (answer.isEmpty()) {  // all messages
+	                	
+	                } else {
+	                	try {  // assume only one integer (message ID) inputed
+	                		browseFrom = Integer.parseInt(answer);
+	                		browseTo = Integer.parseInt(answer);
+	                	} catch (NumberFormatException e) {
+	                		if (answer.matches("\\d+-\\d*")) {  // either 1234-5678  or  1234-
+	                			String[] numbers = answer.split("-");
+	                			browseFrom = Integer.parseInt(numbers[0]);
+	                			if (numbers.length > 1) browseTo = Integer.parseInt(numbers[1]);
+	                		} else {
+	                			System.out.println("Invalid format, must be either integer, or range xxxxx-yyyyyy");
+	                			System.exit(0);
+	                		}
+	                	}
+	                }
+                } else {  // f:queueName, only dump first message on queue
+                	browseFrom = 0;
+                	browseTo = 0;
                 }
 	        } catch (JCSMPErrorResponseException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
             	System.err.printf("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getResponsePhrase(), e.toString());
@@ -270,20 +296,22 @@ public class PrettyDump {
                 	session.closeSession();  // will also close consumer object
                     Thread.sleep(400);
                 } catch (InterruptedException e) { }  // ignore, we're quitting anyway
-                System.out.println();
+                System.out.println("Goodbye!");
             }
         }));  	
 
         if (browser != null) {  // ok, so we're browsing... can't use async msg receive callback, have to poll the queue
             PrinterHelper printer = new PrinterHelper();
             // hasMore() is useless! from JavaDocs: Returns true if there is at least one message available in the Browser's local message buffer. Note: If this method returns false, it does not mean that the queue is empty; subsequent calls to Browser.hasMore() or Browser.getNext() might return true and a message respectively.
-//        	while (browser.hasMore()) {
-//        		BytesXMLMessage nextMsg = browser.getNext();
-//        		printer.onReceive(nextMsg);
-//        	}
             BytesXMLMessage nextMsg;
             try {
-	        	while (!isShutdown && (nextMsg = browser.getNext()) != null) {
+//	        	while (!isShutdown && (nextMsg = browser.getNext()) != null) {
+	        	while (!isShutdown) {  // change in behaviour... continue browsing until told to quit
+	        		nextMsg = browser.getNext();
+	        		if (nextMsg == null) {
+	        			Thread.sleep(50);
+	        			continue;
+	        		}
 	        		if (browseFrom == -1) {
 	        			printer.onReceive(nextMsg);  // print all messages
 	        		} else {
@@ -301,6 +329,8 @@ public class PrettyDump {
 		        				if (browseFrom == browseTo) printer.onReceive(nextMsg);  // just looking for one specific message, so print this one to show the last
 		        				System.out.printf("Message with ID '%d' received, greater than than browse range '%d'. Done.%n", msgId, browseTo);
 		        				break;  // done!
+		        			} else {
+		        				msgCount++;  // else we're just skipping this message, but still count it anyway
 		        			}
 	        			} catch (Exception e) {
 	        				System.out.println("Exception on message trying to get Message ID!");
@@ -320,154 +350,292 @@ public class PrettyDump {
         	}
         }
         isShutdown = true;
-        System.out.println("Main thread exiting.");
+        System.out.println("Main thread exiting. 👋🏼");
+        AnsiConsole.systemUninstall();	                        
     }
 
 
-    
+    static final Charset CHARSET;
+	static final CharsetDecoder DECODER;
+	static final OutputFormat XML_FORMAT = INDENT < 0 ? OutputFormat.createCompactFormat() : OutputFormat.createPrettyPrint();
+	static {
+		XML_FORMAT.setIndentSize(Math.max(INDENT, 0));
+		XML_FORMAT.setSuppressDeclaration(true);  // hides <?xml version="1.0"?>
+		if (System.getProperty("charset") != null) {
+			try {
+				CHARSET = Charset.forName(System.getProperty("charset"));
+				DECODER = CHARSET.newDecoder();
+				XML_FORMAT.setEncoding(System.getProperty("charset"));
+			} catch (Exception e) {
+				System.err.println("Invalid charset specified!");
+				e.printStackTrace();
+				System.exit(1);
+				throw e;  // will never get here, but stops Java from complaining about not initializing final DECODER variable
+			}
+		} else {
+			CHARSET = StandardCharsets.UTF_8;
+			DECODER = StandardCharsets.UTF_8.newDecoder();
+			XML_FORMAT.setEncoding("UTF-8");
+		}
+	}
+	
+	private static String parse(byte[] bytes) throws CharacterCodingException {
+		return parse(ByteBuffer.wrap(bytes));
+	}
+	
+	private static String parse(ByteBuffer buffer) throws CharacterCodingException {
+        CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of unchecked exceptions if it's binary or a different charset
+        return cb.toString();
+	}
+	
+//	private static String guessFormat(String in) {
+//	}
+	
+	static class PayloadSection {
+		
+		String type = null;  // might initialize later if JSON or XML
+//		String raw = null;
+//		byte[] bytes = null;
+		String formatted = "<UNINITIALIZED>";  // to ensure gets overwritten
+		
+		void format(final String text) {
+//			raw = text;
+			if (text == null || text.isEmpty()) {
+				formatted = "";
+				return;
+			}
+			String trimmed = text.trim();
+        	if (trimmed.startsWith("{") && trimmed.endsWith("}")) {  // try JSON object
+        		try {
+            		formatted = GsonUtils.parseJsonObject(trimmed, Math.max(INDENT, 0), false);
+        			type = CHARSET.displayName() + " String, JSON Object";
+				} catch (IOException e) {
+        			type = CHARSET.displayName() + " String, INVALID JSON";
+        			formatted = new Ansi().fgRed().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
+				}
+        	} else if (trimmed.startsWith("[") && trimmed.endsWith("]")) {  // try JSON array
+        		try {
+            		formatted = AnsiUtils.tryFormat(trimmed, Math.max(INDENT, 0));
+        			type = CHARSET.displayName() + " String, JSON Array";
+        		} catch (PrettyException e) {
+        			type = CHARSET.displayName() + " String, INVALID JSON";
+        			formatted = new Ansi().fgRed().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
+				}
+        	} else if (trimmed.startsWith("<") && trimmed.endsWith(">")) {  // try XML
+        		try {
+                    Document document = DocumentHelper.parseText(trimmed);
+                    StringWriter stringWriter = new StringWriter();
+                    XMLWriter xmlWriter = new XMLWriter(stringWriter, XML_FORMAT);
+                    xmlWriter.write(document);
+                    xmlWriter.flush();
+                    formatted = stringWriter.toString().trim();  // overwrite
+                    type = CHARSET.displayName() + " String, XML";
+        		} catch (DocumentException | IOException e) {  // parsing error
+        			type = CHARSET.displayName() + " String, INVALID XML";
+        			formatted = new Ansi().fgRed().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
+        		}
+        	} else {  // it's neither JSON or XML, but has text content
+        		type = CHARSET.displayName() + " String";
+        		formatted = new Ansi().fgGreen().a(text).reset().toString();
+        	}
+		}
+
+		void format(byte[] bytes) {
+//			this.bytes = bytes;
+			try {
+				format(parse(bytes));  // call the String version
+			} catch (CharacterCodingException e) {
+				formatted = UsefulUtils.printBinarySdkPerf(bytes, INDENT);
+				type  = "Non-" + CHARSET.displayName() + " String, binary data";
+			}
+		}	
+	}
+	
+	private static class MessageHelper {
+		
+		final BytesXMLMessage orig;
+    	final String msgDestName;
+        String msgType;
+
+        PayloadSection binary;
+        PayloadSection xml = null;
+        PayloadSection userProps = null;
+        PayloadSection userData = null;
+                
+        private MessageHelper(BytesXMLMessage message) {
+        	orig = message;
+        	msgType = orig.getClass().getSimpleName();  // will be "Impl" unless overridden later
+        	if (orig.getDestination() instanceof Queue) {
+        		msgDestName = "Queue '" + orig.getDestination().getName() + "'";
+        	} else {  // a Topic
+        		msgDestName = orig.getDestination().getName();
+        	}
+        	updateCompactStringFormat(msgDestName.length());
+        }
+	}
+	
+	// Destination:                            Topic 'solace/samples/jcsmp/hello/aaron'
+	private static void colorizeDestination(String[] dumpLines) {
+        String[] destCols = dumpLines[0].split(":", 2);
+        dumpLines[0] = new Ansi().a(destCols[0]).a(":").fgCyan().a(destCols[1]).reset().toString();
+	}
+	
     
     // Helper class, for printing message to the console ///////////////////////////////////////
 
     private static class PrinterHelper implements XMLMessageListener {
     	
-//    	private static final CharsetDecoder DECODER = Charset.forName("UTF-8").newDecoder();
-    	private static final CharsetDecoder DECODER;
-    	private static final OutputFormat XML_FORMAT = INDENT < 0 ? OutputFormat.createCompactFormat() : OutputFormat.createPrettyPrint();
-    	static {
-    		XML_FORMAT.setIndentSize(Math.max(INDENT, 0));
-    		XML_FORMAT.setSuppressDeclaration(true);  // hides <?xml version="1.0"?>
-    		if (System.getProperty("charset") != null) {
-    			try {
-    				DECODER = Charset.forName(System.getProperty("charset")).newDecoder();
-    				XML_FORMAT.setEncoding(System.getProperty("charset"));
-    			} catch (Exception e) {
-    				System.err.println("Invalid charset specified!");
-    				e.printStackTrace();
-    				System.exit(1);
-    				throw e;  // will never get here, but stops Java from complaining about not initializing final DECODER variable
-    			}
-    		} else {
-    			DECODER = StandardCharsets.UTF_8.newDecoder();
-    			XML_FORMAT.setEncoding("UTF-8");
-    		}
+    	private static final int DIVIDER_LENGTH = 58;  // same as SdkPerf JCSMP
+
+    	private static void printMessageStart() {
+            String head = "^^^^^ Start Message #" + ++msgCount + " ^^^^^";
+            String headPre = UsefulUtils.pad((int)Math.ceil((DIVIDER_LENGTH - head.length()) / 2.0) , '^');
+            String headPost = UsefulUtils.pad((int)Math.floor((DIVIDER_LENGTH - head.length()) / 2.0) , '^');
+            System.out.println(new Ansi().fgBrightBlack().a(headPre).a(head).a(headPost).reset());
+    	}
+    	
+    	private static void printMessageEnd() {
+            String end = " End Message #" + msgCount + " ";
+            String end2 = UsefulUtils.pad((int)Math.ceil((DIVIDER_LENGTH - end.length()) / 2.0) , '^');
+            String end3 = UsefulUtils.pad((int)Math.floor((DIVIDER_LENGTH - end.length()) / 2.0) , '^');
+            System.out.println(new Ansi().fgBrightBlack().a(end2).a(end).a(end3).reset());
     	}
     	
         @Override
         public void onReceive(BytesXMLMessage message) {
-        	String msgDestName;
-        	if (message.getDestination() instanceof Queue) {
-        		msgDestName = "Queue '" + message.getDestination().getName() + "'";
-        	} else {
-        		msgDestName = message.getDestination().getName();
-        	}
+        	MessageHelper ms = new MessageHelper(message);
             // if doing topic only, or if there's no payload in compressed (<0) mode, then just print the topic
-        	if (INDENT == Integer.MIN_VALUE || (INDENT < 1 && !message.hasContent() && !message.hasAttachment())) {
-        		System.out.println(msgDestName);
+        	if (INDENT == Integer.MIN_VALUE || (INDENT < 0 && !message.hasContent() && !message.hasAttachment())) {
+        		System.out.println(new Ansi().fgCyan().a(ms.msgDestName).reset().toString());
                 if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
                 return;
         	}
-            if (INDENT >= 0) System.out.println("^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^");
-            String payload = null;
-            String trimmedPayload = null;
-            String msgType = message.getClass().getSimpleName();  // will be "Impl" unless overridden below
-            String payloadType = "";  // TBD later
-            ByteBuffer buffer = null;  // if it's a binary message
-            try {
-	            if (message instanceof TextMessage) {
-	                payload = ((TextMessage)message).getText();
-	                msgType = "TextMessage";
-	            } else {  // bytes, stream, map
-                    buffer = message.getAttachmentByteBuffer();
-                    if (buffer != null) {
-	                    CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of exceptions if it's binary or a different charset
-	                    payload = cb.toString();
-                    }
+        	// so at this point we know we know we will need the payload, so might as well try to parse it now
+            try {  // want to catch SDT exceptions from the map and stream; payload string encoding issues now caught in format()
+            	if (message.getAttachmentContentLength() > 0) {
+            		ms.binary = new PayloadSection();
 		            if (message instanceof MapMessage) {
-		            	msgType = "MapMessage";
+		            	ms.msgType = "SDT MapMessage";
+		            	ms.binary.formatted = SdtUtils.printMap(((MapMessage)message).getMap(), INDENT);
 		            } else if (message instanceof StreamMessage) {
-		            	msgType = "StreamMessage";
-		            } else {
-		            	msgType = "BytesMessage";
+		            	ms.msgType = "SDT StreamMessage";
+		            	// set directly
+		            	ms.binary.formatted = SdtUtils.printStream(((StreamMessage)message).getStream(), INDENT);
+		            } else {  // either text or binary, try/hope that the payload is a string, and then we can try to format it
+			            if (message instanceof TextMessage) {
+			            	ms.binary.format(((TextMessage)message).getText());
+			            	ms.msgType = ms.binary.formatted.isEmpty() ? "Empty SDT TextMessage" : "SDT TextMessage";
+			            } else {  // bytes, stream, map
+			            	ms.msgType = "Raw BytesMessage";
+			            	if (message.getAttachmentByteBuffer() != null) {  // should be impossible since content length > 0
+			            		ms.binary.format(message.getAttachmentByteBuffer().array());
+		                    }
+			            }
 		            }
-	            }
-                if (payload == null || payload.isEmpty() && message.hasContent()) {  // try the XML portion of the payload (OLD SCHOOL!!!)
-                	byte[] attachment = message.getBytes();  // XML?
-                	buffer = ByteBuffer.wrap(attachment);
-                    CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of exceptions
-                    payload = cb.toString();
-                    msgType = "XML Payload (should really be using Binary attachment)";
-                }
-                if (payload != null && !payload.isEmpty()) {  // means a detected String payload
-                	trimmedPayload = payload.trim();
-                	if (trimmedPayload.startsWith("{") && trimmedPayload.endsWith("}")) {  // try JSON
-                		try {
-	                        JSONObject jo = new JSONObject(trimmedPayload);
-	                        // success in parsing JSON!
-	                        payloadType = "JSON Object";
-	                        payload = jo.toString(Math.max(INDENT, 0)).trim();  // overwrite
-                		} catch (JSONException e) {  // parsing error
-                			payloadType = "INVALID JSON";
-                		}
-                	} else if (trimmedPayload.startsWith("[") && trimmedPayload.endsWith("]")) {  // try JSON array
-                		try {
-	                        JSONArray ja = new JSONArray(trimmedPayload);
-	                        payloadType = "JSON Array";
-	                        payload = ja.toString(Math.max(INDENT, 0)).trim();  // overwrite
-                		} catch (JSONException e) {  // parsing error
-                			payloadType = "INVALID JSON";
-                		}
-                	} else if (trimmedPayload.startsWith("<") && trimmedPayload.endsWith(">")) {  // try XML
-                		try {
-	                        Document document = DocumentHelper.parseText(trimmedPayload);
-	                        StringWriter stringWriter = new StringWriter();
-	                        XMLWriter xmlWriter = new XMLWriter(stringWriter, XML_FORMAT);
-	                        xmlWriter.write(document);
-	                        xmlWriter.flush();
-	                        payloadType = "XML";
-	                        payload = stringWriter.toString().trim();  // overwrite
-                		} catch (DocumentException | IOException e) {  // parsing error
-                			payloadType = "INVALID XML";
-                		}
-                	} else {  // it's neither JSON or XML, but has text content
-                		payloadType = DECODER.charset().displayName() + " String";
-                	}
-	                // all done parsing what we can and initializing the vars, so print it out!
-                	if (INDENT >= 0) {  // postive indent, so print out the standard SdkPerf -md type header stuff first
-		                System.out.println(message.dump(XMLMessage.MSGDUMP_BRIEF).trim());
-		                // now the payload part
-//		                if (INDENT == 0 || (!payloadType.startsWith("XML") && (!payloadType.startsWith("JSON")))) {  // i.e. if it's invalid or just a string, then save the carriage return
-		                if (INDENT == 0) {
-		                	String combined = msgType + ", " + payloadType + ":";
-		                	System.out.printf("%-40s%s%n", combined, payload);
-		                } else {
-		                	System.out.printf("%s, %s:%n%s%n", msgType, payloadType, payload);
-		                }
-                	} else {
-                		System.out.printf(COMPACT_STRING_FORMAT, msgDestName, payload);
-                	}
-                } else {  // empty string?  or Map or Stream
-                	if (INDENT >= 0) {
-                		System.out.println(message.dump(XMLMessage.MSGDUMP_FULL).trim());
-                	} else {  // compact form
-                		if (payload == null) payload = "";
-                		System.out.printf(COMPACT_STRING_FORMAT, msgDestName, payload);
-                	}
-                }
-            } catch (CharacterCodingException e) {  // parsing error, or means it's probably an actual binary message
-            	if (INDENT >= 0) {
-            		System.out.println(message.dump(XMLMessage.MSGDUMP_FULL).trim());
-            	} else {
-            		byte[] bytes = buffer.array();
-            		for (int i=0; i < bytes.length; i++) {
-            			if ((bytes[i] >= 0 && bytes[i] < 32) || bytes[i] == 127) {  // control char
-            				bytes[i] = 46;
-            			}
-            		}
-            		payload = new String(buffer.array(), StandardCharsets.UTF_8);  // this doesn't seem to throw off errors for unprintable chars
-            		System.out.printf(COMPACT_STRING_FORMAT, msgDestName, payload);
+//            	} else {
+//            		System.out.println("EMPTY " + ms.msgType + " Message!");
             	}
+            	// ok we now have the binary payload from the message
+	            // what if there is XML content??
+                if (message.hasContent()) {  // try the XML portion of the payload (OLD SCHOOL!!!)
+                	ms.xml = new PayloadSection();
+                	ms.xml.format(message.getBytes());
+                }
+                if (message.getProperties() != null && !message.getProperties().isEmpty()) {
+                	ms.userProps = new PayloadSection();
+                	ms.userProps.formatted = SdtUtils.printMap(message.getProperties(), INDENT);
+                }
+                if (message.getUserData() != null && message.getUserData().length > 0) {
+                	ms.userData = new PayloadSection();
+                	try {
+                		String simple = parse(message.getUserData());
+//                		Ansi ansi = new Ansi().a(UsefulUtils.indent(INDENT)).a('[').fgBlue().a(simple).reset().a(']');
+                		Ansi ansi = new Ansi().fgGreen().a(simple).reset();
+                		ms.userData.formatted = ansi.toString();
+                	} catch (CharacterCodingException e) {  // not a string
+                		ms.userData.formatted = UsefulUtils.printBinarySdkPerf(message.getUserData(), INDENT);
+                	}
+                }
+                
+                // now it's time to try printing it!
+	            if (INDENT >= 0) {
+	            	printMessageStart();
+	            
+		            String[] headerLines = message.dump(XMLMessage.MSGDUMP_BRIEF).split("\n");
+		            colorizeDestination(headerLines);
+		            
+	                for (String line : headerLines) {
+	                	if (line.startsWith("User Property Map:") && ms.userProps != null) {
+	                		System.out.println(line);
+	                		System.out.println(ms.userProps.formatted);
+	                		if (INDENT > 0) System.out.println();
+	                	} else if (line.startsWith("User Data:") && ms.userData != null) {
+	                		System.out.println(line);
+	                		System.out.println(ms.userData.formatted);
+	                		if (INDENT > 0) System.out.println();
+	                	} else if (line.startsWith("SDT Map:")) {
+	                		// skip (handled as part of the binary attachment)
+	                	} else if (line.startsWith("SDT Stream:")) {
+	                		// skip (handled as part of the binary attachment)
+	                	} else if (line.startsWith("Binary Attachment:")) {
+	                		System.out.println(line);
+	                		String combined = ms.msgType + (ms.binary.type == null ? "" : ", " + ms.binary.type) + ":";
+	                		System.out.println(new Ansi().fgYellow().a(combined).reset().toString());
+	                		System.out.println(UsefulUtils.chop(ms.binary.formatted));
+	                		if (INDENT > 0) System.out.println();
+	                	} else if (line.startsWith("XML:")) {
+	                		line = line.replace("XML:        ", "XML Payload:");
+	                		System.out.println(line);
+	                		if (ms.xml.type != null)
+	                			System.out.println(new Ansi().fgYellow().a(ms.xml.type).a(':').reset().toString());
+	                		System.out.println(UsefulUtils.chop(ms.xml.formatted));
+	                		if (INDENT > 0) System.out.println();
+	                	} else {  // everything else
+	                		System.out.println(line);
+	                	}
+	                }
+	                if (INDENT > 0) {  // don't print closing bookend if indent==0
+	                	printMessageEnd();
+	                }
+            	} else {  // INDENT < 0
+            		if (ms.binary != null && ms.xml != null) {
+            			// that's not great for one-line printing!
+            			System.out.println("Message contains both binary and XML payloads:");
+            			System.out.println(message.dump().trim());
+            		} else if (ms.binary != null) {
+//            			Ansi topic = new Ansi().fgCyan().a(ms.msgDestName).reset();
+//            			System.out.println(topic.si
+            			
+            			
+//            			System.out.printf(COMPACT_STRING_FORMAT,
+//            					new Ansi().fgCyan().a(ms.msgDestName).reset().toString(),
+//            					ms.binary.formatted);
+            			
+            			System.out.printf(COMPACT_STRING_FORMAT,
+            					new Ansi().fgCyan(),
+            					ms.msgDestName,
+            					new Ansi().reset(),
+            					ms.binary.formatted);
+            			
+            			
+            			
+            		} else if (ms.xml != null) {
+            			System.out.printf(COMPACT_STRING_FORMAT,
+            					new Ansi().fgCyan().a(ms.msgDestName).reset().toString(),
+            					ms.xml.formatted);
+            		}
+            	}
+            } catch (SDTException e) {  // SDT parsing error, really shouldn't happen!!
+//            	System.out.println("EXCEPTION THROWN, HERE WE ARE");
+        		String[] lines = message.dump(XMLMessage.MSGDUMP_FULL).trim().split("\n");
+        		colorizeDestination(lines);
+        		printMessageStart();
+        		System.out.println(new Ansi().fgRed().a("SDT ERROR: ").a(e.getMessage()).reset());
+        		for (String line : lines) {
+        			System.out.println(line);
+        		}
+        		printMessageEnd();
             }
-            if (INDENT > 0) System.out.println("^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^");  // if == 0, then skip b/c we're compact!
             // if we're not browsing, and it's not a Direct message (doesn't matter if we ACK a Direct message anyhow)
             if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
             
@@ -483,7 +651,6 @@ public class PrettyDump {
 			System.out.println("ORIG:");
             System.out.println(message.dump());
 */
-            
         }
 
         @Override
