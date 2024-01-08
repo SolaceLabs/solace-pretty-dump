@@ -47,7 +47,7 @@ dependencies {
     implementation("com.solacesystems:sol-jcsmp:10.+")
     //implementation("org.json:json:20230227")
     // XML stuff...
-    implementation("org.dom4j:dom4j:2+")
+//    implementation("org.dom4j:dom4j:2+")
 
     implementation("org.fusesource.jansi:jansi:2+")
     implementation("com.google.code.gson:gson:2.10.1")
@@ -56,7 +56,7 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-core:2.+")
     // needed to 'bridge' the JCSMP API logs from JCL to log4j
     implementation("org.apache.logging.log4j:log4j-jcl:2.+")
-    
+
     //implementation(fileTree(mapOf("dir" to "lib", "include" to listOf("*.jar"))))
 }
 

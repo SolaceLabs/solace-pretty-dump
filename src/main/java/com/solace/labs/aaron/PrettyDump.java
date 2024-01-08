@@ -19,20 +19,14 @@ package com.solace.labs.aaron;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 
-import org.dom4j.Document;
-import org.dom4j.DocumentException;
-import org.dom4j.DocumentHelper;
-import org.dom4j.io.OutputFormat;
-import org.dom4j.io.XMLWriter;
-import org.fusesource.jansi.Ansi;
 import org.fusesource.jansi.AnsiConsole;
 
 import com.solacesystems.jcsmp.Browser;
@@ -40,6 +34,7 @@ import com.solacesystems.jcsmp.BrowserProperties;
 import com.solacesystems.jcsmp.BytesXMLMessage;
 import com.solacesystems.jcsmp.ConsumerFlowProperties;
 import com.solacesystems.jcsmp.DeliveryMode;
+import com.solacesystems.jcsmp.Destination;
 import com.solacesystems.jcsmp.FlowEventArgs;
 import com.solacesystems.jcsmp.FlowEventHandler;
 import com.solacesystems.jcsmp.FlowReceiver;
@@ -55,7 +50,6 @@ import com.solacesystems.jcsmp.JCSMPTransportException;
 import com.solacesystems.jcsmp.MapMessage;
 import com.solacesystems.jcsmp.OperationNotSupportedException;
 import com.solacesystems.jcsmp.Queue;
-import com.solacesystems.jcsmp.SDTException;
 import com.solacesystems.jcsmp.SessionEventArgs;
 import com.solacesystems.jcsmp.SessionEventHandler;
 import com.solacesystems.jcsmp.StreamMessage;
@@ -72,9 +66,9 @@ public class PrettyDump {
     private static final String APP_NAME = PrettyDump.class.getSimpleName();
 
     private static int INDENT = 4;
-    private static boolean autoResizeIndent = false;  // specify -1 as indent for this mode
+    private static boolean autoResizeIndent = false;  // specify -1 as indent for this MODE
     private static LinkedListOfIntegers maxLengthTopics = new LinkedListOfIntegers();
-    private static String COMPACT_STRING_FORMAT;
+//    private static String COMPACT_STRING_FORMAT;
 
     private static volatile boolean isShutdown = false;          // are we done yet?
     private static String[] topics = new String[] { "#noexport/>" };  // default starting topic
@@ -83,26 +77,44 @@ public class PrettyDump {
     private static long browseTo = Long.MAX_VALUE;
     private static long msgCount = 0;
     
+    
     private static void updateCompactStringFormat(int maxTopicLength) {
-    	if (!autoResizeIndent) return;
     	maxLengthTopics.insert(maxTopicLength);
-//    	System.out.println(maxLengthTopics.toString());
-//    	if (maxTopicLength + 2 > Math.abs(INDENT)) {
     	if (maxLengthTopics.getMax() + 2 != Math.abs(INDENT)) {  // changed our current max
+    		int from = Math.abs(INDENT);
     		INDENT = -1 * (maxTopicLength + 2);
-    		COMPACT_STRING_FORMAT = "%s%-" + Math.max(1, Math.abs(INDENT) - 2) + "s%s  %s%n";  // minus 2 because we have two spaces between topic & payload
-//    		System.out.println("** changing indent to " + INDENT + "**");
+//    		COMPACT_STRING_FORMAT = "%s%-" + Math.max(1, Math.abs(INDENT) - 2) + "s%s  %s%n";  // minus 2 because we have two spaces between topic & payload
+    		// add coloring here
+//    		AaAnsi ansi = new AaAnsi();
+//    		ansi.fg(Elem.DESTINATION).a("%-" + Math.max(1, Math.abs(INDENT) - 2) + "s  ").reset().a("%s%n");
+//    		COMPACT_STRING_FORMAT = ansi.toString();
+    		// no need for coloring, done below in MessageHelper
+//    		COMPACT_STRING_FORMAT = "%-" + Math.max(1, Math.abs(INDENT) - 2) + "s  %s%n";  // minus 2 because we have two spaces between topic & payload
+    		System.out.println("** changing INDENT from " + from + " to " + Math.abs(INDENT) + "**");
+//    		System.out.println(COMPACT_STRING_FORMAT);
     	}
     }
 
     @SuppressWarnings("deprecation")  // this is for our use of Message ID for the browser
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
+    	
+//    	AnsiConsole.systemInstall();
+//    	Ansi a1 = new Ansi().fgBlack().bgRed().a("bad").bgDefault().fgGreen();
+//    	Ansi a2 = new Ansi().fgGreen();
+//    	String s1 = "this is some x words.";
+//    	s1 = s1.replaceAll("x", a1.toString());
+//    	a2.a(s1);
+//    	System.out.println(a2.toString());
+//    	System.exit(0);
+    	
+    	
+    	
     	for (String arg : args) {
     		if (arg.equals("-h") || arg.startsWith("--h") || args.length > 6) {
                 System.out.printf("Usage: %s [host:port] [message-vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]%n%n", APP_NAME);
                 System.out.println(" - If using TLS, remember \"tcps://\" before host");
                 System.out.println(" - Default parameters will be: localhost default aaron pw \"#noexport/>\" 4");
-                System.out.println("    - If client-username 'default' is enabled in VPN, you can use any username");
+                System.out.println("     (FYI: if client-username 'default' is enabled in VPN, you can use any username)");
                 System.out.println(" - Subscribing options, one of:");
                 System.out.println("    - comma-separated list of Direct topic subscriptions");
                 System.out.println("       - strongly consider prefixing with '#noexport/' if using DMR or MNR");
@@ -112,21 +124,26 @@ public class PrettyDump {
                 System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
                 System.out.println(" - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting");
                 System.out.println("    - Use negative indent value (column width) for one-line topic & payload only");
-                System.out.println("       - Use negative zero (\"-0\") for only topic, no payload");
+                System.out.println("       - Or use -1 for auto column width adjustment");
+                System.out.println("       - Use negative zero \"-0\" for only topic, no payload");
                 System.out.println(" - Shortcut mode: if the first argument contains '>', assume topics and localhost default broker");
                 System.out.println("    - e.g. ./bin/PrettyDump \"test/>\" -30");
                 System.out.println("    - If zero parameters, assume localhost default broker and subscribe to \"#noexport/>\"");
-                System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever");
-                System.out.println("    - e.g. export PRETTY_DUMP_OPTS=-Dcharset=Shift_JIS  (or \"set\" on Windows)");
+                System.out.println("Environment variable options:");
+                System.out.println(" - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever");
+                System.out.println("    - Choose: \"standard\" (default), \"minimal\", \"vivid\", \"light\" (for white backgrounds), \"off\"");
+                System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=whatever");
+                System.out.println("    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or \"set\" on Windows)");
+                System.out.println("v0.1.0, 2024/01/09");
                 System.out.println();
                 System.exit(0);
     		}
     	}
     	String host = "localhost";
     	boolean shortcut = false;
-    	// new shortcut mode... if first arg has a > in it, assume topic wildcard, and assume localhost default connectivity for rest
+    	// new shortcut MODE... if first arg has a > in it, assume topic wildcard, and assume localhost default connectivity for rest
     	if (args.length > 0) {
-    		if (args[0].contains(">")) {  // shortcut mode
+    		if (args[0].contains(">")) {  // shortcut MODE
     			shortcut = true;
     			topics = args[0].split("\\s*,\\s*");  // split on commas, remove any whitespace around them
     		} else if (args[0].matches("^[qbf]:.*")) {  // either browse, queue consume, or browse first to localhost
@@ -150,9 +167,9 @@ public class PrettyDump {
         		if (indent < -250 || indent > 20) throw new NumberFormatException();  // use -200 and then use Linux util 'cut -c204-' for payload only (there are some spaces after topic)
         		INDENT = indent;
         		if (INDENT < 0) {
-        			updateCompactStringFormat(Math.abs(INDENT));
-//        			COMPACT_STRING_FORMAT = "%-" + Math.max(1, Math.abs(INDENT) - 2) + "s  %s%n";  // minus 2 because we have two spaces between topic & payload
         			if (INDENT == -1) autoResizeIndent = true;
+        			updateCompactStringFormat(Math.abs(INDENT));  // now update it
+//        			COMPACT_STRING_FORMAT = "%-" + Math.max(1, Math.abs(INDENT) - 2) + "s  %s%n";  // minus 2 because we have two spaces between topic & payload
         		} else if (INDENT == 0) {
         			if (indentStr.equals("-0")) {  // special case, print topic only
         				INDENT = Integer.MIN_VALUE;
@@ -162,6 +179,11 @@ public class PrettyDump {
         		System.out.printf("Invalid value for indent: '%s', using default %d instead.%n", indentStr, INDENT);
         	}
         }
+		AnsiConsole.systemInstall();
+        System.out.println(Banner.printBanner());
+//        System.out.println("Terminal width reported as " + AnsiConsole.getTerminalWidth());
+//        TestStuff.main(new String[] { });
+        
         System.out.println(APP_NAME + " initializing...");
         final JCSMPProperties properties = new JCSMPProperties();
         properties.setProperty(JCSMPProperties.HOST, host);          // host:port
@@ -172,7 +194,7 @@ public class PrettyDump {
         JCSMPChannelProperties channelProps = new JCSMPChannelProperties();
         // die quickly
         channelProps.setConnectRetries(0);
-        channelProps.setReconnectRetries(5);
+        channelProps.setReconnectRetries(-1);
         channelProps.setConnectRetriesPerHost(1);
         properties.setProperty(JCSMPProperties.CLIENT_CHANNEL_PROPERTIES, channelProps);
         final JCSMPSession session;
@@ -182,7 +204,15 @@ public class PrettyDump {
                 System.out.printf(" ### Received a Session event: %s%n", event);
             }
         });
-		AnsiConsole.systemInstall();
+//		AaAnsi.test();
+//		{
+//			System.out.print("Aaron RED: ");
+//			for (int i=0;i<256;i++) System.out.print("\033[38;2;" + i + ";0;0m█");
+//			System.out.println("\033[m");
+//		}
+//		JColorTest.test();
+//		
+		
         session.connect();  // connect to the broker... could throw JCSMPException, so best practice would be to try-catch here..!
         System.out.printf("%s connected to VPN '%s' on broker '%s'.%n%n", APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE), session.getProperty(JCSMPProperties.HOST));
 
@@ -292,9 +322,9 @@ public class PrettyDump {
                 System.out.println("Shutdown detected, quitting...");
                 isShutdown = true;
                 try {
-                	Thread.sleep(100);
+                	Thread.sleep(200);
                 	session.closeSession();  // will also close consumer object
-                    Thread.sleep(400);
+                    Thread.sleep(300);
                 } catch (InterruptedException e) { }  // ignore, we're quitting anyway
                 System.out.println("Goodbye!");
             }
@@ -307,7 +337,7 @@ public class PrettyDump {
             try {
 //	        	while (!isShutdown && (nextMsg = browser.getNext()) != null) {
 	        	while (!isShutdown) {  // change in behaviour... continue browsing until told to quit
-	        		nextMsg = browser.getNext();
+	        		nextMsg = browser.getNext(-1);  // don't wait, return immediately
 	        		if (nextMsg == null) {
 	        			Thread.sleep(50);
 	        			continue;
@@ -317,8 +347,8 @@ public class PrettyDump {
 	        		} else {
 	        			try {
 		        			long msgId = nextMsg.getMessageIdLong();  // deprecated, shouldn't be using this, but oh well!
-		        			if (msgId <= 0) {
-		        				System.out.println("Message received with no Message ID set!");
+		        			if (msgId <= 0) {  // should be impossible??
+		        				System.err.println("Message received with no Message ID set!");
 		        				printer.onReceive(nextMsg);
 		        				break;
 		        			}
@@ -351,55 +381,42 @@ public class PrettyDump {
         }
         isShutdown = true;
         System.out.println("Main thread exiting. 👋🏼");
-        AnsiConsole.systemUninstall();	                        
+        AnsiConsole.systemUninstall();
     }
 
 
-    static final Charset CHARSET;
-	static final CharsetDecoder DECODER;
-	static final OutputFormat XML_FORMAT = INDENT < 0 ? OutputFormat.createCompactFormat() : OutputFormat.createPrettyPrint();
+    static Charset CHARSET;
+	static CharsetDecoder DECODER;
 	static {
-		XML_FORMAT.setIndentSize(Math.max(INDENT, 0));
-		XML_FORMAT.setSuppressDeclaration(true);  // hides <?xml version="1.0"?>
-		if (System.getProperty("charset") != null) {
+		if (System.getenv("PRETTY_CHARSET") != null) {
 			try {
-				CHARSET = Charset.forName(System.getProperty("charset"));
-				DECODER = CHARSET.newDecoder();
-				XML_FORMAT.setEncoding(System.getProperty("charset"));
+				CHARSET = Charset.forName(System.getenv("PRETTY_CHARSET"));  // this should throw if it doesn't find it
+				DECODER = CHARSET.newDecoder().onMalformedInput(CodingErrorAction.REPLACE).onUnmappableCharacter(CodingErrorAction.REPLACE);
 			} catch (Exception e) {
-				System.err.println("Invalid charset specified!");
+				System.err.println("Invalid charset specified! '" + System.getenv("PRETTY_CHARSET") + "'");
 				e.printStackTrace();
 				System.exit(1);
 				throw e;  // will never get here, but stops Java from complaining about not initializing final DECODER variable
 			}
 		} else {
 			CHARSET = StandardCharsets.UTF_8;
-			DECODER = StandardCharsets.UTF_8.newDecoder();
-			XML_FORMAT.setEncoding("UTF-8");
+			DECODER = StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPLACE).onUnmappableCharacter(CodingErrorAction.REPLACE);
 		}
+//		System.out.println("Using charset '"+CHARSET.displayName() + "'");
 	}
 	
 	private static String parse(byte[] bytes) throws CharacterCodingException {
-		return parse(ByteBuffer.wrap(bytes));
-	}
-	
-	private static String parse(ByteBuffer buffer) throws CharacterCodingException {
-        CharBuffer cb = DECODER.decode(buffer);  // could throw off a bunch of unchecked exceptions if it's binary or a different charset
+        CharBuffer cb = DECODER.decode(ByteBuffer.wrap(bytes));  // could throw off a bunch of unchecked exceptions if it's binary or a different charset
         return cb.toString();
 	}
-	
-//	private static String guessFormat(String in) {
-//	}
-	
+
 	static class PayloadSection {
 		
 		String type = null;  // might initialize later if JSON or XML
-//		String raw = null;
-//		byte[] bytes = null;
 		String formatted = "<UNINITIALIZED>";  // to ensure gets overwritten
+//		boolean malformed = false;  // TBD
 		
 		void format(final String text) {
-//			raw = text;
 			if (text == null || text.isEmpty()) {
 				formatted = "";
 				return;
@@ -411,42 +428,63 @@ public class PrettyDump {
         			type = CHARSET.displayName() + " String, JSON Object";
 				} catch (IOException e) {
         			type = CHARSET.displayName() + " String, INVALID JSON";
-        			formatted = new Ansi().fgRed().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
+//        			formatted = new AaAnsi().setError().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
+        			formatted = new AaAnsi().ex(e).reset().a('\n').a(text, INDENT <= 0).toString();
 				}
         	} else if (trimmed.startsWith("[") && trimmed.endsWith("]")) {  // try JSON array
         		try {
-            		formatted = AnsiUtils.tryFormat(trimmed, Math.max(INDENT, 0));
+            		formatted = GsonUtils.parseJsonArray(trimmed, Math.max(INDENT, 0), false);
         			type = CHARSET.displayName() + " String, JSON Array";
-        		} catch (PrettyException e) {
+        		} catch (IOException e) {
         			type = CHARSET.displayName() + " String, INVALID JSON";
-        			formatted = new Ansi().fgRed().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
+//        			formatted = new AaAnsi().setError().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
+        			formatted = new AaAnsi().ex(e).reset().a('\n').a(text, INDENT <= 0).toString();
 				}
         	} else if (trimmed.startsWith("<") && trimmed.endsWith(">")) {  // try XML
-        		try {
-                    Document document = DocumentHelper.parseText(trimmed);
-                    StringWriter stringWriter = new StringWriter();
-                    XMLWriter xmlWriter = new XMLWriter(stringWriter, XML_FORMAT);
-                    xmlWriter.write(document);
-                    xmlWriter.flush();
-                    formatted = stringWriter.toString().trim();  // overwrite
+    			try {
+    				AaronXmlHandler handler = new AaronXmlHandler(INDENT);
+					SaxParser.parseString(trimmed, handler);
+                    formatted = handler.getResult();  // overwrite
                     type = CHARSET.displayName() + " String, XML";
-        		} catch (DocumentException | IOException e) {  // parsing error
+				} catch (SaxParserException e) {
         			type = CHARSET.displayName() + " String, INVALID XML";
-        			formatted = new Ansi().fgRed().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
-        		}
+        			formatted = new AaAnsi().ex(e).reset().a('\n').a(text, INDENT <= 0).toString();
+				}
+//        		try {
+//                    Document document = DocumentHelper.parseText(trimmed);
+//                    StringWriter stringWriter = new StringWriter();
+//                    XMLWriter xmlWriter = new XMLWriter(stringWriter, XML_FORMAT);
+//                    xmlWriter.write(document);
+//                    xmlWriter.flush();
+//                    formatted = stringWriter.toString().trim();  // overwrite
+//                    type = CHARSET.displayName() + " String, XML";
+//        		} catch (DocumentException | IOException e) {  // parsing error
+//        			type = CHARSET.displayName() + " String, INVALID XML";
+//        			formatted = new AaAnsi().ex(e).reset().a('\n').a(text, INDENT <= 0).toString();
+////        			formatted = new AaAnsi().setError().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
+//        		}
         	} else {  // it's neither JSON or XML, but has text content
         		type = CHARSET.displayName() + " String";
-        		formatted = new Ansi().fgGreen().a(text).reset().toString();
+        		formatted = new AaAnsi().fg(Elem.STRING).a(text, INDENT <= 0).toString();
         	}
 		}
 
 		void format(byte[] bytes) {
-//			this.bytes = bytes;
 			try {
-				format(parse(bytes));  // call the String version
-			} catch (CharacterCodingException e) {
-				formatted = UsefulUtils.printBinarySdkPerf(bytes, INDENT);
-				type  = "Non-" + CHARSET.displayName() + " String, binary data";
+				String parsed = parse(bytes);
+				boolean malformed = parsed.contains("\ufffd");
+				format(parsed);  // call the String version
+	        	if (malformed) {
+					type = "Non " + type;
+//	        		formatted = formatted.replaceAll("\uFFFD", new AaAnsi().invalid("\ufffd").toString()) +
+					if (INDENT > 0) {
+						formatted += '\n' + UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, INDENT, AnsiConsole.getTerminalWidth());
+					}
+	        	}
+			} catch (CharacterCodingException e) {  // shouldn't happen since we're REPLACing not REPORTing
+				throw new AssertionError("Shouldn't be here, can't throw CharCodingExcption anymore");
+//				formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, INDENT, AnsiConsole.getTerminalWidth());
+//				type = "Non " + CHARSET.displayName() + " String, binary data";
 			}
 		}	
 	}
@@ -455,6 +493,7 @@ public class PrettyDump {
 		
 		final BytesXMLMessage orig;
     	final String msgDestName;
+    	final String msgDestNameFormatted;
         String msgType;
 
         PayloadSection binary;
@@ -465,19 +504,29 @@ public class PrettyDump {
         private MessageHelper(BytesXMLMessage message) {
         	orig = message;
         	msgType = orig.getClass().getSimpleName();  // will be "Impl" unless overridden later
+        	AaAnsi ansi = new AaAnsi().fg(Elem.DESTINATION);
         	if (orig.getDestination() instanceof Queue) {
         		msgDestName = "Queue '" + orig.getDestination().getName() + "'";
+        		ansi.a("Queue '" + orig.getDestination().getName() + "'");
         	} else {  // a Topic
         		msgDestName = orig.getDestination().getName();
+        		ansi.colorizeTopic(orig.getDestination().getName());
         	}
-        	updateCompactStringFormat(msgDestName.length());
+        	msgDestNameFormatted = ansi.toString();
+        	if (autoResizeIndent) updateCompactStringFormat(msgDestName.length());
         }
 	}
 	
+	
 	// Destination:                            Topic 'solace/samples/jcsmp/hello/aaron'
-	private static void colorizeDestination(String[] dumpLines) {
-        String[] destCols = dumpLines[0].split(":", 2);
-        dumpLines[0] = new Ansi().a(destCols[0]).a(":").fgCyan().a(destCols[1]).reset().toString();
+	private static void colorizeDestination(String[] dumpLines, Destination destination) {
+		AaAnsi ansi = new AaAnsi().fg(Elem.PAYLOAD_TYPE).a("Destination:                            ").fg(Elem.DESTINATION);
+		if (destination instanceof Topic) {
+			ansi.a("Topic '").colorizeTopic(destination.getName()).fg(Elem.DESTINATION).a("'");
+		} else {  // queue
+			ansi.a("Queue '").a(destination.getName()).a("'");
+		}
+		dumpLines[0] = ansi.toString();
 	}
 	
     
@@ -491,22 +540,22 @@ public class PrettyDump {
             String head = "^^^^^ Start Message #" + ++msgCount + " ^^^^^";
             String headPre = UsefulUtils.pad((int)Math.ceil((DIVIDER_LENGTH - head.length()) / 2.0) , '^');
             String headPost = UsefulUtils.pad((int)Math.floor((DIVIDER_LENGTH - head.length()) / 2.0) , '^');
-            System.out.println(new Ansi().fgBrightBlack().a(headPre).a(head).a(headPost).reset());
+            System.out.println(new AaAnsi().fg(Elem.MSG_BREAK).a(headPre).a(head).a(headPost));
     	}
     	
     	private static void printMessageEnd() {
             String end = " End Message #" + msgCount + " ";
             String end2 = UsefulUtils.pad((int)Math.ceil((DIVIDER_LENGTH - end.length()) / 2.0) , '^');
             String end3 = UsefulUtils.pad((int)Math.floor((DIVIDER_LENGTH - end.length()) / 2.0) , '^');
-            System.out.println(new Ansi().fgBrightBlack().a(end2).a(end).a(end3).reset());
+            System.out.println(new AaAnsi().fg(Elem.MSG_BREAK).a(end2).a(end).a(end3));
     	}
     	
         @Override
         public void onReceive(BytesXMLMessage message) {
         	MessageHelper ms = new MessageHelper(message);
-            // if doing topic only, or if there's no payload in compressed (<0) mode, then just print the topic
+            // if doing topic only, or if there's no payload in compressed (<0) MODE, then just print the topic
         	if (INDENT == Integer.MIN_VALUE || (INDENT < 0 && !message.hasContent() && !message.hasAttachment())) {
-        		System.out.println(new Ansi().fgCyan().a(ms.msgDestName).reset().toString());
+        		System.out.println(new AaAnsi().fg(Elem.DESTINATION).a(ms.msgDestNameFormatted));
                 if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
                 return;
         	}
@@ -525,7 +574,7 @@ public class PrettyDump {
 			            if (message instanceof TextMessage) {
 			            	ms.binary.format(((TextMessage)message).getText());
 			            	ms.msgType = ms.binary.formatted.isEmpty() ? "Empty SDT TextMessage" : "SDT TextMessage";
-			            } else {  // bytes, stream, map
+			            } else {  // bytes message
 			            	ms.msgType = "Raw BytesMessage";
 			            	if (message.getAttachmentByteBuffer() != null) {  // should be impossible since content length > 0
 			            		ms.binary.format(message.getAttachmentByteBuffer().array());
@@ -547,14 +596,13 @@ public class PrettyDump {
                 }
                 if (message.getUserData() != null && message.getUserData().length > 0) {
                 	ms.userData = new PayloadSection();
-                	try {
-                		String simple = parse(message.getUserData());
-//                		Ansi ansi = new Ansi().a(UsefulUtils.indent(INDENT)).a('[').fgBlue().a(simple).reset().a(']');
-                		Ansi ansi = new Ansi().fgGreen().a(simple).reset();
-                		ms.userData.formatted = ansi.toString();
-                	} catch (CharacterCodingException e) {  // not a string
-                		ms.userData.formatted = UsefulUtils.printBinarySdkPerf(message.getUserData(), INDENT);
+            		String simple = parse(message.getUserData());
+            		AaAnsi ansi = new AaAnsi().fg(Elem.STRING).a(simple).reset();
+                	if (simple.contains("\ufffd")) {
+                		ansi.a('\n').aRaw(UsefulUtils.printBinaryBytesSdkPerfStyle(message.getUserData(), INDENT, AnsiConsole.getTerminalWidth()));
+//                		ms.userData.formatted = UsefulUtils.printBinaryBytesSdkPerfStyle2(message.getUserData(), INDENT);
                 	}
+            		ms.userData.formatted = ansi.toString();
                 }
                 
                 // now it's time to try printing it!
@@ -562,36 +610,45 @@ public class PrettyDump {
 	            	printMessageStart();
 	            
 		            String[] headerLines = message.dump(XMLMessage.MSGDUMP_BRIEF).split("\n");
-		            colorizeDestination(headerLines);
+		            colorizeDestination(headerLines, message.getDestination());
 		            
 	                for (String line : headerLines) {
-	                	if (line.startsWith("User Property Map:") && ms.userProps != null) {
-	                		System.out.println(line);
+						if (line.startsWith("User Property Map:") && ms.userProps != null) {
+	                		System.out.println(new AaAnsi().a(line));
 	                		System.out.println(ms.userProps.formatted);
 	                		if (INDENT > 0) System.out.println();
 	                	} else if (line.startsWith("User Data:") && ms.userData != null) {
-	                		System.out.println(line);
+	                		System.out.println(new AaAnsi().a(line));
 	                		System.out.println(ms.userData.formatted);
+//	                		System.out.prnitln(UsefulUtils.sd)
 	                		if (INDENT > 0) System.out.println();
 	                	} else if (line.startsWith("SDT Map:")) {
 	                		// skip (handled as part of the binary attachment)
 	                	} else if (line.startsWith("SDT Stream:")) {
 	                		// skip (handled as part of the binary attachment)
 	                	} else if (line.startsWith("Binary Attachment:")) {
-	                		System.out.println(line);
+	                		System.out.println(new AaAnsi().a(line));
 	                		String combined = ms.msgType + (ms.binary.type == null ? "" : ", " + ms.binary.type) + ":";
-	                		System.out.println(new Ansi().fgYellow().a(combined).reset().toString());
-	                		System.out.println(UsefulUtils.chop(ms.binary.formatted));
+	                		if (combined.contains("Non ")) System.out.println(new AaAnsi().invalid(combined));
+							else System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(combined));
+//	                		System.out.println(UsefulUtils.chop(ms.binary.formatted));
+	                		System.out.println(ms.binary.formatted);
 	                		if (INDENT > 0) System.out.println();
 	                	} else if (line.startsWith("XML:")) {
-	                		line = line.replace("XML:        ", "XML Payload:");
-	                		System.out.println(line);
-	                		if (ms.xml.type != null)
-	                			System.out.println(new Ansi().fgYellow().a(ms.xml.type).a(':').reset().toString());
-	                		System.out.println(UsefulUtils.chop(ms.xml.formatted));
+	                		line = line.replace("XML:                                   ", "XML Payload: (should use binary payload!)");
+	                		System.out.println(new AaAnsi().a(line));
+	                		if (ms.xml.type != null) {
+		                		/* if (ms.xml.type.contains("INVALID")) System.out.println(new AaAnsi().invalid(ms.xml.type + ":"));
+		                		else */ System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(ms.xml.type + ":"));
+	                		}
+//	                			System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(ms.xml.type).a(':'));
+//	                		System.out.println(UsefulUtils.chop(ms.xml.formatted));
+	                		System.out.println(ms.xml.formatted);
 	                		if (INDENT > 0) System.out.println();
+	                	} else if (line.contains("Destination:           ")) {
+	                		System.out.println(line);  // just print out since it's already formatted
 	                	} else {  // everything else
-	                		System.out.println(line);
+	                		System.out.println(new AaAnsi().a(line));
 	                	}
 	                }
 	                if (INDENT > 0) {  // don't print closing bookend if indent==0
@@ -610,27 +667,29 @@ public class PrettyDump {
 //            			System.out.printf(COMPACT_STRING_FORMAT,
 //            					new Ansi().fgCyan().a(ms.msgDestName).reset().toString(),
 //            					ms.binary.formatted);
-            			
-            			System.out.printf(COMPACT_STRING_FORMAT,
-            					new Ansi().fgCyan(),
-            					ms.msgDestName,
-            					new Ansi().reset(),
-            					ms.binary.formatted);
-            			
-            			
-            			
+            			try {
+            				
+            				
+            				System.out.print(ms.msgDestNameFormatted);
+            				int spaceToAdd = maxLengthTopics.getMax() + 2 - ms.msgDestName.length();
+            				System.out.print(UsefulUtils.pad(spaceToAdd, ' '));
+            				System.out.println(ms.binary.formatted);
+            			} catch (Exception e) {
+            				e.printStackTrace();
+            			}
             		} else if (ms.xml != null) {
-            			System.out.printf(COMPACT_STRING_FORMAT,
-            					new Ansi().fgCyan().a(ms.msgDestName).reset().toString(),
-            					ms.xml.formatted);
+        				System.out.print(ms.msgDestNameFormatted);
+        				int spaceToAdd = maxLengthTopics.getMax() + 2 - ms.msgDestName.length();
+        				System.out.print(UsefulUtils.pad(spaceToAdd, ' '));
+        				System.out.println(ms.xml.formatted);
             		}
             	}
-            } catch (SDTException e) {  // SDT parsing error, really shouldn't happen!!
+            } catch (Exception e) {  // SDT parsing error, really shouldn't happen!!  or any exception!
 //            	System.out.println("EXCEPTION THROWN, HERE WE ARE");
         		String[] lines = message.dump(XMLMessage.MSGDUMP_FULL).trim().split("\n");
-        		colorizeDestination(lines);
+        		colorizeDestination(lines, message.getDestination());
         		printMessageStart();
-        		System.out.println(new Ansi().fgRed().a("SDT ERROR: ").a(e.getMessage()).reset());
+        		System.out.println(new AaAnsi().ex(e));
         		for (String line : lines) {
         			System.out.println(line);
         		}
