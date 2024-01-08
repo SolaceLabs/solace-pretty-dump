@@ -29,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.fusesource.jansi.AnsiConsole;
 
+import com.solace.labs.aaron.test.SolUtils;
 import com.solacesystems.jcsmp.Browser;
 import com.solacesystems.jcsmp.BrowserProperties;
 import com.solacesystems.jcsmp.BytesXMLMessage;
@@ -67,7 +68,7 @@ public class PrettyDump {
 
     private static int INDENT = 4;
     private static boolean autoResizeIndent = false;  // specify -1 as indent for this MODE
-    private static LinkedListOfIntegers maxLengthTopics = new LinkedListOfIntegers();
+    private static LinkedListOfIntegers maxLengthTopicsList = new LinkedListOfIntegers();
 //    private static String COMPACT_STRING_FORMAT;
 
     private static volatile boolean isShutdown = false;          // are we done yet?
@@ -79,8 +80,8 @@ public class PrettyDump {
     
     
     private static void updateCompactStringFormat(int maxTopicLength) {
-    	maxLengthTopics.insert(maxTopicLength);
-    	if (maxLengthTopics.getMax() + 2 != Math.abs(INDENT)) {  // changed our current max
+    	maxLengthTopicsList.insert(maxTopicLength);
+    	if (maxLengthTopicsList.getMax() + 2 != Math.abs(INDENT)) {  // changed our current max
     		int from = Math.abs(INDENT);
     		INDENT = -1 * (maxTopicLength + 2);
 //    		COMPACT_STRING_FORMAT = "%s%-" + Math.max(1, Math.abs(INDENT) - 2) + "s%s  %s%n";  // minus 2 because we have two spaces between topic & payload
@@ -216,6 +217,9 @@ public class PrettyDump {
         session.connect();  // connect to the broker... could throw JCSMPException, so best practice would be to try-catch here..!
         System.out.printf("%s connected to VPN '%s' on broker '%s'.%n%n", APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE), session.getProperty(JCSMPProperties.HOST));
 
+        SolUtils.getCapabilities(session);
+        
+        
         // is it a queue?
         if (topics.length == 1 && topics[0].startsWith("q:") && topics[0].length() > 2) {  // QUEUE CONSUME!
             // configure the queue API object locally
@@ -424,7 +428,7 @@ public class PrettyDump {
 			String trimmed = text.trim();
         	if (trimmed.startsWith("{") && trimmed.endsWith("}")) {  // try JSON object
         		try {
-            		formatted = GsonUtils.parseJsonObject(trimmed, Math.max(INDENT, 0), false);
+            		formatted = GsonUtils.parseJsonObject(trimmed, Math.max(INDENT, 0));
         			type = CHARSET.displayName() + " String, JSON Object";
 				} catch (IOException e) {
         			type = CHARSET.displayName() + " String, INVALID JSON";
@@ -555,7 +559,7 @@ public class PrettyDump {
         	MessageHelper ms = new MessageHelper(message);
             // if doing topic only, or if there's no payload in compressed (<0) MODE, then just print the topic
         	if (INDENT == Integer.MIN_VALUE || (INDENT < 0 && !message.hasContent() && !message.hasAttachment())) {
-        		System.out.println(new AaAnsi().fg(Elem.DESTINATION).a(ms.msgDestNameFormatted));
+        		System.out.println(new AaAnsi().fg(Elem.DESTINATION).aRaw(ms.msgDestNameFormatted));
                 if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
                 return;
         	}
@@ -660,18 +664,9 @@ public class PrettyDump {
             			System.out.println("Message contains both binary and XML payloads:");
             			System.out.println(message.dump().trim());
             		} else if (ms.binary != null) {
-//            			Ansi topic = new Ansi().fgCyan().a(ms.msgDestName).reset();
-//            			System.out.println(topic.si
-            			
-            			
-//            			System.out.printf(COMPACT_STRING_FORMAT,
-//            					new Ansi().fgCyan().a(ms.msgDestName).reset().toString(),
-//            					ms.binary.formatted);
             			try {
-            				
-            				
             				System.out.print(ms.msgDestNameFormatted);
-            				int spaceToAdd = maxLengthTopics.getMax() + 2 - ms.msgDestName.length();
+            				int spaceToAdd = maxLengthTopicsList.getMax() + 2 - ms.msgDestName.length();
             				System.out.print(UsefulUtils.pad(spaceToAdd, ' '));
             				System.out.println(ms.binary.formatted);
             			} catch (Exception e) {
@@ -679,13 +674,13 @@ public class PrettyDump {
             			}
             		} else if (ms.xml != null) {
         				System.out.print(ms.msgDestNameFormatted);
-        				int spaceToAdd = maxLengthTopics.getMax() + 2 - ms.msgDestName.length();
+        				int spaceToAdd = maxLengthTopicsList.getMax() + 2 - ms.msgDestName.length();
         				System.out.print(UsefulUtils.pad(spaceToAdd, ' '));
         				System.out.println(ms.xml.formatted);
             		}
             	}
             } catch (Exception e) {  // SDT parsing error, really shouldn't happen!!  or any exception!
-//            	System.out.println("EXCEPTION THROWN, HERE WE ARE");
+            	System.out.println("EXCEPTION THROWN, HERE WE ARE: " + e.toString());
         		String[] lines = message.dump(XMLMessage.MSGDUMP_FULL).trim().split("\n");
         		colorizeDestination(lines, message.getDestination());
         		printMessageStart();
@@ -697,26 +692,13 @@ public class PrettyDump {
             }
             // if we're not browsing, and it's not a Direct message (doesn't matter if we ACK a Direct message anyhow)
             if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
-            
-            // new test
-/*            BytesXMLMessage copy;
-			try {
-				copy = SolaceMessageCopy.copy(message, true, true, true);
-				System.out.println("COPY:");
-	            System.out.println(copy.dump());
-			} catch (JCSMPException e) {
-				e.printStackTrace();
-			}
-			System.out.println("ORIG:");
-            System.out.println(message.dump());
-*/
         }
 
         @Override
         public void onException(JCSMPException e) {  // uh oh!
             System.out.printf(" ### MessageListener's onException(): %s%n",e);
             if (e instanceof JCSMPTransportException) {  // all reconnect attempts failed
-                isShutdown = true;  // let's quit; or, could initiate a new connection attempt
+                isShutdown = true;  // let's quit
             }
         }
     }

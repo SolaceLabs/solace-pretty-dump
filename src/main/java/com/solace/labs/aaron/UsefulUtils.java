@@ -1,3 +1,19 @@
+/*
+ * Copyright 2023 Solace Corporation. All rights reserved.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
 package com.solace.labs.aaron;
 
 import java.nio.ByteBuffer;
@@ -10,13 +26,9 @@ import com.solacesystems.common.util.ByteArray;
 
 public class UsefulUtils {
 
-	
-//	private static String getSimpleString(byte[] orig) {
-//		return getSimpleString(orig, StandardCharsets.UTF_8);
-//	}
-	
-	private static Charset DEFAULT_CHARSET = StandardCharsets.ISO_8859_1;
-	private static CharsetDecoder DECODER = DEFAULT_CHARSET.newDecoder();
+//	private static Charset DEFAULT_CHARSET = StandardCharsets.ISO_8859_1;
+//	private static CharsetDecoder DECODER = DEFAULT_CHARSET.newDecoder();
+
 	public static final char[] HARDCODED = new char[] {
 //			'€','·','‚','ƒ','„','…','†','‡','ˆ','‰','Š','‹','Œ','·','Ž','·',  // from win-1252
 //			'·','‘','’','“','”','•','–','—','˜','™','š','›','œ','·','ž','Ÿ',  // from win-1252
@@ -49,7 +61,7 @@ public class UsefulUtils {
 			'p','q','r','s','t','u','v','w','x','y','z','{','¦','}','~','⌂'
 		};
 	
-	private static char[] getCharArray(byte[] orig) {
+/*	private static char[] getCharArray(byte[] orig) {
 		ByteBuffer buffer = ByteBuffer.wrap(orig);
 		String decoded;
 		try {
@@ -71,13 +83,13 @@ public class UsefulUtils {
 			System.exit(-1);
 			return null;
 		}
-	}
+	}*/
 	
 	public static char getSimpleChar2(byte orig) {
 		return HARDCODED[orig + 128];
 	}
 	
-	private static char getSimpleChar(byte orig) {
+/*	private static char getSimpleChar(byte orig) {
 		
 //		if ((orig >= 0 && orig < 32) || orig == 127) {  // control char
 		if ((orig >= 0 && orig < 32) || orig == 127 || orig <= -96) {  // control char
@@ -101,7 +113,7 @@ public class UsefulUtils {
 //		}
 //		return '�';
 //		return (char)orig;
-	}
+	}*/
 	
 /*	private static String getSimpleString(byte[] orig) {
 		byte[] bytes = Arrays.copyOf(orig, orig.length);

@@ -37,8 +37,7 @@ import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * Semp Reply SAX parser class. Technically, this has nothing to do with SEMP.
- * This class could be used to SAX parse any XML with the passed in Handler.
+ * This class could be used to SAX parse any XML with the passed-in Handler.
  */
 public class SaxParser {
 
@@ -75,10 +74,7 @@ public class SaxParser {
         setFactoryFeature(XML_FEATURE_GENERAL_ENTITIES,false);
         setFactoryFeature(XML_FEATURE_PARAMETER_ENTITIES,false);
         setFactoryFeature(XML_FEATURE_LOAD_EXTERNAL_DTD,false);
-        // why are these here??  commenting out (aaron may 2020)
-//        setFactoryFeature(XMLConstants.ACCESS_EXTERNAL_DTD,false);
-//        setFactoryFeature(XMLConstants.ACCESS_EXTERNAL_SCHEMA,false);
-//        setFactoryFeature(XMLConstants.ACCESS_EXTERNAL_STYLESHEET,false);
+
     }
     
     private static void setFeatureSilent(XMLReader xmlReader, String feature, boolean value) {
@@ -102,7 +98,6 @@ public class SaxParser {
    		setFeatureSilent(xmlReader,XMLConstants.ACCESS_EXTERNAL_STYLESHEET,false);
     }
     
-    // TODO remove this, we don't need anymore
     public static void parseString(String xml, DefaultHandler handler) throws SaxParserException {
         parseReader(new BufferedReader(new StringReader(xml)), handler);
     }
@@ -116,7 +111,7 @@ public class SaxParser {
             makeReaderSecure(xmlReader);
             xmlReader.setErrorHandler(handler);
             try {
-                xmlReader.setProperty(XML_PARAMETER_LEXICAL_HANDLER,handler);
+                xmlReader.setProperty(XML_PARAMETER_LEXICAL_HANDLER, handler);
             } catch (SAXNotSupportedException | SAXNotRecognizedException e) {
             	// ignore this... during schema loading at program startup, will throw an exception since SempReplySchemaLoader uses a DefaultHandler
             	// during runtime, the GenericSempSaxHandler implements the required methods
