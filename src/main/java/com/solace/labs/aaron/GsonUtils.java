@@ -43,7 +43,7 @@ public class GsonUtils {
 		return parseJsonArray(json, indentFactor, false);
 	}
 	
-	static String parseJsonArray(String json, int indentFactor, boolean isLenient) throws IOException {
+	private static String parseJsonArray(String json, int indentFactor, boolean isLenient) throws IOException {
 		JsonReader reader = new JsonReader(new StringReader(json));
 		reader.setLenient(isLenient);
 		AaAnsi ansi = new AaAnsi();
@@ -54,7 +54,7 @@ public class GsonUtils {
 	/**
 	 * Handle an Object. Consume the first token which is BEGIN_OBJECT. Within
 	 * the Object there could be array or non array tokens. We write handler
-	 * methods for both. Noe the peek() method. It is used to find out the type
+	 * methods for both. Note the peek() method. It is used to find out the type
 	 * of the next token without actually consuming it.
 	 * 
 	 * @param reader
@@ -69,12 +69,16 @@ public class GsonUtils {
 			if (token.equals(JsonToken.BEGIN_ARRAY)) {
 				handleArray(reader, ansi, indentFactor, indent + indentFactor);
 			} else if (token.equals(JsonToken.BEGIN_OBJECT)) {
-				ansi.a(indent(indent));
+//				ansi.a(indent(indent));
 				handleObject(reader, ansi, indentFactor, indent + indentFactor);
 				reader.endObject();
 				if (reader.hasNext()) ansi.a(",");
-				if (indentFactor > 0) ansi.a('\n');
-			} else if (token.equals(JsonToken.END_OBJECT)) {
+				if (reader.peek().equals(JsonToken.END_OBJECT) || reader.peek().equals(JsonToken.END_ARRAY)) {
+					if (indentFactor > 0) ansi.a(' ');
+				} else {
+					if (indentFactor > 0) ansi.a('\n');
+				}
+			} else if (token.equals(JsonToken.END_OBJECT)) {  // shouldn't come here b/c we end it above after handling the object
 				System.out.println("*********************************");
 				reader.endObject();
 				return;
@@ -121,7 +125,12 @@ public class GsonUtils {
 			} else if (token.equals(JsonToken.END_OBJECT)) {
 				reader.endObject();
 				if (reader.hasNext()) ansi.a(",");
-				if (indentFactor > 0) ansi.a('\n');
+//				if (indentFactor > 0) ansi.a('\n');
+				if (reader.peek().equals(JsonToken.END_OBJECT) || reader.peek().equals(JsonToken.END_ARRAY)) {
+					if (indentFactor > 0) ansi.a(' ');
+				} else {
+					if (indentFactor > 0) ansi.a('\n');
+				}
 			} else if (token.equals(JsonToken.NAME)) {
 				throw new AssertionError();
 			} else {

@@ -37,12 +37,6 @@ public class AaAnsi {
 
 	private static ColorMode MODE = ColorMode.STANDARD;
 	static {
-//		if (System.getProperty("PRETTY_COLORS") != null) {
-//			try {
-//				MODE = ColorMode.valueOf(System.getProperty("PRETTY_COLORS").toUpperCase());
-//				Elem.updateColors(MODE);
-//			} catch (IllegalArgumentException e) { }
-//		}
 		if (System.getenv("PRETTY_COLORS") != null) {
 			try {
 				MODE = ColorMode.valueOf(System.getenv("PRETTY_COLORS").toUpperCase());
@@ -72,7 +66,6 @@ public class AaAnsi {
 	}
 	
 	private AaAnsi colorizeTopicPlain(String topic) {
-//		fg(Elem.DESTINATION).a(topic);
 		String[] levels = topic.split("/");
 		for (int i=0; i<levels.length; i++) {
 			fg(Elem.DESTINATION).a(levels[i]);
@@ -100,26 +93,18 @@ public class AaAnsi {
 		int startingColIndex = 5;  // cyan 86
 //		int startingColIndex = 7;  // temp 75
 		double step = Math.max(1, Math.min(3, colorTable.length * 1.0 / Math.max(1, maxLengthTopicLevels.getMax())));
-		
 		for (int i=0; i<levels.length; i++) {
 			ansi.fg(colorTable[(startingColIndex + (int)(step * i)) % colorTable.length]).a(levels[i]);
 			if (i < levels.length-1) {
-//				fg(15).a('/');
-//				fg(Elem.DESTINATION).faint(true).a('/').faint(false);
 				fg(Elem.TOPIC_SEPARATOR).a('/').reset();
 			}
 		}
 		return this;
 	}
 	
-	
 	public AaAnsi invalid(String s) {
 		if (isOn()) {
-//			ansi.reset().bg(196).fg(231).a(s).reset();
-//			ansi.reset().bg(196).fg(16).a(s).reset();
 			fg(Elem.ERROR).a(s).reset();
-//			ansi.fgRed().a(s);
-//			restore();
 		} else {
 			ansi.a(s);
 		}
@@ -129,29 +114,25 @@ public class AaAnsi {
 	public AaAnsi ex(Exception e) {
 		String exception = e.getClass().getSimpleName() + " - " + e.getMessage();
 		return invalid(exception);
-//		if (isOn()) {
-//			fg(Elem.ERROR).a(exception);
-//			ansi.fgBlack().bgRed().a(exception);
-//			restore();
-//		} else {
-//			ansi.a(exception);
-//			ansi.a(e.getClass().getSimpleName()).a(" - ").a(e.getMessage());
-//		}
-//		return this;
 	}
-	
 	
 	public AaAnsi fg(Elem elem) {
 		curElem = elem;
 		if (isOn()) {
 			Col c = elem.getCurrentColor();
 			if (c.faint) {
-//				ansi.a(Attribute.INTENSITY_FAINT).fg(c.value);
 				makeFaint().fg(c.value);
 			} else {
-//				ansi.a(Attribute.RESET).fg(c.value);
 				fg(c.value);
 			}
+		}
+		return this;
+	}
+	
+	public AaAnsi fg(int colorIndex) {
+		if (isOn()) {
+			if (colorIndex == -1) ansi.fgDefault();
+			else ansi.fg(colorIndex);
 		}
 		return this;
 	}
@@ -164,22 +145,31 @@ public class AaAnsi {
 		return this;
 	}
 	
-	public AaAnsi fg(int colorIndex) {
-		if (isOn()) {
-			if (colorIndex == -1) ansi.fgDefault();
-			else ansi.fg(colorIndex);
-		}
+	@Override
+	public String toString() {
+		return UsefulUtils.chop(ansi.toString()) + (isOn() ? new Ansi().reset().toString() : "");
+//		return UsefulUtils.chop(ansi.toString()) + new Ansi().reset().toString();
+	}
+
+	/** Just jam is straight in, don't parse at all! */
+	public AaAnsi aRaw(String s) {
+		ansi.a(s);
 		return this;
 	}
 
-	@Override
-	public String toString() {
-//		return UsefulUtils.chop(ansi.toString()) + (isOn() ? new Ansi().reset().toString() : "");
-		return UsefulUtils.chop(ansi.toString()) + new Ansi().reset().toString();
+	/** Just copy the whole AaAnsi into this one. */
+	public AaAnsi a(AaAnsi ansi) {
+		aRaw(ansi.toString());
+		return this;
 	}
 	
-	public AaAnsi aRaw(String s) {
-		ansi.a(s);
+	public AaAnsi a(char c) {
+		ansi.a(c);
+		return this;
+	}
+
+	public AaAnsi a(boolean b) {
+		ansi.a(Boolean.toString(b));
 		return this;
 	}
 
@@ -187,6 +177,9 @@ public class AaAnsi {
 		return a(s, false);
 	}
 	
+	/** Consider each char individually, and if replacement \ufffd char then add some red colour.
+	 *  Also, compact means replace all the invisible whitespace (CR, LF, TAB) with dots
+	 */
 	public AaAnsi a(String s, boolean compact) {
 		StringBuilder sb = new StringBuilder();
 		String replacement = null;  // needed if we have to substitute any invalid chars
@@ -217,39 +210,6 @@ public class AaAnsi {
 		return this;
 	}
 	
-	public AaAnsi a(AaAnsi ansi) {
-		this.ansi.a(ansi.toString());
-		return this;
-	}
-	
-	
-	public AaAnsi a2(String s) {
-		if (s.contains("\ufffd")) {
-//			String replacement = new AaAnsi().invalid("¿", curElem).toString();
-//			System.out.println("REPLACEMTN: '" + replacement + "'");
-			String replacement;
-			if (isOn()) {
-				Ansi a = new Ansi().reset().bg(196).fg(231).a("?").bgDefault().fg(curElem.getCurrentColor().value);
-				replacement = a.toString();
-			} else {
-				replacement = "?";
-			}
-			s = s.replaceAll("\ufffd", replacement);
-		}
-		ansi.a(s);
-		return this;
-	}
-	
-	public AaAnsi a(char c) {
-		ansi.a(c);
-		return this;
-	}
-
-	public AaAnsi a(boolean b) {
-		ansi.a(Boolean.toString(b));
-		return this;
-	}
-	
 	/**
 	 * I think this was supposed to be for quotes and stuff
 	 */
@@ -268,12 +228,12 @@ public class AaAnsi {
 //		return this;
 //	}
 
-	private void restore() {
-		if (isOn() && curElem != null) {
-			ansi.bgDefault();
-			fg(curElem);
-		}
-	}
+//	private void restore() {
+//		if (isOn() && curElem != null) {
+//			ansi.bgDefault();
+//			fg(curElem);
+//		}
+//	}
 
 	public AaAnsi reset() {
 		if (isOn()) {
@@ -282,14 +242,6 @@ public class AaAnsi {
 		}
 		return this;
 	}
-	
-//	public AaAnsi fgRgb(int r, int g, int b) {
-//		if (isOn()) ansi.fgRgb(r, g, b);
-//		return this;
-//	}
-	
-	
-
 	
 	public static void main(String... args) {
 //		test();
@@ -331,7 +283,5 @@ public class AaAnsi {
 //		System.out.println(new AaAnsi().setSolaceGreen().a("AARONSOLACEMANUAL").reset());
 		
 	}
-
-	
 
 }

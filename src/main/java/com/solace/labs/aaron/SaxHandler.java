@@ -22,15 +22,19 @@ import org.xml.sax.SAXException;
 import org.xml.sax.ext.LexicalHandler;
 import org.xml.sax.helpers.DefaultHandler;
 
-public class AaronXmlHandler extends DefaultHandler implements LexicalHandler, ErrorHandler {
-
+/**
+ * Taken/inspired by my StatsPump code from a long time ago.
+ * Pretty basic pretty-print formatter for XML docs.
+ * @author Aaron Lee
+ */
+public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorHandler {
 
 	private AaAnsi ansi = new AaAnsi();
 	private final int indent;
 	private int level = 0;
     private StringBuilder characterDataSb = new StringBuilder();   // need StringBuilder for the 'characters' method since SAX can call it multiple times
 	private Tag previous = null;
-	private AaAnsi start = null;
+	private AaAnsi startTagForLater = null;
 	
 	enum Tag {
 		START,
@@ -38,10 +42,9 @@ public class AaronXmlHandler extends DefaultHandler implements LexicalHandler, E
 		;
 	}
 	
-	public AaronXmlHandler(int indent) {
+	public SaxHandler(int indent) {
 		this.indent = indent;
 	}
-	
 
 	@Override
 	public void startDocument() throws SAXException { }
@@ -56,44 +59,45 @@ public class AaronXmlHandler extends DefaultHandler implements LexicalHandler, E
 	@Override
 	public final void characters(char[] ch, int start, int length) {
         characterDataSb.append(String.valueOf(ch,start,length));
-//		ansi.a(String.valueOf(ch, start, length));
 	}
 
 	@Override
 	public final void startElement(String namespaceURI, String localName, String qName, Attributes atts) throws SAXException {
-        characterDataSb.setLength(0);  // start capturing a new bunch of characters after this start... re-use to prevent object creation
-		if (previous == Tag.START) {
-//			assert start != null;
-			ansi.a(start).reset().a('>');
+        characterDataSb.setLength(0);  // start capturing a new bunch of characters after this startTagForLater... re-use to prevent object creation
+		if (previous == Tag.START && startTagForLater != null) {  // if the tag before me was also a start, then need to dump out my saved tag
+//			assert startTagForLater != null;
+			ansi.a(startTagForLater).reset().a('>');
 			if (indent > 0) ansi.a('\n');
 		}
-		start = new AaAnsi();
+		startTagForLater = new AaAnsi();  // reset for new start tag
 		if (indent > 0 && level > 0) {
-			start.a(UsefulUtils.indent(indent * level));
+			startTagForLater.a(UsefulUtils.indent(indent * level));
 		}
-		start.a('<').fg(Elem.KEY).a(qName);
+		startTagForLater.a('<').fg(Elem.KEY).a(qName);
 		for (int i=0; i<atts.getLength(); i++) {
-			start.a(' ').fg(Elem.DATA_TYPE).a(atts.getQName(i)).fg(Elem.BRACE).a("=").fg(Elem.BYTES_CHARS).a('"').a(atts.getValue(i)).a('"');
+			startTagForLater.a(' ').fg(Elem.DATA_TYPE).a(atts.getQName(i)).fg(Elem.BRACE).a("=").fg(Elem.BYTES_CHARS).a('"').a(atts.getValue(i)).a('"');
     	}
-//		ansi.a('>');
 		previous = Tag.START;
 		level++;
 	}
 
+	/**
+	 * Cheeky method to try to guess what a datatype is, and add some colour-coding.
+	 */
 	private AaAnsi formatChars(String s) {
 		try {
-			Double.parseDouble(s);
+			Double.parseDouble(s);  // is it a number?
 			try {
-				Integer.parseInt(s);
-				return new AaAnsi().fg(Elem.NUMBER).a(s);
+				Integer.parseInt(s);  // is it specifically an integer
+				return new AaAnsi().fg(Elem.NUMBER).a(s);  // yup!
 			} catch (NumberFormatException e) {
-				return new AaAnsi().fg(Elem.FLOAT).a(s);
+				return new AaAnsi().fg(Elem.FLOAT).a(s);  // nope, just a decimal
 			}
-		} catch (NumberFormatException e) {
-			if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("false")) {
+		} catch (NumberFormatException e) {  // nope, not a number
+			if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("false")) {  // is it a Boolean?
 				return new AaAnsi().fg(Elem.BOOLEAN).a(s);
 			}
-			return new AaAnsi().fg(Elem.STRING).a(s);
+			return new AaAnsi().fg(Elem.STRING).a(s);  // assume it's a string
 		}
 	}
 
@@ -102,13 +106,20 @@ public class AaronXmlHandler extends DefaultHandler implements LexicalHandler, E
 		level--;
 		String chars = characterDataSb.toString().trim();
 		if (previous == Tag.START) {
-			if (chars.length() > 0) {
-				ansi.a(start).reset().a('>').a(formatChars(chars)).reset();
+			if (startTagForLater != null) {
+				if (chars.length() > 0) {
+					ansi.a(startTagForLater).reset().a('>').a(formatChars(chars)).reset();
+					ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');
+				} else {  // closing a startTagForLater tag right away, and no chars, so make it a singleton
+					ansi.a(startTagForLater).reset().a("/>");
+				}
+				startTagForLater = null;// new AaAnsi();
+			} else {  // already been blanked (maybe by a comment?)
+				if (chars.length() > 0) {
+					ansi.a(formatChars(chars)).reset();
+				}
 				ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');
-			} else {  // closing a start tag right away, and no chars, so make it a singleton
-				ansi.a(start).reset().a("/>");
 			}
-			start = null;// new AaAnsi();
 		} else {  // previous tag was another END tag
 			if (indent > 0 && level > 0) {
 				ansi.a(UsefulUtils.indent(indent * level));
@@ -123,7 +134,14 @@ public class AaronXmlHandler extends DefaultHandler implements LexicalHandler, E
 
 	@Override
 	public void comment(char[] ch, int start, int length) throws SAXException {
-		// ignore comments
+		if (indent > 0) {  // show if not compact
+			if (startTagForLater != null) {
+				ansi.a(startTagForLater).reset().a('>');
+//				if (indent > 0) ansi.a('\n');
+				startTagForLater = null;
+			}
+			ansi.fg(Elem.MSG_BREAK).a("<!--").a(String.copyValueOf(ch, start, length)).a("-->\n");
+		}
 	}
 	
 	@Override

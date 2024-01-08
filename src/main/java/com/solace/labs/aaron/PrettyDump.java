@@ -29,7 +29,6 @@ import java.nio.charset.StandardCharsets;
 
 import org.fusesource.jansi.AnsiConsole;
 
-import com.solace.labs.aaron.test.SolUtils;
 import com.solacesystems.jcsmp.Browser;
 import com.solacesystems.jcsmp.BrowserProperties;
 import com.solacesystems.jcsmp.BytesXMLMessage;
@@ -193,7 +192,6 @@ public class PrettyDump {
         properties.setProperty(JCSMPProperties.PASSWORD, password);  // client-password
         properties.setProperty(JCSMPProperties.REAPPLY_SUBSCRIPTIONS, true);  // subscribe Direct subs after reconnect
         JCSMPChannelProperties channelProps = new JCSMPChannelProperties();
-        // die quickly
         channelProps.setConnectRetries(0);
         channelProps.setReconnectRetries(-1);
         channelProps.setConnectRetriesPerHost(1);
@@ -205,20 +203,8 @@ public class PrettyDump {
                 System.out.printf(" ### Received a Session event: %s%n", event);
             }
         });
-//		AaAnsi.test();
-//		{
-//			System.out.print("Aaron RED: ");
-//			for (int i=0;i<256;i++) System.out.print("\033[38;2;" + i + ";0;0m█");
-//			System.out.println("\033[m");
-//		}
-//		JColorTest.test();
-//		
-		
         session.connect();  // connect to the broker... could throw JCSMPException, so best practice would be to try-catch here..!
         System.out.printf("%s connected to VPN '%s' on broker '%s'.%n%n", APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE), session.getProperty(JCSMPProperties.HOST));
-
-        SolUtils.getCapabilities(session);
-        
         
         // is it a queue?
         if (topics.length == 1 && topics[0].startsWith("q:") && topics[0].length() > 2) {  // QUEUE CONSUME!
@@ -429,29 +415,29 @@ public class PrettyDump {
         	if (trimmed.startsWith("{") && trimmed.endsWith("}")) {  // try JSON object
         		try {
             		formatted = GsonUtils.parseJsonObject(trimmed, Math.max(INDENT, 0));
-        			type = CHARSET.displayName() + " String, JSON Object";
+        			type = CHARSET.displayName() + " charset detected, JSON Object";
 				} catch (IOException e) {
-        			type = CHARSET.displayName() + " String, INVALID JSON";
+        			type = CHARSET.displayName() + " charset detected, INVALID JSON payload";
 //        			formatted = new AaAnsi().setError().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
         			formatted = new AaAnsi().ex(e).reset().a('\n').a(text, INDENT <= 0).toString();
 				}
         	} else if (trimmed.startsWith("[") && trimmed.endsWith("]")) {  // try JSON array
         		try {
-            		formatted = GsonUtils.parseJsonArray(trimmed, Math.max(INDENT, 0), false);
-        			type = CHARSET.displayName() + " String, JSON Array";
+            		formatted = GsonUtils.parseJsonArray(trimmed, Math.max(INDENT, 0));
+        			type = CHARSET.displayName() + " charset detected, JSON Array";
         		} catch (IOException e) {
-        			type = CHARSET.displayName() + " String, INVALID JSON";
+        			type = CHARSET.displayName() + " charset detected, INVALID JSON payload";
 //        			formatted = new AaAnsi().setError().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
         			formatted = new AaAnsi().ex(e).reset().a('\n').a(text, INDENT <= 0).toString();
 				}
         	} else if (trimmed.startsWith("<") && trimmed.endsWith(">")) {  // try XML
     			try {
-    				AaronXmlHandler handler = new AaronXmlHandler(INDENT);
+    				SaxHandler handler = new SaxHandler(INDENT);
 					SaxParser.parseString(trimmed, handler);
                     formatted = handler.getResult();  // overwrite
-                    type = CHARSET.displayName() + " String, XML";
+                    type = CHARSET.displayName() + " charset detected, XML document";
 				} catch (SaxParserException e) {
-        			type = CHARSET.displayName() + " String, INVALID XML";
+        			type = CHARSET.displayName() + " charset detected, INVALID XML payload";
         			formatted = new AaAnsi().ex(e).reset().a('\n').a(text, INDENT <= 0).toString();
 				}
 //        		try {
@@ -639,7 +625,8 @@ public class PrettyDump {
 	                		System.out.println(ms.binary.formatted);
 	                		if (INDENT > 0) System.out.println();
 	                	} else if (line.startsWith("XML:")) {
-	                		line = line.replace("XML:                                   ", "XML Payload: (should use binary payload!)");
+//	                		line = line.replace("XML:                                   ", "XML Payload: should use binary payload!");
+	                		line = line.replace("XML:                                   ", "XML Payload section being used:        ");
 	                		System.out.println(new AaAnsi().a(line));
 	                		if (ms.xml.type != null) {
 		                		/* if (ms.xml.type.contains("INVALID")) System.out.println(new AaAnsi().invalid(ms.xml.type + ":"));
