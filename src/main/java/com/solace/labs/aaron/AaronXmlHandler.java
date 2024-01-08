@@ -57,7 +57,7 @@ public class AaronXmlHandler extends DefaultHandler implements LexicalHandler, E
 		}
 		start.a('<').fg(Elem.KEY).a(qName);
 		for (int i=0; i<atts.getLength(); i++) {
-			start.a(' ').fg(Elem.DATA_TYPE).a(atts.getQName(i)).fg(Elem.BRACE).a("=").fg(Elem.STRING).a('"').a(atts.getValue(i)).a('"');
+			start.a(' ').fg(Elem.DATA_TYPE).a(atts.getQName(i)).fg(Elem.BRACE).a("=").fg(Elem.BYTES_CHARS).a('"').a(atts.getValue(i)).a('"');
     	}
 //		ansi.a('>');
 		previous = Tag.START;

@@ -94,7 +94,7 @@ public enum Elem {
 		map.put(DESTINATION, new Col(49));
 		map.put(TOPIC_SEPARATOR, new Col(43));
 		map.put(MSG_BREAK, new Col(-1,true));
-		map.put(ERROR, new Col(193));
+		map.put(ERROR, new Col(196));
 		map.put(UNKNOWN, new Col(196));
 //		defaults.put(DEFAULT, new Col(66));
 		map.put(DEFAULT, new Col(102));

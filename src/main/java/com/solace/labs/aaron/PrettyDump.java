@@ -111,7 +111,7 @@ public class PrettyDump {
     	
     	for (String arg : args) {
     		if (arg.equals("-h") || arg.startsWith("--h") || args.length > 6) {
-                System.out.printf("Usage: %s [host:port] [message-vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]%n%n", APP_NAME);
+                System.out.printf("Usage: %s [host:port] [msg-vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]%n%n", APP_NAME);
                 System.out.println(" - If using TLS, remember \"tcps://\" before host");
                 System.out.println(" - Default parameters will be: localhost default aaron pw \"#noexport/>\" 4");
                 System.out.println("     (FYI: if client-username 'default' is enabled in VPN, you can use any username)");
