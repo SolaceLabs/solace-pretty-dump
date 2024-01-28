@@ -122,6 +122,8 @@ public class AaAnsi {
 			Col c = elem.getCurrentColor();
 			if (c.faint) {
 				makeFaint().fg(c.value);
+			} else if (c.italics) {
+				makeItalics().fg(c.value);
 			} else {
 				fg(c.value);
 			}
@@ -137,14 +139,23 @@ public class AaAnsi {
 		return this;
 	}
 	
-	public AaAnsi makeFaint() {
+	AaAnsi makeFaint() {
 		if (isOn()) {
 			/* if (faint)*/ ansi.a(Attribute.INTENSITY_FAINT);
 //			else ansi.a(Attribute.INTENSITY_BOLD_OFF);  // doesn't work.  For some reason there is no "faint off" ..!?
 		}
 		return this;
 	}
-	
+
+	public AaAnsi makeItalics() {
+		ansi.a(Attribute.ITALIC);
+//		if (isOn()) {
+//			/* if (faint)*/ ansi.a(Attribute.INTENSITY_FAINT);
+////			else ansi.a(Attribute.INTENSITY_BOLD_OFF);  // doesn't work.  For some reason there is no "faint off" ..!?
+//		}
+		return this;
+	}
+
 	@Override
 	public String toString() {
 		return UsefulUtils.chop(ansi.toString()) + (isOn() ? new Ansi().reset().toString() : "");
@@ -182,19 +193,19 @@ public class AaAnsi {
 	 */
 	public AaAnsi a(String s, boolean compact) {
 		StringBuilder sb = new StringBuilder();
-		String replacement = null;  // needed if we have to substitute any invalid chars
+		String replacement = null;  // needed if we have to substitute any invalid chars, init later if required
 		for (int i=0; i<s.length(); i++) {
 			char c = s.charAt(i);
-			if (c < 0x20) {  // special handling of control characters
-				if (compact || (!compact && (c < 0x09 || c == 0x0B || c == 0x0C || c > 0x0D))) {
+			if (c < 0x20 || c == 0x7f) {  // special handling of control characters, make them visible
+//				if (compact || (!compact && (c < 0x09 || c == 0x0B || c == 0x0C || c > 0x0D))) {
+				if (compact || c < 0x09 || c > 0x0A) {
 					sb.append("·");  // control chars
-				} else sb.append(c);
-			} else if (c == 0x7f) {
-				sb.append("·");
-			} else if (c == '\ufffd') {
-				if (replacement == null) {
-					if (isOn()) {
-	//					Ansi a = new Ansi().reset().bg(196).fg(231).a('\ufffd').bgDefault().fg(curElem.getCurrentColor().value);
+				} else {  // 0x9 is tab, 0xa is line feed
+					sb.append(c);
+				}
+			} else if (c == '\ufffd') {  // the replacement char introduced when trying to parse the bytes with the specified charset
+				if (replacement == null) {  // lazy initialization
+					if (isOn()) {  // bright red background, upsidedown ?
 						Ansi a = new Ansi().reset().bg(Elem.ERROR.getCurrentColor().value).fg(231).a('¿').bgDefault().fg(curElem.getCurrentColor().value);
 						replacement = a.toString();
 					} else {
@@ -202,7 +213,7 @@ public class AaAnsi {
 					}
 				}
 				sb.append(replacement);
-			} else {
+			} else {  // all good, normal char
 				sb.append(c);
 			}
 		}

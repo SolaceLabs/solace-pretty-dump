@@ -1,4 +1,4 @@
-package com.solace.labs.aaron.test;
+package com.solace.labs.aaron;
 
 import java.io.BufferedReader;
 import java.io.IOException;

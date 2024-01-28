@@ -1,4 +1,4 @@
-package com.solace.labs.aaron.test;
+package com.solace.labs.aaron;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -127,7 +127,7 @@ public class TestStuff {
         System.out.println(Byte.toString(bytes[0]));
         System.out.println(Integer.toHexString(bytes[0]));
         System.out.println(Integer.toHexString(bytes[0]));
-        System.out.println(Arrays.toString(UsefulUtils.bytesToHexStrings(bytes)));
+        System.out.println(Arrays.toString(UsefulUtils.bytesToHexStringArray(bytes)));
         
 //        System.out.println(UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, 2));
         

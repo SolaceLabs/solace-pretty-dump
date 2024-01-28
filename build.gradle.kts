@@ -57,7 +57,13 @@ dependencies {
     // needed to 'bridge' the JCSMP API logs from JCL to log4j
     implementation("org.apache.logging.log4j:log4j-jcl:2.+")
 
+// https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
+implementation("com.google.protobuf:protobuf-java:3.+")
+
+
     //implementation(fileTree(mapOf("dir" to "lib", "include" to listOf("*.jar"))))
+    testImplementation("junit:junit:4.+")
+    testImplementation("org.json:json:20230227")
 }
 
 

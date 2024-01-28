@@ -61,7 +61,8 @@ public class GsonUtils {
 	 * @throws IOException
 	 */
 	private static void handleObject(JsonReader reader, AaAnsi ansi, int indentFactor, int indent) throws IOException {
-		ansi.reset().fg(Elem.BRACE).a('{').reset();
+		boolean empty = !reader.hasNext();
+		ansi.reset().fg(empty ? Elem.NULL : Elem.BRACE).a('{').reset();
 		if (indentFactor > 0) ansi.a('\n');
 		reader.beginObject();
 		while (reader.hasNext()) {
@@ -83,21 +84,23 @@ public class GsonUtils {
 				reader.endObject();
 				return;
 			} else if (token.equals(JsonToken.NAME)) {
-				handleNonArrayToken(reader, token, ansi, indent + indentFactor);
+				handleRegularToken(reader, token, ansi, indent + indentFactor);
 			} else {
-				handleNonArrayToken(reader, token, ansi, 0);
+				handleRegularToken(reader, token, ansi, 0);
 				// orig
 //				if (reader.hasNext()) ansi.a(",");
 //				if (indentFactor > 0) ansi.a('\n');
 				if (reader.hasNext()) {
 					ansi.a(",");
 					if (indentFactor > 0) ansi.a('\n');
-				} else if (indentFactor > 0) ansi.a(' ');
+				} else {  // no more
+					if (indentFactor > 0) ansi.a(' ');
+				}
 			}
 		}
 		// orig
 //		ansi.a(indent(indent)).a("}");
-		ansi.fg(Elem.BRACE).a("}").reset();
+		ansi.fg(empty ? Elem.NULL : Elem.BRACE).a("}").reset();
 	}
 
 	/**
@@ -107,9 +110,10 @@ public class GsonUtils {
 	 * @param reader
 	 * @throws IOException
 	 */
-	public static void handleArray(JsonReader reader, AaAnsi ansi, int indentFactor, int indent) throws IOException {
+	private static void handleArray(JsonReader reader, AaAnsi ansi, int indentFactor, int indent) throws IOException {
+		boolean empty = !reader.hasNext();
 		reader.beginArray();
-		ansi.reset().fg(Elem.BRACE).a("[").reset();
+		ansi.reset().fg(empty ? Elem.NULL : Elem.BRACE).a("[").reset();
 		if (indentFactor > 0) ansi.a('\n');
 		while (true) {
 			JsonToken token = reader.peek();
@@ -134,25 +138,29 @@ public class GsonUtils {
 			} else if (token.equals(JsonToken.NAME)) {
 				throw new AssertionError();
 			} else {
-				handleNonArrayToken(reader, token, ansi, indent + indentFactor);
+				handleRegularToken(reader, token, ansi, indent + indentFactor);
 				// orig
 //				if (reader.hasNext()) ansi.a(",");
 //				if (indentFactor > 0) ansi.a('\n');
 				if (reader.hasNext()) {
 					ansi.a(",");
 					if (indentFactor > 0) ansi.a('\n');
-				} else if (indentFactor > 0) ansi.a(' ');
+				} else {  // no more
+					if (indentFactor > 0) ansi.a(' ');
+				}
 			}
 		}
 		// orig
 //		ansi.a(indent(indent)).a("]");
 //		if (reader.hasNext()) ansi.a(",");
 //		if (indentFactor > 0) ansi.a('\n');
-		ansi.fg(Elem.BRACE).a("]").reset();
+		ansi.fg(empty ? Elem.NULL : Elem.BRACE).a("]").reset();
 		if (reader.hasNext()) {
 			ansi.a(",");
 			if (indentFactor > 0) ansi.a('\n');
-		} else if (indentFactor > 0) ansi.a(' ');
+		} else {  // no more
+			if (indentFactor > 0) ansi.a(' ');
+		}
 	}
 
 	
@@ -166,7 +174,7 @@ public class GsonUtils {
 	 * @param token
 	 * @throws IOException
 	 */
-	public static void handleNonArrayToken(JsonReader reader, JsonToken token, AaAnsi ansi, int indent) throws IOException {
+	private static void handleRegularToken(JsonReader reader, JsonToken token, AaAnsi ansi, int indent) throws IOException {
 		ansi.a(indent(indent));
 		if (token.equals(JsonToken.NAME)) {
 //			ansi.fg(Color.BLUE);

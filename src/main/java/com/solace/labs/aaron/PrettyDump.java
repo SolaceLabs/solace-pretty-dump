@@ -97,43 +97,33 @@ public class PrettyDump {
 
     @SuppressWarnings("deprecation")  // this is for our use of Message ID for the browser
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
-    	
-//    	AnsiConsole.systemInstall();
-//    	Ansi a1 = new Ansi().fgBlack().bgRed().a("bad").bgDefault().fgGreen();
-//    	Ansi a2 = new Ansi().fgGreen();
-//    	String s1 = "this is some x words.";
-//    	s1 = s1.replaceAll("x", a1.toString());
-//    	a2.a(s1);
-//    	System.out.println(a2.toString());
-//    	System.exit(0);
-    	
-    	
-    	
     	for (String arg : args) {
     		if (arg.equals("-h") || arg.startsWith("--h") || args.length > 6) {
                 System.out.printf("Usage: %s [host:port] [msg-vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]%n%n", APP_NAME);
                 System.out.println(" - If using TLS, remember \"tcps://\" before host");
-                System.out.println(" - Default parameters will be: localhost default aaron pw \"#noexport/>\" 4");
-                System.out.println("     (FYI: if client-username 'default' is enabled in VPN, you can use any username)");
-                System.out.println(" - Subscribing options, one of:");
+                System.out.println(" - Default parameters will be: localhost default foo bar \"#noexport/>\" 4");
+//                System.out.println("     (FYI: if client-username 'default' is enabled in VPN, you can use any username)");
+                System.out.println(" - Subscribing options (param 5, or shortcut param 1), one of:");
                 System.out.println("    - comma-separated list of Direct topic subscriptions");
                 System.out.println("       - strongly consider prefixing with '#noexport/' if using DMR or MNR");
                 System.out.println("    - q:queueName to consume from queue");
-                System.out.println("    - b:queueName to browse a queue");
-                System.out.println("       - Can browse all messages, or specific messages by ID");
+                System.out.println("    - b:queueName to browse a queue (all messages, or range of messages by ID)");
+//                System.out.println("       - Can browse all messages, or specific messages by ID");
                 System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
                 System.out.println(" - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting");
                 System.out.println("    - Use negative indent value (column width) for one-line topic & payload only");
                 System.out.println("       - Or use -1 for auto column width adjustment");
                 System.out.println("       - Use negative zero \"-0\" for only topic, no payload");
-                System.out.println(" - Shortcut mode: if the first argument contains '>', assume topics and localhost default broker");
-                System.out.println("    - e.g. ./bin/PrettyDump \"test/>\" -30");
-                System.out.println("    - If zero parameters, assume localhost default broker and subscribe to \"#noexport/>\"");
+                System.out.println(" - Shortcut mode: first argument contains '>' or starts '[qbf]:', assume localhost default broker");
+                System.out.println("    - e.g. ./bin/PrettyDump \"test/>\" -30  ~or~  \"./bin/PrettyDump q:q1 -1\"");
+                System.out.println("    - Or queues as well: e.g. ./bin/PrettyDump q:q1  ~or~  ./bin/PrettyDump b:dmq -1");
+//                System.out.println("    - If zero parameters, assume localhost default broker and subscribe to \"#noexport/>\"");
                 System.out.println("Environment variable options:");
                 System.out.println(" - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever");
-                System.out.println("    - Choose: \"standard\" (default), \"minimal\", \"vivid\", \"light\" (for white backgrounds), \"off\"");
+                System.out.println("    - Choose: \"standard\" (default), \"minimal\", \"vivid\", \"light\", \"off\"");
                 System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=whatever");
                 System.out.println("    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or \"set\" on Windows)");
+                System.out.println();
                 System.out.println("v0.1.0, 2024/01/09");
                 System.out.println();
                 System.exit(0);
@@ -141,9 +131,9 @@ public class PrettyDump {
     	}
     	String host = "localhost";
     	boolean shortcut = false;
-    	// new shortcut MODE... if first arg has a > in it, assume topic wildcard, and assume localhost default connectivity for rest
+    	// new shortcut MODE... if first arg looks like topics, assume topic wildcard, and assume localhost default connectivity for rest
     	if (args.length > 0) {
-    		if (args[0].contains(">")) {  // shortcut MODE
+    		if (args[0].contains(">") || args[0].contains("*/")) {  // shortcut MODE
     			shortcut = true;
     			topics = args[0].split("\\s*,\\s*");  // split on commas, remove any whitespace around them
     		} else if (args[0].matches("^[qbf]:.*")) {  // either browse, queue consume, or browse first to localhost
@@ -155,9 +145,9 @@ public class PrettyDump {
     	}
     	String vpn = "default";
     	if (args.length > 1 && !shortcut) vpn = args[1];
-    	String username = "aaron";
+    	String username = "foo";
     	if (args.length > 2 && !shortcut) username = args[2];
-    	String password = "pw";
+    	String password = "bar";
     	if (args.length > 3 && !shortcut) password = args[3];
     	if (args.length > 4 && !shortcut) topics = args[4].split("\\s*,\\s*");  // split on commas, remove any whitespace around them 
         if ((args.length > 5 && !shortcut) || (shortcut && args.length > 1)) {
@@ -204,6 +194,7 @@ public class PrettyDump {
             }
         });
         session.connect();  // connect to the broker... could throw JCSMPException, so best practice would be to try-catch here..!
+        
         System.out.printf("%s connected to VPN '%s' on broker '%s'.%n%n", APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE), session.getProperty(JCSMPProperties.HOST));
         
         // is it a queue?
@@ -214,7 +205,7 @@ public class PrettyDump {
             // Create a Flow be able to bind to and consume messages from the Queue.
             final ConsumerFlowProperties flow_prop = new ConsumerFlowProperties();
             flow_prop.setEndpoint(queue);
-            flow_prop.setAckMode(JCSMPProperties.SUPPORTED_MESSAGE_ACK_CLIENT);  // best practice
+            flow_prop.setAckMode(JCSMPProperties.SUPPORTED_MESSAGE_ACK_CLIENT);  // best practice (but probably not necessary for this app!)
             flow_prop.setActiveFlowIndication(true);
             System.out.printf("Attempting to bind to queue '%s' on the broker... ", queueName);
             FlowReceiver flowQueueReceiver = null;
@@ -262,8 +253,8 @@ public class PrettyDump {
 	                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 	                String answer = reader.readLine().trim().toLowerCase();
 	                reader.close();
-	                if (answer.isEmpty()) {  // all messages
-	                	
+	                if (answer.isEmpty()) {
+	                	// all messages
 	                } else {
 	                	try {  // assume only one integer (message ID) inputed
 	                		browseFrom = Integer.parseInt(answer);
@@ -275,7 +266,7 @@ public class PrettyDump {
 	                			if (numbers.length > 1) browseTo = Integer.parseInt(numbers[1]);
 	                		} else {
 	                			System.out.println("Invalid format, must be either integer, or range xxxxx-yyyyyy");
-	                			System.exit(0);
+	                			System.exit(1);
 	                		}
 	                	}
 	                }
@@ -288,10 +279,7 @@ public class PrettyDump {
     			System.exit(1);
 	        }
         } else {
-        	JCSMPGlobalProperties.setShouldDropInternalReplyMessages(false);  // neat trick 
-//        	JCSMPGlobalProperties gp = new JCSMPGlobalProperties();
-//
-//        	JCSMPFactory.onlyInstance().setGlobalProperties(gp);
+        	JCSMPGlobalProperties.setShouldDropInternalReplyMessages(false);  // neat trick to hear/echo all req/rep messages
             // Regular Direct topic consumer, using async / callback to receive
             final XMLMessageConsumer consumer = session.getMessageConsumer((JCSMPReconnectEventHandler)null, new PrinterHelper());
             for (String topic : topics) {
@@ -396,7 +384,7 @@ public class PrettyDump {
 	}
 	
 	private static String parse(byte[] bytes) throws CharacterCodingException {
-        CharBuffer cb = DECODER.decode(ByteBuffer.wrap(bytes));  // could throw off a bunch of unchecked exceptions if it's binary or a different charset
+        CharBuffer cb = DECODER.decode(ByteBuffer.wrap(bytes));  // usually could throw off a bunch of unchecked exceptions if it's binary or a different charset, but now doing "replace" so it shouldn't
         return cb.toString();
 	}
 
@@ -404,7 +392,6 @@ public class PrettyDump {
 		
 		String type = null;  // might initialize later if JSON or XML
 		String formatted = "<UNINITIALIZED>";  // to ensure gets overwritten
-//		boolean malformed = false;  // TBD
 		
 		void format(final String text) {
 			if (text == null || text.isEmpty()) {
@@ -567,7 +554,26 @@ public class PrettyDump {
 			            } else {  // bytes message
 			            	ms.msgType = "Raw BytesMessage";
 			            	if (message.getAttachmentByteBuffer() != null) {  // should be impossible since content length > 0
-			            		ms.binary.format(message.getAttachmentByteBuffer().array());
+			            		byte[] bytes = message.getAttachmentByteBuffer().array();
+			            		
+			            		// TEST //////////////////////////////
+			            		
+/*			            		if (false && message.getDestination().getName().startsWith("_telemetry/broker/trace/receive/v1")) {
+			            			
+//			            			ms.binary.formatted = ProtoBufUtils.decodeReceiveSpan(message.getAttachmentByteBuffer().array());
+			            			ms.binary.formatted = ProtoBufUtils.decodeProtoBufBytes(bytes, "receive", 4);
+			            			ms.binary.type = "Solace Receive Span ProtoBuf";
+			            		} else if (false && message.getDestination().getName().startsWith("_telemetry/broker/trace/egress/v1")) {
+			            			ms.binary.formatted = ProtoBufUtils.decodeProtoBufBytes(bytes, "egress", 4);
+//			            			ms.binary.formatted = ProtoBufUtils.decodeEgressSpan(message.getAttachmentByteBuffer().array());
+			            			ms.binary.type = "Solace Egress Span ProtoBuf";
+
+			            		
+			            		
+			            		} else */
+			            		// TEST //////////////////////////////
+			            		
+			            		ms.binary.format(bytes);
 		                    }
 			            }
 		            }
@@ -636,8 +642,10 @@ public class PrettyDump {
 //	                		System.out.println(UsefulUtils.chop(ms.xml.formatted));
 	                		System.out.println(ms.xml.formatted);
 	                		if (INDENT > 0) System.out.println();
-	                	} else if (line.contains("Destination:           ")) {
+	                	} else if (line.contains("Destination:           ")) {  // contains, not startsWith, due to ANSI codes
 	                		System.out.println(line);  // just print out since it's already formatted
+	                	} else if (line.startsWith("Message Id:") && message.getDeliveryMode() == DeliveryMode.DIRECT) {
+	                		// skip it, hide the auto-generated message ID on Direct messages
 	                	} else {  // everything else
 	                		System.out.println(new AaAnsi().a(line));
 	                	}
@@ -667,14 +675,15 @@ public class PrettyDump {
             		}
             	}
             } catch (Exception e) {  // SDT parsing error, really shouldn't happen!!  or any exception!
-            	System.out.println("EXCEPTION THROWN, HERE WE ARE: " + e.toString());
-        		String[] lines = message.dump(XMLMessage.MSGDUMP_FULL).trim().split("\n");
-        		colorizeDestination(lines, message.getDestination());
-        		printMessageStart();
-        		System.out.println(new AaAnsi().ex(e));
-        		for (String line : lines) {
-        			System.out.println(line);
-        		}
+            	printMessageStart();
+            	System.out.println(new AaAnsi().ex(e));
+            	e.printStackTrace();
+            	System.out.println(message.dump());
+//        		String[] lines = message.dump(XMLMessage.MSGDUMP_FULL).trim().split("\n");
+//        		colorizeDestination(lines, message.getDestination());  // no fancy colours if exception thrown!
+//        		for (String line : lines) {
+//        			System.out.println(line);
+//        		}
         		printMessageEnd();
             }
             // if we're not browsing, and it's not a Direct message (doesn't matter if we ACK a Direct message anyhow)

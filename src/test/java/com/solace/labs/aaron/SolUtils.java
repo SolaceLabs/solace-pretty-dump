@@ -14,7 +14,7 @@
  * the License.
  */
 
-package com.solace.labs.aaron.test;
+package com.solace.labs.aaron;
 
 import java.lang.reflect.Field;
 

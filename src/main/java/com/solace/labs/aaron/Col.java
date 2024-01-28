@@ -21,17 +21,26 @@ public class Col {
 	
 	final int value;
 	final boolean faint;
+	final boolean italics;
 	
 	public Col(int value) {
 		this.value = value;
 		faint = false;
+		italics = false;
 	}
 	
 	public Col(int value, boolean faint) {
 		this.value = value;
 		this.faint = faint;
+		italics = false;
 	}
-	
+
+	public Col(int value, boolean faint, boolean italics) {
+		this.value = value;
+		this.faint = faint;
+		this.italics = italics;
+	}
+
 	@Override
 	public String toString() {
 		return (faint ? "Faint " : "") + value;

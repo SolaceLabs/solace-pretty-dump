@@ -16,10 +16,6 @@
 
 package com.solace.labs.aaron;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
 import java.nio.charset.StandardCharsets;
 
 import com.solacesystems.common.util.ByteArray;
@@ -48,7 +44,7 @@ public class UsefulUtils {
 			'└','┴','┬','├','─','┼','╞','╟','╚','╔','╩','╦','╠','═','╬','╧',
 			'╨','╤','╥','╙','╘','╒','╓','╫','╪','┘','┌','█','▄','▌','▐','▀',
 			'α','ß','Γ','π','Σ','σ','µ','τ','Φ','Θ','Ω','δ','∞','φ','ε','∩',
-			'≡','±','≥','≤','⌠','⌡','÷','≈','°','∙','·','√','ⁿ','²','■',' ',
+			'≡','±','≥','≤','⌠','⌡','÷','≈','°','∙','·','√','ⁿ','²','■','·',
 //			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
 //			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
 			'╳','☺','☻','♥','♦','♣','♠','•','◘','○','◙','♂','♀','♪','♫','☼',
@@ -132,32 +128,88 @@ public class UsefulUtils {
 		return s;
 	}
 	
-	private static final byte[] HEX_ARRAY = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
-	
-	private static String bytesToHex(byte[] bytes) {
-	    byte[] hexChars = new byte[bytes.length * 2];
+//	private static final byte[] HEX_ARRAY_BYTES = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
+//	private static final char[] HEX_ARRAY_CHARS = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
+	private static final char[] TEST = { '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f' };
+	private static final String[] BYTE_REPS = new String[256];
+	static {
+		for (int i=0; i<16; i++) {
+			for (int j=0; j<16; j++) {
+				BYTE_REPS[(i * 16) + j] = new StringBuilder().append(TEST[i]).append(TEST[j]).toString();
+			}
+		}
+	}
+	public static String getByteRepresentation(byte b) {
+		if (b < 0) return BYTE_REPS[b + 256];
+		return BYTE_REPS[b];
+	}
+
+	/**
+	 * Returns a String that's just a long representation of bytes: "517f0c20b3524d"
+	 * @param bytes
+	 * @return a String that's just a long representation of bytes: "517f0c20b3524d"
+	 */
+	@SuppressWarnings("unused")
+	private static String bytesToLongHexString(byte[] bytes) {
+	    byte[] hexChars = new byte[bytes.length * 2];  // twice as many, two chars for each byte (e.g. 7F, 0C)
 	    for (int j = 0; j < bytes.length; j++) {
 	        int v = bytes[j] & 0xFF;
-	        hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-	        hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+//	        hexChars[j * 2] = HEX_ARRAY_BYTES[v >>> 4];
+//	        hexChars[j * 2 + 1] = HEX_ARRAY_BYTES[v & 0x0F];
 	    }
 	    return new String(hexChars, StandardCharsets.US_ASCII);
 	}
 
-	public static String[] bytesToHexStrings(byte[] bytes) {
-	    byte[] hexChars = new byte[2];
+	/**
+	 * Returns a nicer-looking String: "[51 7f 0c 20 b3 52 4d]"
+	 * @param bytes
+	 * @return
+	 */
+	public static String bytesToSpacedHexString(byte[] bytes) {
+		if (bytes.length == 0) return "[]";
+		StringBuilder sb = new StringBuilder("[");
+//        sb.append((char)HEX_ARRAY_BYTES[((int)bytes[0] & 0xFF) >>> 4]).append((char)HEX_ARRAY_BYTES[bytes[0] & 0x0F]);
+//        sb.append(TEST[((int)bytes[0] & 0xFF) >>> 4]).append(TEST[bytes[0] & 0x0F]);
+        sb.append(getByteRepresentation(bytes[0]));
+        if (bytes.length > 1) {
+//	    byte[] hexChars = new byte[bytes.length * 2];
+        	for (int i = 1; i < bytes.length; i++) {
+//        		int v = bytes[i] & 0xFF;
+//        		sb.append(' ').append(TEST[v >>> 4]).append(TEST[v & 0x0F]);
+                sb.append(' ').append(getByteRepresentation(bytes[i]));
+        	}
+        }
+        return sb.append(']').toString();
+//	    return new String(hexChars, StandardCharsets.US_ASCII);
+	}
+
+	
+	/** for IP addresses */
+	public static String ipAddressBytesToHexString(byte[] bytes) {
+		assert bytes.length == 4;
+		StringBuilder sb = new StringBuilder(bytesToSpacedHexString(bytes)).append(" (");
+        sb.append(Byte.toUnsignedInt(bytes[0]));
+    	for (int i = 1; i < 4; i++) {
+    		sb.append('.').append(Byte.toUnsignedInt(bytes[i]));
+    	}
+        return sb.append(')').toString();
+	}
+
+	public static String[] bytesToHexStringArray(byte[] bytes) {
+//	    byte[] hexChars = new byte[2];
 	    String[] blah = new String[bytes.length];
 	    for (int j = 0; j < bytes.length; j++) {
-	        int v = bytes[j] & 0xFF;
-	        hexChars[0] = HEX_ARRAY[v >>> 4];
-	        hexChars[1] = HEX_ARRAY[v & 0x0F];
-	        blah[j] = new String(hexChars, StandardCharsets.US_ASCII);
+//	        int v = bytes[j] & 0xFF;
+//	        hexChars[0] = HEX_ARRAY_BYTES[v >>> 4];
+//	        hexChars[1] = HEX_ARRAY_BYTES[v & 0x0F];
+//	        blah[j] = new String(hexChars, StandardCharsets.US_ASCII);
+	    	blah[j] = getByteRepresentation(bytes[j]);
 	    }
 	    return blah;
 	}
 
 
-	/*
+	/*  Orig SdkPerf dump format:
   1d 00 a3 5b 7b 22 6e 61    6d 65 22 3a 22 74 65 73    ...[{"name":"tes
   74 20 70 72 6f 64 75 63    74 22 2c 22 71 75 61 6e    t.product","quan
   74 69 74 79 22 3a 35 2c    22 70 72 69 63 65 22 3a    tity":5,"price":
@@ -196,7 +248,7 @@ public class UsefulUtils {
 //			return new AaAnsi().reset().a("[").fg(Elem.BYTES_CHARS).a(getSimpleString(bytes)).reset().a("]").toString();  // just a long string of chars
 			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset().toString();  // byte values
 		}
-		String[] hex = bytesToHexStrings(bytes);
+		String[] hex = bytesToHexStringArray(bytes);
 		AaAnsi ansi = new AaAnsi();
 		for (int i=0; i < hex.length; i++) {
 			if (i % width == 0) {
@@ -243,11 +295,7 @@ public class UsefulUtils {
 	
 	
 	static String indent(int amount) {
-		StringBuilder sb = new StringBuilder();
-		for (int i=0; i<amount; i++) {
-			sb.append(' ');
-		}
-		return sb.toString();
+		return pad(amount, ' ');
 	}
 
 	static String pad(int amount, char c) {

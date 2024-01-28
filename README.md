@@ -1,6 +1,7 @@
 # PrettyDump for JSON and XML Solace messages
-A useful utility that emulates SdkPerf `-md` output, echoing received Solace messages to the console, but pretty-printed for **JSON** and **XML**.
-Now also with a display option for a compressed, one-line-per-message view.
+
+A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON** and **XML**.
+Also with a display option for a minimal one-line-per-message view.
 
 **Latest release: v0.0.10  2023/11/06**
 
@@ -14,7 +15,7 @@ Now also with a display option for a compressed, one-line-per-message view.
 ## Requirements
 
 Java 8+
-
+- Network access to a Solace broker (localhost software, cloud, appliance, etc.)
 
 ## Building
 
@@ -30,6 +31,7 @@ Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-d
 
 ## Running
 
+#### No args, default options
 ```
 $ bin/PrettyDump
 
@@ -38,7 +40,7 @@ PrettyDump connected to VPN 'default' on broker 'localhost'.
 Subscribed to Direct topic: '#noexport/>'
 
 Starting. Press Ctrl-C to quit.
-^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'hello/world'
 Priority:                               4
 Class Of Service:                       USER_COS_1
@@ -49,9 +51,10 @@ TextMessage, JSON Object:
 {
     "hello": "world"
 }
-^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^ End Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
+#### Consume from a Solace Cloud queue
 ```
 $ bin/PrettyDump demo.messaging.solace.cloud demo-vpn user pw q:q1
 
@@ -60,12 +63,15 @@ PrettyDump connected to VPN 'demo-vpn' on broker 'demo.messaging.solace.cloud'.
 Attempting to bind to queue 'q1' on the broker... success!
 ```
 
+#### Shorcut mode: localhost broker, wildcard topics, and one-line output
 ```
-$ bin/PrettyDump "shortcut/>" -30
+$ bin/PrettyDump "solace/>" -25
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'default' on broker 'localhost'.
 Subscribed to Direct topic: 'shortcut/>'
+
+solace/samples/testing  This is a text payload.
 ```
 
 
@@ -150,8 +156,7 @@ To find the ID of the messages on a queue, either use PubSub+ Manager, CLI, or S
 
 ![View Message IDs in PubSubPlus Manager](https://github.com/SolaceLabs/pretty-dump/blob/main/src/browse-msgs.png)
 
-
-Or to just browse the first/oldest message on the queue, enter "1" or some other low number.
+**NOTE:** Use `f:<queueName>` to browse just the first/oldest message on the queue. Very useful for "poison pills" or "head-of-line blocking" messages.
 
 ```
 $ bin/PrettyDump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1
@@ -165,7 +170,7 @@ Browse all messages -> press [ENTER],
  or range of IDs (e.g. "25909-26183" or "9517-"): 31737085
 
 Starting. Press Ctrl-C to quit.
-^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'bus_trak/gps/v2/004M/01398/001.31700/0103.80721/30/OK'
 Priority:                               4
 Class Of Service:                       USER_COS_1
@@ -185,7 +190,7 @@ TextMessage, JSON Object:
     "longitude": 103.80721,
     "status": "OK"
 }
-^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^ End Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^
 Browsing finished!
 Main thread exiting.
 Shutdown detected, quitting...
@@ -198,7 +203,6 @@ Shutdown detected, quitting...
 
 Valid vales are between 1 and 20.  Indent is default 4 in these examples:
 ```
-PrettyDump connected, and running. Press Ctrl-C to quit.
 ^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
