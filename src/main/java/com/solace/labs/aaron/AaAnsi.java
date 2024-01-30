@@ -158,7 +158,7 @@ public class AaAnsi {
 
 	@Override
 	public String toString() {
-		return UsefulUtils.chop(ansi.toString()) + (isOn() ? new Ansi().reset().toString() : "");
+		return UsefulUtils.chop(ansi.toString());// + (isOn() ? new Ansi().reset().toString() : "");
 //		return UsefulUtils.chop(ansi.toString()) + new Ansi().reset().toString();
 	}
 
@@ -185,13 +185,17 @@ public class AaAnsi {
 	}
 
 	public AaAnsi a(String s) {
-		return a(s, false);
+		return a(s, false, false);
 	}
-	
+
+	public AaAnsi a(String s, boolean compact) {
+		return a(s, compact, false);
+	}
+
 	/** Consider each char individually, and if replacement \ufffd char then add some red colour.
 	 *  Also, compact means replace all the invisible whitespace (CR, LF, TAB) with dots
 	 */
-	public AaAnsi a(String s, boolean compact) {
+	public AaAnsi a(String s, boolean compact, boolean styled) {
 		StringBuilder sb = new StringBuilder();
 		String replacement = null;  // needed if we have to substitute any invalid chars, init later if required
 		for (int i=0; i<s.length(); i++) {
@@ -199,7 +203,27 @@ public class AaAnsi {
 			if (c < 0x20 || c == 0x7f) {  // special handling of control characters, make them visible
 //				if (compact || (!compact && (c < 0x09 || c == 0x0B || c == 0x0C || c > 0x0D))) {
 				if (compact || c < 0x09 || c > 0x0A) {
-					sb.append("·");  // control chars
+//				if (compact || c != 0x0A) {
+					if (c == 0) {
+						sb.append('∅');  // make NULL more visible
+//						sb.append('Ø');  // make NULL more visible
+//						sb.append("∅ Ø Ø");
+//						if (isOn()) {
+//							Ansi a = new Ansi().fg(Elem.NULL.getCurrentColor().value).a('∅').fg(curElem.getCurrentColor().value);
+//							sb.append(a.toString());
+//						} else {
+//							sb.append('∅');
+//						}
+					} else if (c == 2899) {  // don't do this... was test code for making tabs visible
+							if (isOn()) {
+							Ansi a = new Ansi().a(Attribute.INTENSITY_FAINT).a("────────").reset().fg(curElem.getCurrentColor().value);
+							sb.append(a.toString());
+						} else {
+							sb.append("────────");
+						}
+					} else {
+						sb.append("·");  // control chars
+					}
 				} else {  // 0x9 is tab, 0xa is line feed
 					sb.append(c);
 				}
@@ -214,7 +238,19 @@ public class AaAnsi {
 				}
 				sb.append(replacement);
 			} else {  // all good, normal char
-				sb.append(c);
+				if (styled && isOn()) {
+					if (Character.isMirrored(c)) {
+						AaAnsi a = new AaAnsi().fg(Elem.BRACE).a(c).fg(curElem);
+						sb.append(a.toString());
+					} else if ((c == ',' || c == ';' || c == '.' || c == ':') && i < s.length()-1 && Character.isWhitespace(s.charAt(i+1))) {
+						AaAnsi a = new AaAnsi().reset().a(c).fg(curElem);
+//						a.ansi.fgDefault().a(c);
+//						a.fg(curElem);
+						sb.append(a.toString());
+					} else {
+						sb.append(c);
+					}
+				} else sb.append(c);
 			}
 		}
 		ansi.a(sb.toString());

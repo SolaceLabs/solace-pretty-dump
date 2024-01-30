@@ -16,8 +16,6 @@
 
 package com.solace.labs.aaron;
 
-import java.nio.charset.StandardCharsets;
-
 import com.solacesystems.common.util.ByteArray;
 
 public class UsefulUtils {
@@ -47,7 +45,7 @@ public class UsefulUtils {
 			'≡','±','≥','≤','⌠','⌡','÷','≈','°','∙','·','√','ⁿ','²','■','·',
 //			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
 //			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
-			'╳','☺','☻','♥','♦','♣','♠','•','◘','○','◙','♂','♀','♪','♫','☼',
+			/* '╳'*/'∅'/*'Ø'*/,'☺','☻','♥','♦','♣','♠','•','◘','○','◙','♂','♀','♪','♫','☼',  // how to represent NULL?
 			'►','◄','↕','‼','¶','§','▬','↨','↑','↓','→','←','∟','↔','▲','▼',
 			' ','!','"','#','$','%','&','\'','(',')','*','+',',','-','.','/',
 			'0','1','2','3','4','5','6','7','8','9',':',';','<','=','>','?',
@@ -121,8 +119,14 @@ public class UsefulUtils {
 		return new String(bytes, StandardCharsets.US_ASCII);
 	}
 */	
+	/**
+	 * Removes only trailing '\n' chars (unlike String.trim())
+	 * @param s
+	 * @return
+	 */
 	static String chop(String s) {
-		if (s.endsWith("\n")) {
+		if (s.endsWith("\n") || s.endsWith("\r")) {
+			// recursive call!
 			return chop(s.substring(0, s.length()-1));  // just in case there's 2 trailing carriage returns?
 		}
 		return s;
@@ -130,9 +134,9 @@ public class UsefulUtils {
 	
 //	private static final byte[] HEX_ARRAY_BYTES = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
 //	private static final char[] HEX_ARRAY_CHARS = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
-	private static final char[] TEST = { '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f' };
-	private static final String[] BYTE_REPS = new String[256];
+	private static final String[] BYTE_REPS = new String[256];  // static config, only 256 possible Strings
 	static {
+		/* private static final */char[] TEST = { '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f' };
 		for (int i=0; i<16; i++) {
 			for (int j=0; j<16; j++) {
 				BYTE_REPS[(i * 16) + j] = new StringBuilder().append(TEST[i]).append(TEST[j]).toString();
@@ -152,12 +156,15 @@ public class UsefulUtils {
 	@SuppressWarnings("unused")
 	private static String bytesToLongHexString(byte[] bytes) {
 	    byte[] hexChars = new byte[bytes.length * 2];  // twice as many, two chars for each byte (e.g. 7F, 0C)
-	    for (int j = 0; j < bytes.length; j++) {
-	        int v = bytes[j] & 0xFF;
+	    StringBuilder sb = new StringBuilder(bytes.length * 2);
+	    for (int i = 0; i < bytes.length; i++) {
+//	        int v = bytes[j] & 0xFF;
 //	        hexChars[j * 2] = HEX_ARRAY_BYTES[v >>> 4];
 //	        hexChars[j * 2 + 1] = HEX_ARRAY_BYTES[v & 0x0F];
+	    	sb.append(getByteRepresentation(bytes[i]));
 	    }
-	    return new String(hexChars, StandardCharsets.US_ASCII);
+//	    return new String(hexChars, StandardCharsets.US_ASCII);
+	    return sb.toString();
 	}
 
 	/**
@@ -208,15 +215,6 @@ public class UsefulUtils {
 	    return blah;
 	}
 
-
-	/*  Orig SdkPerf dump format:
-  1d 00 a3 5b 7b 22 6e 61    6d 65 22 3a 22 74 65 73    ...[{"name":"tes
-  74 20 70 72 6f 64 75 63    74 22 2c 22 71 75 61 6e    t.product","quan
-  74 69 74 79 22 3a 35 2c    22 70 72 69 63 65 22 3a    tity":5,"price":
-  31 30 2e 39 39 2c 22 74    6f 74 61 6c 22 3a 35 30    10.99,"total":50
-  7d 2c 7b 22 6e 61 6d 65    22 3a 22 43 72 65 61 74    },{"name":"Creat
-	 */
-
 	private static String printBinaryBytesSdkPerfStyle2(byte[] bytes) {
 		return printBinaryBytesSdkPerfStyle2(bytes, 0);
 	}
@@ -242,19 +240,29 @@ public class UsefulUtils {
 //	static final int WIDTH = 32;
 	static final int COLS = 8;
 	
+	/*  Orig SdkPerf dump format:
+	  1d 00 a3 5b 7b 22 6e 61    6d 65 22 3a 22 74 65 73    ...[{"name":"tes
+	  74 20 70 72 6f 64 75 63    74 22 2c 22 71 75 61 6e    t.product","quan
+	  74 69 74 79 22 3a 35 2c    22 70 72 69 63 65 22 3a    tity":5,"price":
+	  31 30 2e 39 39 2c 22 74    6f 74 61 6c 22 3a 35 30    10.99,"total":50
+	  7d 2c 7b 22 6e 61 6d 65    22 3a 22 43 72 65 61 74    },{"name":"Creat
+		 */
+	
 	/** this should only be called if we know it's not a UTF-8 (or whatever) string */
 	private static String printBytes(byte[] bytes, int indent, int width) {
 		if (indent <= 0) {
 //			return new AaAnsi().reset().a("[").fg(Elem.BYTES_CHARS).a(getSimpleString(bytes)).reset().a("]").toString();  // just a long string of chars
 			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset().toString();  // byte values
 		}
-		String[] hex = bytesToHexStringArray(bytes);
+//		String[] hex = bytesToHexStringArray(bytes);
+		String hex2 = bytesToLongHexString(bytes);
 		AaAnsi ansi = new AaAnsi();
-		for (int i=0; i < hex.length; i++) {
+		for (int i=0; i < bytes.length; i++) {
 			if (i % width == 0) {
 				ansi.a(indent(indent)).fg(Elem.BYTES);
 			}
-			ansi.a(hex[i]).a(" ");
+//			ansi.a(hex[i]).a(" ");
+			ansi.a(hex2.substring(i*2, (i*2)+2)).a(" ");
 			if (i % COLS == COLS-1) {
 				ansi.a("   ");
 			}
@@ -266,14 +274,14 @@ public class UsefulUtils {
 //					if (j % 16 == 15) ansi.a(" ");
 				}
 				ansi.reset().a('\n');
-//				if (i < hex.length-1 || indent > 0) ansi.a('\n');
+//				if (i < bytes.length-1 || indent > 0) ansi.a('\n');
 			}
 		}
 		// last trailing bit, if not evenly divisible by WIDTH
 		// works for everthing except 24
-		if (hex.length % width != 0) {
+		if (bytes.length % width != 0) {
 			ansi.reset();
-			int leftover = hex.length % width;
+			int leftover = bytes.length % width;
 			for (int i=0; i < width - leftover; i++) {
 				ansi.a("   ");
 			}
@@ -282,7 +290,7 @@ public class UsefulUtils {
 				ansi.a("   ");
 			}
 			ansi.fg(Elem.BYTES_CHARS);
-			for (int i= hex.length - leftover; i<hex.length; i++) {
+			for (int i= bytes.length - leftover; i<bytes.length; i++) {
 				ansi.a(getSimpleChar2(bytes[i]));
 				if (i % 8 == 7) ansi.a("  ");
 //				if (i % 16 == 15) ansi.a(" ");

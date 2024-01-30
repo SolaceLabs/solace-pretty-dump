@@ -50,7 +50,7 @@ public class Banner {
     	ansi.fg(6).a(banner[3]).a('\n');
     	ansi.fg(12).a(banner[4]).a('\n');
     	ansi.fg(4).a(banner[5]).a('\n');
-    	return ansi.toString();
+    	return ansi.reset().toString();
     }
     
 
@@ -64,7 +64,7 @@ public class Banner {
     	ansi.fg(100).a(banner[3]).a('\n');
     	ansi.fg(28).a(banner[4]).a('\n');  // should be 40
     	ansi.fg(30).a(banner[5]).a('\n');
-    	return ansi.toString();
+    	return ansi.reset().toString();
     }
     
     static String printBanner() {
@@ -103,7 +103,7 @@ public class Banner {
 //	    	col -= (201-171);
 	    	col -= (196-166);
     	}    	
-    	return ansi.toString();
+    	return ansi.reset().toString();
     }
     
     
@@ -184,8 +184,8 @@ public class Banner {
     			}
     		}
 	    	ansi.a('\n');
-    	}    	
-    	return ansi.toString();
+    	}
+    	return ansi.reset().toString();
     }
     
     public static void main(String... args) {

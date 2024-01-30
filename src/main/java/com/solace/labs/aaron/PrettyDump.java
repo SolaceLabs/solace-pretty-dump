@@ -383,7 +383,7 @@ public class PrettyDump {
 //		System.out.println("Using charset '"+CHARSET.displayName() + "'");
 	}
 	
-	private static String parse(byte[] bytes) throws CharacterCodingException {
+	private static String decodeToString(byte[] bytes) throws CharacterCodingException {
         CharBuffer cb = DECODER.decode(ByteBuffer.wrap(bytes));  // usually could throw off a bunch of unchecked exceptions if it's binary or a different charset, but now doing "replace" so it shouldn't
         return cb.toString();
 	}
@@ -393,7 +393,7 @@ public class PrettyDump {
 		String type = null;  // might initialize later if JSON or XML
 		String formatted = "<UNINITIALIZED>";  // to ensure gets overwritten
 		
-		void format(final String text) {
+		void formatString(final String text) {
 			if (text == null || text.isEmpty()) {
 				formatted = "";
 				return;
@@ -442,15 +442,19 @@ public class PrettyDump {
 //        		}
         	} else {  // it's neither JSON or XML, but has text content
         		type = CHARSET.displayName() + " String";
-        		formatted = new AaAnsi().fg(Elem.STRING).a(text, INDENT <= 0).toString();
+        		formatted = new AaAnsi().fg(Elem.STRING).a(text, INDENT <= 0, true).reset().toString();
+        		
+        		
+        		
+        		
         	}
 		}
 
-		void format(byte[] bytes) {
+		void formatBytes(byte[] bytes) {
 			try {
-				String parsed = parse(bytes);
+				String parsed = decodeToString(bytes);
 				boolean malformed = parsed.contains("\ufffd");
-				format(parsed);  // call the String version
+				formatString(parsed);  // call the String version
 	        	if (malformed) {
 					type = "Non " + type;
 //	        		formatted = formatted.replaceAll("\uFFFD", new AaAnsi().invalid("\ufffd").toString()) +
@@ -517,14 +521,14 @@ public class PrettyDump {
             String head = "^^^^^ Start Message #" + ++msgCount + " ^^^^^";
             String headPre = UsefulUtils.pad((int)Math.ceil((DIVIDER_LENGTH - head.length()) / 2.0) , '^');
             String headPost = UsefulUtils.pad((int)Math.floor((DIVIDER_LENGTH - head.length()) / 2.0) , '^');
-            System.out.println(new AaAnsi().fg(Elem.MSG_BREAK).a(headPre).a(head).a(headPost));
+            System.out.println(new AaAnsi().fg(Elem.MSG_BREAK).a(headPre).a(head).a(headPost).reset());
     	}
     	
     	private static void printMessageEnd() {
             String end = " End Message #" + msgCount + " ";
             String end2 = UsefulUtils.pad((int)Math.ceil((DIVIDER_LENGTH - end.length()) / 2.0) , '^');
             String end3 = UsefulUtils.pad((int)Math.floor((DIVIDER_LENGTH - end.length()) / 2.0) , '^');
-            System.out.println(new AaAnsi().fg(Elem.MSG_BREAK).a(end2).a(end).a(end3));
+            System.out.println(new AaAnsi().fg(Elem.MSG_BREAK).a(end2).a(end).a(end3).reset());
     	}
     	
         @Override
@@ -549,7 +553,7 @@ public class PrettyDump {
 		            	ms.binary.formatted = SdtUtils.printStream(((StreamMessage)message).getStream(), INDENT);
 		            } else {  // either text or binary, try/hope that the payload is a string, and then we can try to format it
 			            if (message instanceof TextMessage) {
-			            	ms.binary.format(((TextMessage)message).getText());
+			            	ms.binary.formatString(((TextMessage)message).getText());
 			            	ms.msgType = ms.binary.formatted.isEmpty() ? "Empty SDT TextMessage" : "SDT TextMessage";
 			            } else {  // bytes message
 			            	ms.msgType = "Raw BytesMessage";
@@ -573,7 +577,7 @@ public class PrettyDump {
 			            		} else */
 			            		// TEST //////////////////////////////
 			            		
-			            		ms.binary.format(bytes);
+			            		ms.binary.formatBytes(bytes);
 		                    }
 			            }
 		            }
@@ -584,7 +588,7 @@ public class PrettyDump {
 	            // what if there is XML content??
                 if (message.hasContent()) {  // try the XML portion of the payload (OLD SCHOOL!!!)
                 	ms.xml = new PayloadSection();
-                	ms.xml.format(message.getBytes());
+                	ms.xml.formatBytes(message.getBytes());
                 }
                 if (message.getProperties() != null && !message.getProperties().isEmpty()) {
                 	ms.userProps = new PayloadSection();
@@ -592,7 +596,7 @@ public class PrettyDump {
                 }
                 if (message.getUserData() != null && message.getUserData().length > 0) {
                 	ms.userData = new PayloadSection();
-            		String simple = parse(message.getUserData());
+            		String simple = decodeToString(message.getUserData());
             		AaAnsi ansi = new AaAnsi().fg(Elem.STRING).a(simple).reset();
                 	if (simple.contains("\ufffd")) {
                 		ansi.a('\n').aRaw(UsefulUtils.printBinaryBytesSdkPerfStyle(message.getUserData(), INDENT, AnsiConsole.getTerminalWidth()));

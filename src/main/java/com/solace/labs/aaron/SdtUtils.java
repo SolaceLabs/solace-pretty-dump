@@ -37,7 +37,7 @@ public class SdtUtils {
 		privPrintMap(map, indent, indentFactor, ansi);
 //		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a("{ ") + ansi.toString() + new AaAnsi().fg(Elem.BRACE).a(" }");
 		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('{') + ansi.toString() + new AaAnsi().fg(Elem.BRACE).a('}');
-		else return ansi.toString();
+		else return ansi.reset().toString();
 	}
 	
 	private static void privPrintMap(SDTMap map, final int indent, final int indentFactor, AaAnsi ansi) throws SDTException {
@@ -121,7 +121,7 @@ public class SdtUtils {
 		privPrintStream(stream, indent, indentFactor, ansi);
 //		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a("[ ") + ansi.toString() + new AaAnsi().fg(Elem.BRACE).a(" ]");
 		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('[') + ansi.toString() + new AaAnsi().fg(Elem.BRACE).a(']');
-		else return ansi.toString();
+		else return ansi.reset().toString();
 	}
 
 	
