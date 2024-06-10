@@ -16,6 +16,12 @@
 
 package com.solace.labs.aaron;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.regex.Pattern;
+
 import com.solacesystems.common.util.ByteArray;
 
 public class UsefulUtils {
@@ -38,15 +44,18 @@ public class UsefulUtils {
 			'Ç','ü','é','â','ä','à','å','ç','ê','ë','è','ï','î','ì','Ä','Å',  // DOS/IBM437 yeah!
 			'É','æ','Æ','ô','ö','ò','û','ù','ÿ','Ö','Ü','¢','£','¥','₧','ƒ',
 			'á','í','ó','ú','ñ','Ñ','ª','º','¿','⌐','¬','½','¼','¡','«','»',
-			'░','▒','▓','│','┤','╡','╢','╖','╕','╣','║','╗','╝','╜','╛','┐',
-			'└','┴','┬','├','─','┼','╞','╟','╚','╔','╩','╦','╠','═','╬','╧',
-			'╨','╤','╥','╙','╘','╒','╓','╫','╪','┘','┌','█','▄','▌','▐','▀',
+			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
+			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
+			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
+//			'░','▒','▓','│','┤','╡','╢','╖','╕','╣','║','╗','╝','╜','╛','┐',
+//			'└','┴','┬','├','─','┼','╞','╟','╚','╔','╩','╦','╠','═','╬','╧',
+//			'╨','╤','╥','╙','╘','╒','╓','╫','╪','┘','┌','█','▄','▌','▐','▀',
 			'α','ß','Γ','π','Σ','σ','µ','τ','Φ','Θ','Ω','δ','∞','φ','ε','∩',
 			'≡','±','≥','≤','⌠','⌡','÷','≈','°','∙','·','√','ⁿ','²','■','·',
-//			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
-//			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
-			/* '╳'*/'∅'/*'Ø'*/,'☺','☻','♥','♦','♣','♠','•','◘','○','◙','♂','♀','♪','♫','☼',  // how to represent NULL?
-			'►','◄','↕','‼','¶','§','▬','↨','↑','↓','→','←','∟','↔','▲','▼',
+			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
+			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
+//			/* '╳'*/'∅'/*'Ø'*/,'☺','☻','♥','♦','♣','♠','•','◘','○','◙','♂','♀','♪','♫','☼',  // how to represent NULL?
+//			'►','◄','↕','‼','¶','§','▬','↨','↑','↓','→','←','∟','↔','▲','▼',
 			' ','!','"','#','$','%','&','\'','(',')','*','+',',','-','.','/',
 			'0','1','2','3','4','5','6','7','8','9',':',';','<','=','>','?',
 			'@','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O',
@@ -192,9 +201,9 @@ public class UsefulUtils {
 
 	
 	/** for IP addresses */
-	public static String ipAddressBytesToHexString(byte[] bytes) {
+	public static String ipAddressBytesToIpV4String(byte[] bytes) {
 		assert bytes.length == 4;
-		StringBuilder sb = new StringBuilder(bytesToSpacedHexString(bytes)).append(" (");
+		StringBuilder sb = new StringBuilder(" (");
         sb.append(Byte.toUnsignedInt(bytes[0]));
     	for (int i = 1; i < 4; i++) {
     		sb.append('.').append(Byte.toUnsignedInt(bytes[i]));
@@ -224,16 +233,16 @@ public class UsefulUtils {
 		return indent(indent) + ba.toString();
 	}
 	
-	static String printBinaryBytesSdkPerfStyle(byte[] bytes, int indent) {
+	static AaAnsi printBinaryBytesSdkPerfStyle(byte[] bytes, int indent) {
 		return printBytes(bytes, indent, 16);  // default
 	}
 
-	static String printBinaryBytesSdkPerfStyle(byte[] bytes) {
+	static AaAnsi printBinaryBytesSdkPerfStyle(byte[] bytes) {
 		return printBytes(bytes, 4, 16);  // default
 	}
 	
-	static String printBinaryBytesSdkPerfStyle(byte[] bytes, int indent, int terminalWidth) {
-		if (terminalWidth > 142 + indent) return printBytes(bytes, indent, 32);
+	static AaAnsi printBinaryBytesSdkPerfStyle(byte[] bytes, int indent, int terminalWidth) {
+		if (terminalWidth > 147 + indent) return printBytes(bytes, indent, 32);
 		else return printBytes(bytes, indent, 16);
 	}
 	
@@ -249,56 +258,56 @@ public class UsefulUtils {
 		 */
 	
 	/** this should only be called if we know it's not a UTF-8 (or whatever) string */
-	private static String printBytes(byte[] bytes, int indent, int width) {
+	private static AaAnsi printBytes(byte[] bytes, int indent, int width) {
 		if (indent <= 0) {
 //			return new AaAnsi().reset().a("[").fg(Elem.BYTES_CHARS).a(getSimpleString(bytes)).reset().a("]").toString();  // just a long string of chars
-			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset().toString();  // byte values
+			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset();  // byte values
 		}
 //		String[] hex = bytesToHexStringArray(bytes);
 		String hex2 = bytesToLongHexString(bytes);
-		AaAnsi ansi = new AaAnsi();
+		AaAnsi aa = new AaAnsi();
 		for (int i=0; i < bytes.length; i++) {
 			if (i % width == 0) {
-				ansi.a(indent(indent)).fg(Elem.BYTES);
+				aa.a(indent(indent)).fg(Elem.BYTES);
 			}
 //			ansi.a(hex[i]).a(" ");
-			ansi.a(hex2.substring(i*2, (i*2)+2)).a(" ");
+			aa.a(hex2.substring(i*2, (i*2)+2)).a(" ");
 			if (i % COLS == COLS-1) {
-				ansi.a("   ");
+				aa.a("   ");
 			}
 			if (i % width == width-1) {
-				ansi.fg(Elem.BYTES_CHARS);
+				aa.fg(Elem.BYTES_CHARS);
 				for (int j=i-(width-1); j<=i; j++) {
-					ansi.a(getSimpleChar2(bytes[j]));
-					if (j % 8 == 7) ansi.a("  ");
+					aa.a(getSimpleChar2(bytes[j]));
+					if (j % 8 == 7) aa.a("  ");
 //					if (j % 16 == 15) ansi.a(" ");
 				}
-				ansi.reset().a('\n');
+				aa.reset().a('\n');
 //				if (i < bytes.length-1 || indent > 0) ansi.a('\n');
 			}
 		}
 		// last trailing bit, if not evenly divisible by WIDTH
 		// works for everthing except 24
 		if (bytes.length % width != 0) {
-			ansi.reset();
+			aa.reset();
 			int leftover = bytes.length % width;
 			for (int i=0; i < width - leftover; i++) {
-				ansi.a("   ");
+				aa.a("   ");
 			}
 			int extraGaps = (width - leftover - 1) / COLS;
 			for (int i=0; i <= extraGaps; i++) {
-				ansi.a("   ");
+				aa.a("   ");
 			}
-			ansi.fg(Elem.BYTES_CHARS);
+			aa.fg(Elem.BYTES_CHARS);
 			for (int i= bytes.length - leftover; i<bytes.length; i++) {
-				ansi.a(getSimpleChar2(bytes[i]));
-				if (i % 8 == 7) ansi.a("  ");
+				aa.a(getSimpleChar2(bytes[i]));
+				if (i % 8 == 7) aa.a("  ");
 //				if (i % 16 == 15) ansi.a(" ");
 			}
-			ansi.reset();
+			aa.reset();
 //			if (indent > 0) ansi.a('\n');
 		}
-		return ansi.toString();
+		return aa;
 	}
 	
 	
@@ -314,6 +323,167 @@ public class UsefulUtils {
 		return sb.toString();
 	}
 	
+	
+	
+	
+	
+/*	static void reflectionUtils(String className) throws IOException {
+		try {
+			Class<?> clazz = Class.forName(className);
+			reflectionUtils(clazz);
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		} finally {
+			
+		}
+	}
+	
+
+	static void reflectionUtils(Class<?> clazz) throws IOException {
+		
+		try {
+			for (Method m : clazz.getMethods()) {
+				System.out.println(m);
+			}
+			Class<?>[] inners = clazz.getClasses();
+			for (Class<?> inner : inners) {
+				System.out.printf("###################%n%s%n",inner.getName());
+//				System.in.read();
+//				reflectionUtils(inner);
+			}
+			reflectionListInners(clazz);
+		} catch (SecurityException e) {
+			e.printStackTrace();
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+		}
+	}
+
+	
+	static void reflectionListInners(Class<?> clazz) throws IOException {
+		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+		try {
+			Class<?>[] inners = clazz.getClasses();
+			for (Class<?> inner : inners) {
+				System.out.println(inner.getName());
+//				reader.readLine();
+				if (inner.getName().startsWith(clazz.getName())) reflectionListInners(inner);
+			}
+		} catch (SecurityException e) {
+			e.printStackTrace();
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+		}
+	}*/
+
+
+	// 5 year range around whatever today is
+	static final int YEAR_RANGE = 5;
+	static final long LOWER_MS = System.currentTimeMillis() - (1000L * Math.round(60 * 60 * 24 * 365.25 * YEAR_RANGE));
+	static final long UPPER_MS = System.currentTimeMillis() + (1000L * Math.round(60 * 60 * 24 * 365.25 * YEAR_RANGE));
+	// regex: either(start of string, or non-alpha) + ms + either(end of string, ec, or non-alpha)
+	// e.g. elapsed-ms, elapsed-msec, ms, msec, ms.duration;   msDuration won't work
+	static final Pattern PATTERN_MS = Pattern.compile("(?:^|[^a-zA-Z])ms(?:$|ec|[^a-zA-Z])");
+	static final Pattern PATTERN_US = Pattern.compile("(?:^|[^a-zA-Z])us(?:$|ec|[^a-zA-Z])");
+	static final Pattern PATTERN_NS = Pattern.compile("(?:^|[^a-zA-Z])ns(?:$|ec|[^a-zA-Z])");
+	static final Set<String> TIME_SEC_KEYWORDS = new LinkedHashSet<>();
+	static final Set<String> TIME_MS_KEYWORDS = new LinkedHashSet<>();
+	static final Set<String> TIME_US_KEYWORDS = new LinkedHashSet<>();  // micros
+	static final Set<String> TIME_NS_KEYWORDS = new LinkedHashSet<>();
+	static {
+		TIME_SEC_KEYWORDS.add("time");
+		TIME_SEC_KEYWORDS.add("sec");
+		TIME_SEC_KEYWORDS.add("epoch");
+		TIME_SEC_KEYWORDS.add("stamp");
+		
+		TIME_MS_KEYWORDS.add("time");
+		TIME_MS_KEYWORDS.add("milli");
+		TIME_MS_KEYWORDS.add("epoch");
+		TIME_MS_KEYWORDS.add("stamp");
+		
+		TIME_US_KEYWORDS.add("time");
+		TIME_US_KEYWORDS.add("micro");
+		TIME_US_KEYWORDS.add("epoch");
+		TIME_US_KEYWORDS.add("stamp");
+		
+		TIME_NS_KEYWORDS.add("time");
+		TIME_NS_KEYWORDS.add("nano");
+		TIME_NS_KEYWORDS.add("epoch");
+		TIME_NS_KEYWORDS.add("stamp");
+	}
+	
+	private static boolean timeNameContains(Set<String> setToCheck, String keyName) {
+		for (String keyWord : setToCheck) {
+			if (keyName.contains(keyWord)) return true;
+		}
+		return false;
+	}
+	
+//	private static final String PATTERN = " '('yyyy-MM-dd'T'HH:mm:ss.SSS z')'";
+	private static final String PATTERN = " '('EEE yyyy-MM-dd HH:mm:ss.SSS z')'";
+//	private static final String PATTERN = ", HH:mm:ss.SSS X')'";
+//	static final Locale locale = Locale.CANADA;
+//	private static final DateFormat DATE_FORMAT = DateFormat.getDateInstance(DateFormat.SHORT);
+//	private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat(PATTERN);
+	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat(PATTERN);
+	
+	static String guessIfTimestamp(String keyName, long l) {
+		keyName = keyName.toLowerCase();
+		if (l > LOWER_MS && l < UPPER_MS) {  // milliseconds
+			if (timeNameContains(TIME_MS_KEYWORDS, keyName) || (keyName.contains("ms") && PATTERN_MS.matcher(keyName).find())) {
+				return DATE_FORMAT.format(new Date(l));
+			}
+		} else if (l > LOWER_MS*1_000_000 && l < UPPER_MS*1_000_000) {  // nanos
+			if (timeNameContains(TIME_NS_KEYWORDS, keyName) || (keyName.contains("ns") && PATTERN_NS.matcher(keyName).find())) {
+				return DATE_FORMAT.format(new Date(l / 1_000_000));
+			}
+		} else if (l > LOWER_MS*1_000 && l < UPPER_MS*1_000) {  // micros
+			if (timeNameContains(TIME_US_KEYWORDS, keyName) || (keyName.contains("us") && PATTERN_US.matcher(keyName).find())) {
+				return DATE_FORMAT.format(new Date(l / 1_000));
+			}
+		} else if (l > LOWER_MS/1_000 && l < UPPER_MS/1_000 && timeNameContains(TIME_SEC_KEYWORDS, keyName)) {
+			return DATE_FORMAT.format(new Date(l * 1_000));
+		}
+		return null;
+	}
+	
+	static String guessIfTimestamp(String keyName, double d) {
+		keyName = keyName.toLowerCase();
+		if (d > LOWER_MS/1_000 && d < UPPER_MS/1_000 && timeNameContains(TIME_SEC_KEYWORDS, keyName)) {  // seconds
+			return DATE_FORMAT.format(new Date(Math.round(d * 1_000)));
+		} else if (d > LOWER_MS && d < UPPER_MS) {  // milliseconds
+			if (timeNameContains(TIME_MS_KEYWORDS, keyName) || (keyName.contains("ms") && PATTERN_MS.matcher(keyName).find())) {
+				return DATE_FORMAT.format(new Date(Math.round(d)));
+			}
+		} else if (d > LOWER_MS*1_000_000 && d < UPPER_MS*1_000_000) {  // nanos
+			if (timeNameContains(TIME_NS_KEYWORDS, keyName) || (keyName.contains("ns") && PATTERN_NS.matcher(keyName).find())) {
+				return DATE_FORMAT.format(new Date((Math.round(d / 1_000_000))));
+			}
+		} else if (d > LOWER_MS*1_000 && d < UPPER_MS*1_000) {  // micros
+			if (timeNameContains(TIME_US_KEYWORDS, keyName) || (keyName.contains("us") && PATTERN_US.matcher(keyName).find())) {
+				return DATE_FORMAT.format(new Date(Math.round(d / 1_000)));
+			}
+		}
+		return null;
+	}
+
+	static String guessIfTimestamp(String keyName, String val) {
+		keyName = keyName.toLowerCase();
+		if (val.length() > 5 && Character.isDigit(val.charAt(0)) && Character.isDigit(val.charAt(4))) {  // 5th char is a digit, so doesn't match timestamps: 2024-01-23
+			try {
+				double d = Double.parseDouble(val);
+				try {
+					long l = Long.parseLong(val);
+					return guessIfTimestamp(keyName, l);
+				} catch (NumberFormatException e) {  // a double, but not a long
+					return guessIfTimestamp(keyName, d);
+				}
+			} catch (NumberFormatException e) {  // not a number
+				return null;
+			}
+		}
+		return null;
+	}
 
 
 }

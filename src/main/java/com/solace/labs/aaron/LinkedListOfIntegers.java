@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Solace Corporation. All rights reserved.
+ * Copyright 2023-2024 Solace Corporation. All rights reserved.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -16,6 +16,10 @@
 
 package com.solace.labs.aaron;
 
+/**
+ * This utility class is to maintain a ordered-by-insertion-time list of integers, representing
+ * either the length of a topic or the number of levels in the topic, capped to some max.
+ */
 class LinkedListOfIntegers {
 
 	private static int DEFAULT_MAX_SIZE = 50;
@@ -39,23 +43,26 @@ class LinkedListOfIntegers {
 	}
 	
 	void insert(int value) {
-		if (head == null) {
+		if (head == null) {  // very first one
 			head = new LinkedInteger(value);
 			tail = head;
 			max = value;
 			size = 1;
 		} else {
-			tail.next = new LinkedInteger(value);  // insert the new link
+//			int curMax = max;
+			max = Math.max(max, value);
+			tail.next = new LinkedInteger(value);  // insert the new link at the tail
 			tail = tail.next;  // update the tail pointer
 			if (size == maxSize) {  // at capacity, have to pop off the front
 				int headVal = head.value;
 				head = head.next;  // repoint the pointer to the next guy
-				if (headVal == max) {  // popping off the max, need to rescan
+				if (headVal == max) {  // popping off (one of) the max, need to rescan
 					max = rescanForMax();
 				}
-			} else {
+//				System.out.printf("Inserting: %d, popping: %d, size: %d, oldMax: %d, newMax: %d%n", value, headVal, size, curMax, max);
+			} else {  // still growing
 				size++;
-				max = Math.max(max, value);
+//				System.out.printf("Inserting: %d, size: %d, oldMax: %d, newMax: %d%n", value, size, curMax, max);
 			}
 		}
 	}
@@ -72,7 +79,8 @@ class LinkedListOfIntegers {
 		return sb.toString();
 	}
 	
-	int rescanForMax() {
+	private int rescanForMax() {
+//		System.out.println("Rescanning for max");
 		LinkedInteger current = head;
 		int curMax = current.value;
 		while (current.next != null) {
@@ -90,7 +98,5 @@ class LinkedListOfIntegers {
 		LinkedInteger(int value) {
 			this.value = value;
 		}
-	
 	}	
-	
 }

@@ -16,20 +16,25 @@
 
 package com.solace.labs.aaron;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.fusesource.jansi.AnsiConsole;
 
 public class Banner {
 
 	static int maxLen = 0;
 	static int pieceLen = 0;
-
-	private static String piece(String s, int p, int i, int o) {
-		int len = s.length();
-		if (p == 5) return (s.substring(Math.min(p*pieceLen + i, len), len));  // all of it
-		return (s.substring(Math.min(p*pieceLen + i, len), Math.min(p*pieceLen + o + pieceLen, len)));
+	
+	enum Which {
+		DUMP,
+		WRAP,
+		;
 	}
-
-	private static String[] banner = new String[] {
+	
+	private static Map<Which, String[]> banners = new HashMap<>();
+	static {
+		banners.put(Which.DUMP, new String[] {
 	    	" __________                 __    __          ________",
 	    	" \\______   \\_______   _____/  |__/  |_ ___.__.\\______ \\  __ __  _____ ______ ",
 	    	"  |     ___/\\_  __ \\_/ __ \\   __\\   __<   |  | |    |  \\|  |  \\/     \\\\____ \\   ",
@@ -37,12 +42,28 @@ public class Banner {
 	    	"  |____|     |__|    \\___  >__|  |__|  / ____|/_______  /____/|__|_|  /   __/   ",
 	    	"                         \\/            \\/             \\/   by Aaron \\/|__|      ",
 	    	"                                                                                "
-	};
-
+		});
+//		banners.put(Which.DUMP, new String[] {
+//			" __________               __    __          __________       .__        __     ",
+//			" \\______   \\______  _____/  |__/  |_ ___.__.\\______   \\______|__| _____/  |_   ",
+//			"  |     ___|_  __ \\/ __ \\   __\\   __<   |  | |     ___|_  __ \\  |/    \\   __\\  ",
+//			"  |    |    |  | \\|  ___/|  |  |  |  \\___  | |    |    |  | \\/  |   |  \\  |    ",
+//			"  |____|    |__|   \\___  >__|  |__|  / ____| |____|    |__|  |__|___|  /__|    ",
+//			"                       \\/            \\/                    by Aaron  \\/        ",
+//			"                                                                               "
+//		});
+		banners.put(Which.WRAP, new String[] {
+			" __________                 __    __           __      __                         ",
+			" \\______   \\_______   _____/  |__/  |_ ___.__./  \\    /  \\____________  ______    ",
+			"  |     ___/\\_  __ \\_/ __ \\   __\\   __<   |  |\\   \\/\\/   /\\_  __ \\__  \\ \\____ \\   ",
+			"  |    |     |  | \\/\\  ___/|  |  |  |  \\___  | \\        /  |  | \\// __ \\|  |_> >  ",
+			"  |____|     |__|    \\___  >__|  |__|  / ____|  \\__/\\  /   |__|  (____  /   __/   ",
+			"                         \\/            \\/            \\/    by Aaron   \\/|__|      ",
+	    	"                                                                                   "
+		});
+	}
 	
-    private static String printBannerStandard() {
-//    	if (AnsiConsole.getTerminalWidth() > 95)
-//        	banner[4] = banner[4].substring(0, banner[4].length()-2) + " initializing...";
+    private static String printBannerStandard(String[] banner) {
     	AaAnsi ansi = new AaAnsi();
     	ansi.fg(10).a(banner[0]).a('\n');
     	ansi.fg(2).a(banner[1]).a('\n');
@@ -54,9 +75,7 @@ public class Banner {
     }
     
 
-    private static String printBannerLight() {
-//    	if (AnsiConsole.getTerminalWidth() > 95)
-//        	banner[4] = banner[4].substring(0, banner[4].length()-2) + " initializing...";
+    private static String printBannerLight(String[] banner) {
     	AaAnsi ansi = new AaAnsi();
     	ansi.fg(20).a(banner[0]).a('\n');
     	ansi.fg(90).a(banner[1]).a('\n');
@@ -66,21 +85,35 @@ public class Banner {
     	ansi.fg(30).a(banner[5]).a('\n');
     	return ansi.reset().toString();
     }
-    
-    static String printBanner() {
+
+	// 22, 28, 34, 40, 46, 83, 120, 157, 194, 231
+    private static String printBannerMatrix(String[] banner) {
+    	AaAnsi ansi = new AaAnsi();
+    	ansi.fg(83).a(banner[0]).a('\n');
+    	ansi.fg(120).a(banner[1]).a('\n');
+    	ansi.fg(46).a(banner[2]).a('\n');
+    	ansi.fg(40).a(banner[3]).a('\n');
+    	ansi.fg(34).a(banner[4]).a('\n');  // should be 40
+    	ansi.fg(22).a(banner[5]).a('\n');
+    	return ansi.reset().toString();
+    }
+
+    static String printBanner(Which which) {
+    	String[] banner = banners.get(which);
     	switch (AaAnsi.getColorMode()) {
     	case VIVID:
-    		return printBannerVivid2();
+    		return printBannerVivid2(banner);
+    	case MATRIX:
+    		return printBannerMatrix(banner);
     	case LIGHT:
-    		return printBannerLight();
+    		return printBannerLight(banner);
     	default:
-    		return printBannerStandard();
+    		return printBannerStandard(banner);
     	}
     }
 
-    /** Original one, without the "shadow" or 3d effect */
-    private static String printBannerVivid() {
-//    	if (AnsiConsole.getTerminalWidth() > 95) banner[4] += " initializing...";
+    /* Original one, without the "shadow" or 3d effect */
+    /*private static String printBannerVivid() {
     	for (String s : banner) {
     		maxLen = Math.max(maxLen, s.length());
     	}
@@ -105,14 +138,21 @@ public class Banner {
     	}    	
     	return ansi.reset().toString();
     }
-    
+
+	private static String piece(String s, int p, int i, int o) {
+		int len = s.length();
+		if (p == 5) return (s.substring(Math.min(p*pieceLen + i, len), len));  // all of it
+		return (s.substring(Math.min(p*pieceLen + i, len), Math.min(p*pieceLen + o + pieceLen, len)));
+	}*/
+
     
     private static final int STARTING_VIVID_COLOR = 196;
+    
     private static int getCol(int row, int pieceLen, int pos) {
     	return (STARTING_VIVID_COLOR - (row*30)) + Math.min(5, (pos / pieceLen));
     }
     
-    private static boolean anythingBelow(int i, int j) {
+    private static boolean anythingBelow(String[] banner, int i, int j) {
     	if (i == 6) return false;
     	if (i == 5) return banner[6].charAt(j) != ' ';
     	if (i == 4) return banner[6].charAt(j) != ' ' || banner[5].charAt(j) != ' ';
@@ -122,7 +162,7 @@ public class Banner {
     
     // RAELLY REALLY BAD CODE, BAD LOGIC, ALGORITHM... I'm kind of embarrassed
     // all this does is add kind of a shadow/perspective view of the banner text down-right of the text
-    private static void preprocessBanner() {
+    private static void preprocessBanner(String[] banner) {
     	for (int i=3; i<7; i++) {
     		StringBuilder sb = new StringBuilder();
     		for (int j=0; j < banner[i].length(); j++) {
@@ -135,7 +175,7 @@ public class Banner {
     					sb.append(banner[i].charAt(j));
     					continue;
     				}
-    				if (anythingBelow(i,j)) {
+    				if (anythingBelow(banner,i,j)) {
     					sb.append(banner[i].charAt(j));
     					continue;
     				}
@@ -164,15 +204,13 @@ public class Banner {
     }
     
 
-    private static String printBannerVivid2() {
+    private static String printBannerVivid2(String[] banner) {
     	int maxLen = 1;
     	for (String s : banner) {
     		maxLen = Math.max(maxLen, s.length());
     	}
     	int pieceLen = maxLen / 6;
-    	preprocessBanner();
-//		if (AnsiConsole.getTerminalWidth() > 95) 
-//			banner[4] = banner[4].substring(0, banner[4].length()-2) + " initializing...";
+    	preprocessBanner(banner);
     	AaAnsi ansi = new AaAnsi();
     	for (int i=0; i<banner.length; i++) {
     		for (int j=0; j<banner[i].length(); j++) {
@@ -190,6 +228,6 @@ public class Banner {
     
     public static void main(String... args) {
     	AnsiConsole.systemInstall();
-    	System.out.println(printBannerVivid2());
+    	System.out.println(printBannerVivid2(banners.get(Which.WRAP)));
     }
 }

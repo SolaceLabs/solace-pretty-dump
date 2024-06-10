@@ -76,21 +76,21 @@ public enum Elem {
 
 		colorMap.put(AaAnsi.ColorMode.MINIMAL, new HashMap<>());
 		map = colorMap.get(AaAnsi.ColorMode.MINIMAL);
-		map.put(KEY, new Col(4));
+		map.put(KEY, new Col(12));
 		map.put(DATA_TYPE, new Col(-1));
 		map.put(PAYLOAD_TYPE, new Col(-1));
 		map.put(NULL, new Col(2, false, true));
 		map.put(STRING, new Col(2));
 		map.put(CHAR, new Col(2));
-		map.put(NUMBER, new Col(2));
-		map.put(FLOAT, new Col(2));
+		map.put(NUMBER, new Col(-1));
+		map.put(FLOAT, new Col(-1));
 		map.put(BOOLEAN, new Col(2));
 		map.put(BYTES, new Col(2));
 		map.put(BYTES_CHARS, new Col(2));
 		map.put(BRACE, new Col(-1));
 		map.put(DESTINATION, new Col(14));
 		map.put(TOPIC_SEPARATOR, new Col(6));
-		map.put(MSG_BREAK, new Col(-1,true));
+		map.put(MSG_BREAK, new Col(-1));
 		map.put(ERROR, new Col(1));
 		map.put(UNKNOWN, new Col(1, false, true));
 		map.put(DEFAULT, new Col(-1));
@@ -102,7 +102,7 @@ public enum Elem {
 		map.put(PAYLOAD_TYPE, new Col(195));
 		map.put(NULL, new Col(198, false, true));
 		map.put(STRING, new Col(47));
-		map.put(CHAR, new Col(82));
+		map.put(CHAR, new Col(119));
 //		defaults.put(NUMBER, new Col(226));
 		map.put(NUMBER, new Col(214));
 //		defaults.put(FLOAT, new Col(214));
@@ -147,6 +147,27 @@ public enum Elem {
 		map.put(UNKNOWN, new Col(196, false, true));
 		map.put(DEFAULT, new Col(241));
 	
+		// 22, 28, 34, 40, 46, 83, 120, 157, 194, 231
+		colorMap.put(AaAnsi.ColorMode.MATRIX, new HashMap<>());
+		map = colorMap.get(AaAnsi.ColorMode.MATRIX);
+		map.put(KEY, new Col(40));
+		map.put(DATA_TYPE, new Col(34));
+		map.put(PAYLOAD_TYPE, new Col(34));
+		map.put(NULL, new Col(47, false, true));
+		map.put(STRING, new Col(46));
+		map.put(CHAR, new Col(82));
+		map.put(NUMBER, new Col(83));
+		map.put(FLOAT, new Col(83));
+		map.put(BOOLEAN, new Col(120));
+		map.put(BYTES, new Col(28));
+		map.put(BYTES_CHARS, new Col(34));
+		map.put(BRACE, new Col(157));
+		map.put(DESTINATION, new Col(47));
+		map.put(TOPIC_SEPARATOR, new Col(34));
+		map.put(MSG_BREAK, new Col(35, true));
+		map.put(ERROR, new Col(157));
+		map.put(UNKNOWN, new Col(157, false, true));
+		map.put(DEFAULT, new Col(28));
 	}
 	
 	static Elem guessByType(Object value) {
@@ -155,52 +176,44 @@ public enum Elem {
 			if (value instanceof Double || value instanceof Float || value instanceof BigDecimal) return Elem.FLOAT;
 			return Elem.NUMBER;
 		}
-		if (value instanceof CharSequence) return Elem.STRING;
+		if (value instanceof String) {
+			return ((String)value).isEmpty() ? Elem.NULL : Elem.STRING;
+		}
 		if (value instanceof Character) return Elem.CHAR;
 		if (value instanceof ByteArray || value instanceof ByteString) return Elem.BYTES;
 		if (value instanceof Boolean) return Elem.BOOLEAN;
 		if (value instanceof Destination) return Elem.DESTINATION;
 		return Elem.UNKNOWN;
 	}
-
-	
-	
 	
 	@Override
 	public String toString() {
-		return this.name() + ": " + l.get(this);
+		return this.name() + ": " + lookup.get(this);
 	}
 	
-	static Map<Elem,Col> l = new HashMap<>();
-	
-	static {
+	private static Map<Elem,Col> lookup = new HashMap<>();
+	static {  // defaults
 		for (Elem elem : Elem.values()) {
-			l.put(elem, colorMap.get(AaAnsi.ColorMode.STANDARD).get(elem));
+			lookup.put(elem, colorMap.get(AaAnsi.ColorMode.STANDARD).get(elem));
 		}
 	}
 	
 	static void updateColors(ColorMode mode) {
 		Map<Elem,Col> whichCols;
-		switch (mode) {
-		case MINIMAL:
-		case VIVID:
-		case LIGHT:
+		if (colorMap.containsKey(mode)) {
 			whichCols = colorMap.get(mode);
-			break;
-		default:
-			whichCols = colorMap.get(ColorMode.STANDARD);
-		}
-		for (Elem elem : whichCols.keySet()) {
-			elem.updateColor(whichCols.get(elem));
+			for (Elem elem : whichCols.keySet()) {
+				elem.updateColor(whichCols.get(elem));
+			}
 		}
 	}
 	
 	private void updateColor(Col newColor) {
-		l.put(this, newColor);
+		lookup.put(this, newColor);
 	}
 
 	Col getCurrentColor() {
-		return l.get(this);
+		return lookup.get(this);
 	}
 	
 }

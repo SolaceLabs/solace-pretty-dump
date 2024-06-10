@@ -1,9 +1,9 @@
-# PrettyDump for JSON and XML Solace messages
+# PrettyDump: pretty-print for Solace messages
 
-A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON** and **XML**.
+A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON**, **XML**, **Protobuf**, and Solace SDT Maps and Streams.
 Also with a display option for a minimal one-line-per-message view.
 
-**Latest release: v0.0.10  2023/11/06**
+**Latest release: v1.0.0  2024/04/13**
 
 - [Building](#building)
 - [Running](#running)
@@ -14,7 +14,7 @@ Also with a display option for a minimal one-line-per-message view.
 
 ## Requirements
 
-Java 8+
+- Java 8+  ~or~  Docker
 - Network access to a Solace broker (localhost software, cloud, appliance, etc.)
 
 ## Building
@@ -65,13 +65,13 @@ Attempting to bind to queue 'q1' on the broker... success!
 
 #### Shorcut mode: localhost broker, wildcard topics, and one-line output
 ```
-$ bin/PrettyDump "solace/>" -25
+$ bin/PrettyDump "solace/>" -30
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'default' on broker 'localhost'.
-Subscribed to Direct topic: 'shortcut/>'
+Subscribed to Direct topic: 'solace/>'
 
-solace/samples/testing  This is a text payload.
+solace/samples/testing       This is a text payload.
 ```
 
 
@@ -82,25 +82,29 @@ solace/samples/testing  This is a text payload.
 ```
 $ bin/PrettyDump -h   or  --help
 
-Usage: PrettyDump [host:port] [message-vpn] [username] [password] [topics|q:queue|b:queue] [indent]
+Usage: PrettyDump [host:port] [msg-vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]
+   or: PrettyDump <topics|q:queue|b:queue|f:queue> [indent]    for "shortcut" mode
 
  - If using TLS, remember "tcps://" before host
- - Default parameters will be: localhost default aaron pw "#noexport/>" 4
-    - If client-username 'default' is enabled in VPN, you can use any username
- - Subscribing options, one of:
+ - Default parameters will be: localhost default foo bar "#noexport/>" 4
+ - Subscribing options (param 5, or shortcut param 1), one of:
     - comma-separated list of Direct topic subscriptions
        - strongly consider prefixing with '#noexport/' if using DMR or MNR
     - q:queueName to consume from queue
-    - b:queueName to browse a queue
-       - Can browse all messages, or specific messages by ID
+    - b:queueName to browse a queue (all messages, or range of messages by ID)
+    - f:queueName to browse/dump only first oldest message on a queue
  - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting
     - Use negative indent value (column width) for one-line topic & payload only
-       - Use negative zero ("-0") for only topic, no payload
- - Shortcut mode: if the first argument contains '>', assume topics and localhost default broker
-    - e.g. ./bin/PrettyDump "test/>" -30
-    - If zero parameters, assume localhost default broker and subscribe to "#noexport/>"
- - Default charset is UTF-8. Override by setting: export PRETTY_DUMP_OPTS=-Dcharset=whatever
-    - e.g. export PRETTY_DUMP_OPTS=-Dcharset=Shift_JIS  (or "set" on Windows)
+       - Or use -1 for auto column width adjustment
+       - Use negative zero "-0" for only topic, no payload
+ - Shortcut mode: first argument contains '>' or starts '[qbf]:', assume localhost default broker
+    - e.g. bin/PrettyDump "logs/>" -1   ~or~   bin/PrettyDump q:q1
+    - Or queues as well: e.g. ./bin/PrettyDump q:q1   ~or~   ./bin/PrettyDump b:dmq -1
+Environment variable options:
+ - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever
+    - Choose: "standard" (default), "minimal", "vivid", "light", "off"
+ - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=whatever
+    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or "set" on Windows)
 ```
 
 
@@ -232,8 +236,7 @@ TextMessage, JSON Object:
     "lastName": "Lee",
     "zipCode": "12345",
     "streetAddress": "Singapore",
-    "customerId": "12345"
-}
+    "customerId": "12345" }
 ^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
@@ -260,7 +263,7 @@ DeliveryMode:                           DIRECT
 Message Id:                             4729156
 Binary Attachment:                      len=159
 TextMessage, JSON Object:
-{"firstName": "Aaron","lastName": "Lee","zipCode": "12345","streetAddress": "Singapore","customerId": "12345"}
+{"firstName":"Aaron","lastName":"Lee","zipCode":"12345","streetAddress":"Singapore","customerId":"12345"}
 ```
 
 
@@ -281,6 +284,10 @@ pq/3/pub-44e7/e7-3/0/_
 pq-demo/stats/pq/pub-44e7           {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2,"resendQ":0,"keys":8,"activeFlow":true}
 pq/3/pub-44e7/e7-0/0/_
 ```
+
+Use `-1` for "auto-indenting", where the amount of indent will vary dynamically with topic length.
+
+
 
 ### One-Line, Topic only: indent = "-0"
 

@@ -16,6 +16,8 @@
 
 package com.solace.labs.aaron;
 
+import java.math.BigInteger;
+
 import org.xml.sax.Attributes;
 import org.xml.sax.ErrorHandler;
 import org.xml.sax.SAXException;
@@ -52,8 +54,8 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 	@Override
 	public void endDocument() throws SAXException { }
 
-	public String getResult() {
-		return ansi.toString();
+	public AaAnsi getResult() {
+		return ansi;
 	}
 
 	@Override
@@ -84,20 +86,29 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 	/**
 	 * Cheeky method to try to guess what a datatype is, and add some colour-coding.
 	 */
-	private AaAnsi formatChars(String s) {
+	static AaAnsi guessAndFormatChars(String val, String key) {
 		try {
-			Double.parseDouble(s);  // is it a number?
+			Double.parseDouble(val);  // is it a number?
 			try {
-				Integer.parseInt(s);  // is it specifically an integer
-				return new AaAnsi().fg(Elem.NUMBER).a(s);  // yup!
+//				long l = Long.parseLong(val);  // is it specifically a long or int or something
+				BigInteger bi = new BigInteger(val);
+				
+				String ts = UsefulUtils.guessIfTimestamp(key, bi.longValue());
+				if (ts != null) {
+//					ansi.fg(Elem.CHAR).a(ts);
+					return new AaAnsi().fg(Elem.NUMBER).a(val).makeFaint().a(ts);
+				} else {
+					return new AaAnsi().fg(Elem.NUMBER).a(val);  // yup!
+				}
+//				return new AaAnsi().fg(Elem.NUMBER).a(val);  // yup!
 			} catch (NumberFormatException e) {
-				return new AaAnsi().fg(Elem.FLOAT).a(s);  // nope, just a decimal
+				return new AaAnsi().fg(Elem.FLOAT).a(val);  // nope!
 			}
 		} catch (NumberFormatException e) {  // nope, not a number
-			if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("false")) {  // is it a Boolean?
-				return new AaAnsi().fg(Elem.BOOLEAN).a(s);
+			if (val.equalsIgnoreCase("true") || val.equalsIgnoreCase("false")) {  // is it a Boolean?
+				return new AaAnsi().fg(Elem.BOOLEAN).a(val);
 			}
-			return new AaAnsi().fg(Elem.STRING).a(s);  // assume it's a string
+			return new AaAnsi().fg(Elem.STRING).a(val);  // assume it's a string
 		}
 	}
 
@@ -106,17 +117,17 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 		level--;
 		String chars = characterDataSb.toString().trim();
 		if (previous == Tag.START) {
-			if (startTagForLater != null) {
+			if (startTagForLater != null) {  // the previous tag is a start tag
 				if (chars.length() > 0) {
-					ansi.a(startTagForLater).reset().a('>').a(formatChars(chars)).reset();
+					ansi.a(startTagForLater).reset().a('>').a(guessAndFormatChars(chars, qName)).reset();
 					ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');
 				} else {  // closing a startTagForLater tag right away, and no chars, so make it a singleton
 					ansi.a(startTagForLater).reset().a("/>");
 				}
-				startTagForLater = null;// new AaAnsi();
+				startTagForLater = null;
 			} else {  // already been blanked (maybe by a comment?)
 				if (chars.length() > 0) {
-					ansi.a(formatChars(chars)).reset();
+					ansi.a(guessAndFormatChars(chars, qName)).reset();
 				}
 				ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');
 			}
@@ -124,7 +135,7 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 			if (indent > 0 && level > 0) {
 				ansi.a(UsefulUtils.indent(indent * level));
 			}
-			if (chars.length() > 0) ansi.a(formatChars(chars)).reset();
+			if (chars.length() > 0) ansi.a(guessAndFormatChars(chars, qName)).reset();
 			ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');
 		}
 		if (indent > 0) ansi.a('\n');

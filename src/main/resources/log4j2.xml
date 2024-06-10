@@ -4,7 +4,7 @@
     <Console name="console" target="SYSTEM_OUT">
       <PatternLayout pattern=" > %d{HH:mm:ss.SSS} [%t] %-5level %logger{5.} - %msg%n"/>
     </Console>
-    <File name="logfile" fileName="log/pretty.log">  <!-- will be relative to wherever you run -->
+    <File name="logfile" fileName="${sys:user.home}/.pretty/pretty.log">
       <PatternLayout>
         <Pattern>%d %p %c{1.} [%t] %m%n</Pattern>
         <!--Pattern>%d{HH:mm:ss.SSS} [%t] %-5level %logger{5.} - %msg%n</Pattern-->
@@ -17,9 +17,9 @@
     <!-- e.g. '-Djcsmp_api_log_level=debug', or use the Gradle env variable: 'export JAVA_OPTS=-Djcsmp_api_log_level=debug' -->
     <!-- or override this file completely by specifying your own: 'export JAVA_OPTS=-Dlog4j2.configurationFile=log4j2-override.xml' -->
     <Logger name="com.solacesystems" level="${sys:jcsmp_api_log_level:-info}"/>
-    <Logger name="com.solace.labs.aaron" level="${sys:pretty_app_log_level:-info}"/>
+    <Logger name="com.solace" level="${sys:pretty_app_log_level:-debug}"/>
     <Root level="${sys:root_log_level:-info}">
-      <AppenderRef ref="console"/>
+      <!-- AppenderRef ref="console"/ -->
       <AppenderRef ref="logfile"/>
     </Root>
   </Loggers>

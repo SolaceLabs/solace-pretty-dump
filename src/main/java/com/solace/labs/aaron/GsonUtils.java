@@ -20,35 +20,38 @@ import static com.solace.labs.aaron.UsefulUtils.indent;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.math.BigInteger;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 
 public class GsonUtils {
+	
+	private static String lastKeyName = "";
 
-	static String parseJsonObject(String json, int indentFactor) throws IOException {
+	static AaAnsi parseJsonObject(String json, int indentFactor) throws IOException {
 		return parseJsonObject(json, indentFactor, false);
 	}
 	
-	private static String parseJsonObject(String json, int indentFactor, boolean isLenient) throws IOException {
+	private static AaAnsi parseJsonObject(String json, int indentFactor, boolean isLenient) throws IOException {
 		JsonReader reader = new JsonReader(new StringReader(json));
 		reader.setLenient(false);
 		AaAnsi ansi = new AaAnsi();
 		handleObject(reader, ansi, indentFactor, 0);
 //		if (indentFactor > 0) ansi.a('\n');
-		return ansi.toString();
+		return ansi;
 	}
 	
-	static String parseJsonArray(String json, int indentFactor) throws IOException {
+	static AaAnsi parseJsonArray(String json, int indentFactor) throws IOException {
 		return parseJsonArray(json, indentFactor, false);
 	}
 	
-	private static String parseJsonArray(String json, int indentFactor, boolean isLenient) throws IOException {
+	private static AaAnsi parseJsonArray(String json, int indentFactor, boolean isLenient) throws IOException {
 		JsonReader reader = new JsonReader(new StringReader(json));
 		reader.setLenient(isLenient);
 		AaAnsi ansi = new AaAnsi();
 		handleArray(reader, ansi, indentFactor, 0);
-		return ansi.toString();
+		return ansi;
 	}
 	
 	/**
@@ -61,10 +64,12 @@ public class GsonUtils {
 	 * @throws IOException
 	 */
 	private static void handleObject(JsonReader reader, AaAnsi ansi, int indentFactor, int indent) throws IOException {
+		reader.beginObject();
 		boolean empty = !reader.hasNext();
 		ansi.reset().fg(empty ? Elem.NULL : Elem.BRACE).a('{').reset();
-		if (indentFactor > 0) ansi.a('\n');
-		reader.beginObject();
+		if (indentFactor > 0) {
+			ansi.a(empty ? ' ' : '\n');
+		}
 		while (reader.hasNext()) {
 			JsonToken token = reader.peek();
 			if (token.equals(JsonToken.BEGIN_ARRAY)) {
@@ -111,10 +116,10 @@ public class GsonUtils {
 	 * @throws IOException
 	 */
 	private static void handleArray(JsonReader reader, AaAnsi ansi, int indentFactor, int indent) throws IOException {
-		boolean empty = !reader.hasNext();
 		reader.beginArray();
+		boolean empty = !reader.hasNext();
 		ansi.reset().fg(empty ? Elem.NULL : Elem.BRACE).a("[").reset();
-		if (indentFactor > 0) ansi.a('\n');
+		if (indentFactor > 0) ansi.a(empty ? ' ' : '\n');
 		while (true) {
 			JsonToken token = reader.peek();
 			if (token.equals(JsonToken.END_ARRAY)) {
@@ -178,18 +183,26 @@ public class GsonUtils {
 		ansi.a(indent(indent));
 		if (token.equals(JsonToken.NAME)) {
 //			ansi.fg(Color.BLUE);
-			ansi.fg(Elem.KEY).a("\"" + reader.nextName() + "\"").reset().a(":");
+			lastKeyName = reader.nextName();
+			ansi.fg(Elem.KEY).a("\"" + lastKeyName + "\"").reset().a(":");
 			if (indent > 0) ansi.a(" ");
 		} else if (token.equals(JsonToken.STRING)) {
 			ansi.fg(Elem.STRING).a("\"" + reader.nextString() + "\"").reset();
 		} else if (token.equals(JsonToken.NUMBER)) {
-			ansi.fg(Elem.NUMBER).a(reader.nextString()).reset();
-//			try {
-//				long l = reader.nextLong();
-//				ansi.fgYellow().a(l).reset();
-//			} catch (NumberFormatException e) {
-//				ansi.fgYellow().a(reader.nextDouble()).reset();
-//			}
+			String num = reader.nextString();  // we use string to preserve any formatting (e.g. "25.00" stays that way, not 25
+//			ansi.fg(Elem.NUMBER).a(num).reset();
+			try {
+				BigInteger bi = new BigInteger(num);
+				ansi.fg(Elem.NUMBER).a(num);
+				String ts = UsefulUtils.guessIfTimestamp(lastKeyName, bi.longValue());
+				if (ts != null) {
+					ansi.makeFaint().a(ts);
+				}
+				ansi.reset();
+			} catch (NumberFormatException e) {
+				ansi.fg(Elem.FLOAT).a(num).reset();
+			}
+			
 		} else if (token.equals(JsonToken.BOOLEAN)) {
 //			ansi.fgMagenta().a(reader.nextString()).reset();
 			ansi.fg(Elem.BOOLEAN).a(reader.nextBoolean()).reset();
