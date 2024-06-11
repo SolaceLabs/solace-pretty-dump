@@ -130,9 +130,9 @@ fun createAdditionalScript(name: String, configureStartScripts: CreateStartScrip
     }
   }
 
-createAdditionalScript("PrettyDumpWrap") {
-  mainClass = "com.solace.labs.aaron.PrettyWrap"
-}
+//createAdditionalScript("PrettyDumpWrap") {
+//  mainClass = "com.solace.labs.aaron.PrettyWrap"
+//}
 
 //createAdditionalScript("bar") {
 //  mainClassName = "path.to.BarKt"

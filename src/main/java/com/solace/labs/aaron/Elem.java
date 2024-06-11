@@ -148,8 +148,8 @@ public enum Elem {
 		map.put(DEFAULT, new Col(241));
 	
 		// 22, 28, 34, 40, 46, 83, 120, 157, 194, 231
-		colorMap.put(AaAnsi.ColorMode.MATRIX, new HashMap<>());
-		map = colorMap.get(AaAnsi.ColorMode.MATRIX);
+		colorMap.put(AaAnsi.ColorMode.MONO, new HashMap<>());
+		map = colorMap.get(AaAnsi.ColorMode.MONO);
 		map.put(KEY, new Col(40));
 		map.put(DATA_TYPE, new Col(34));
 		map.put(PAYLOAD_TYPE, new Col(34));

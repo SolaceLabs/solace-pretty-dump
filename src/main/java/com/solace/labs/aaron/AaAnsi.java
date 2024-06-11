@@ -34,7 +34,7 @@ public class AaAnsi {
 		STANDARD,
 		VIVID,
 		LIGHT,
-		MATRIX,
+		MONO,
 		;
 	}
 

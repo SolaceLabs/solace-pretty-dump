@@ -10,9 +10,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -158,28 +155,28 @@ Destination:                            Topic 'q1/abc'
 		boolean legalPayload = true;
 		boolean ignore = false;
 		String topic = "";
-		ScheduledExecutorService pool = Executors.newScheduledThreadPool(1);
-		pool.schedule(new Runnable() {
-			@Override
-			public void run() {
+//		ScheduledExecutorService pool = Executors.newScheduledThreadPool(1);
+//		pool.schedule(new Runnable() {
+//			@Override
+//			public void run() {
 //				if (!seenInput) {
 //				if (!seenAtLeastSomeInputInOneSecond.get()) {
 //					System.out.println("Have not detected any input.  Are you sure you have piped SdkPerf into this app?  Exiting.");
 //					System.exit(1);
 //				}
-			}
-		}, 10, TimeUnit.SECONDS);
+//			}
+//		}, 10, TimeUnit.SECONDS);
 		
         System.out.println(Banner.printBanner(Which.WRAP));
         System.out.print(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(String.format("PrettyDump WRAP mode for SdkPerf enabled... 😎%n%n")).toString());
         AaAnsi.resetAnsi(System.out);
-		
+        
 		try {
 			while (true) {
 				String input = in.readLine();
 				if (input == null) {  // nothing to do
 					Thread.sleep(50);
-					System.out.print(".");
+//					System.out.print(".");
 				} else {
 //					seenInput = true;
 //					if (!seenAtLeastSomeInputInOneSecond.get()) {  // first time seeing something
