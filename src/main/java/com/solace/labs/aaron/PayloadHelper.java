@@ -603,6 +603,7 @@ public class PayloadHelper {
 //    					System.out.printf("charCount=%d, calcLength=%d, width=%d, size=%d%n", ms.binary.formatted.getCharCount(), AaAnsi.length(ms.binary.formatted.toString()),currentScreenWidth,Math.abs(INDENT)+ms.binary.formatted.getCharCount());
     					if (Math.abs(INDENT) + ms.binary.formatted.getCharCount() > currentScreenWidth) System.out.println();
     				}
+//    				System.out.printf("%d %d %d%n", Math.abs(INDENT), ms.binary.formatted.getCharCount(), currentScreenWidth);
         		} else if (ms.xml != null) {
     				System.out.print(ms.msgDestNameFormatted);
     				int spaceToAdd = Math.abs(INDENT) - ms.msgDestName.length();

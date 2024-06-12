@@ -55,8 +55,18 @@ public class AaAnsi {
 	}
 	
 	private Ansi jansi = new Ansi();
-	private int charCount = 0;
+	private int charCount2 = 0;
 	private Elem curElem = null;  // used to track which element type we're inside (useful for switching colours back in styleString append)
+	
+	private void incChar(int amount) {
+//		System.out.printf("%d,", amount);
+		charCount2 += amount;
+	}
+	
+	private void incChar() {
+//		System.out.print("1,");
+		charCount2 ++;
+	}
 	
 	private boolean isOn() {
 		return (MODE != ColorMode.OFF);
@@ -71,7 +81,7 @@ public class AaAnsi {
 	}
 
 	public int getCharCount() {
-		return charCount;
+		return charCount2;
 	}
 	
 	/** Convenience static builder */
@@ -105,7 +115,8 @@ public class AaAnsi {
 		if (highlight >= 0) makeFaint();
 		for (int i=0; i<levels.length; i++) {
 //			jansi.bg(0);
-			charCount += levels[i].length();   // need to update manually since adjusting the jansi directly
+//			charCount += levels[i].length();   // need to update manually since adjusting the jansi directly
+			incChar(levels[i].length());   // need to update manually since adjusting the jansi directly
 //			fg(Elem.DESTINATION).a(levels[i]);
 			if (i == highlight) {
 				jansi.reset();  // back to bright!
@@ -228,7 +239,7 @@ public class AaAnsi {
 		} else {
 			jansi.a(s);
 		}
-		charCount += s.length();
+		incChar(s.length());
 		return this;
 	}
 	
@@ -334,7 +345,7 @@ public class AaAnsi {
 	String trim(int len) {
 		assert len > 0;
 		String s = toString();
-		if (charCount <= len) return toString();
+		if (getCharCount() <= len) return toString();
 //		if (s == null && s.isEmpty()) return s;  // so now we know there's at least one char
 		StringBuilder sb = new StringBuilder();
 		int count = 0;
@@ -374,7 +385,7 @@ public class AaAnsi {
 	public AaAnsi a(AaAnsi ansi) {
 //		aRaw(ansi.toString());
 		jansi.a(ansi.toString());
-		charCount += ansi.charCount;
+		incChar(ansi.charCount2);
 		return this;
 	}
 	
@@ -382,7 +393,7 @@ public class AaAnsi {
 //		if (raw.length() == MAX_LENGTH) return this;
 		jansi.a(c);
 //		raw.append(c);
-		charCount++;
+		incChar();
 		return this;
 	}
 
@@ -393,7 +404,7 @@ public class AaAnsi {
 //			bs = bs.substring(0, space);
 //		}
 		jansi.a(bs);
-		charCount += bs.length();
+		incChar(bs.length());
 //		raw.append(bs);
 		return this;
 	}
@@ -410,7 +421,7 @@ public class AaAnsi {
 	 */
 	private AaAnsi a(String s, boolean styled) {
 		if (s == null) return this;
-		StringBuilder sb = new StringBuilder();
+//		StringBuilder sb = new StringBuilder();
 		AaAnsi aa = new AaAnsi(false);
 //		if (styled) aa.fg(Elem.STRING);
 		boolean insideNumStyle = false;  // these two vars are for my "styled string" code below
@@ -418,75 +429,73 @@ public class AaAnsi {
 		
 		for (int i=0; i<s.length(); i++) {
 			char c = s.charAt(i);
-			charCount++;
+//			incChar();
 			if (c < 0x20 || c == 0x7f) {  // special handling of control characters, make them visible
 				if (c == 0x09 || c == 0x0A || c == 0x0D) {  // tab, line feed, carriage return... leave alone
-					sb.append(c);
+//					sb.append(c);
 					aa.a(c);
 				} else if (c == 0) {
-					sb.append('∅');  // make NULL more visible
+//					sb.append('∅');  // make NULL more visible
 					aa.a('∅');
 				} else {
-					sb.append("·");  // all other control chars
+//					sb.append("·");  // all other control chars
 					aa.a('·');  // all other control chars
 				}
 			} else if (c == '\ufffd') {  // the replacement char introduced when trying to parse the bytes with the specified charset
 				if (isOn()) {  // bright red background, upsidedown ?
 					Ansi a = new Ansi().reset().bg(Elem.ERROR.getCurrentColor().value).fg(231).a('¿').bgDefault().fg(curElem.getCurrentColor().value);
-					sb.append(a.toString());
+//					sb.append(a.toString());
 					aa.aRaw(a.toString(), 1);
 				} else {
-					sb.append('¿');
+//					sb.append('¿');
 					aa.a('¿');
 				}
 			} else {  // all good, normal char
 				if (styled && isOn()) {  // styled is for normal strings, we'll do some colour coding to make it look cooler
 					if (Character.isMirrored(c) || c == '\'' || c == '"') {  // things like () {} [] 
 						AaAnsi a = new AaAnsi().fg(Elem.BRACE).a(c).fg(Elem.STRING);
-						sb.append(a.toString());
+//						sb.append(a.toString());
 //						aa.a(a);
 						aa.fg(Elem.BRACE).a(c).fg(Elem.STRING);
 						insideNumStyle = false;
 					} else if ((c == ',' || c == ';' || c == '.' || c == ':' || c == '-') && i < s.length()-1) {  // punctuation, and not at the very last char
 						if (insideNumStyle && Character.isDigit(s.charAt(i+1))) {  // if we're in a number, and the next char is a number, keep the orange colour
-							sb.append(c);
+//							sb.append(c);
 							aa.a(c);
 						} else if (Character.isWhitespace(s.charAt(i+1)) || c == ',' || c == ';') {
 							// let's change , ; . : - to default colour as long as the next char is whitespace
 							AaAnsi a = new AaAnsi().reset().a(c).fg(Elem.STRING);
-							sb.append(a.toString());
+//							sb.append(a.toString());
 //							aa.a(a);
 							aa.reset().a(c).fg(Elem.STRING);
 							insideNumStyle = false;
 						} else {
-							sb.append(c);
+//							sb.append(c);
 							aa.a(c);
 						}
 					} else if (Character.isDigit(c)) {  // digits 0-9 in ASCII
 						if (!insideNumStyle) {  // if we're not inside a number, then change colour
-							sb.append(new AaAnsi().fg(Elem.NUMBER));
+//							sb.append(new AaAnsi().fg(Elem.NUMBER));
 							aa.fg(Elem.NUMBER);
 							insideNumStyle = true;
 						}
-						sb.append(c);
+//						sb.append(c);
 						aa.a(c);
 					} else {
  						if (insideNumStyle) {
-							sb.append(new AaAnsi().fg(Elem.STRING));
+//							sb.append(new AaAnsi().fg(Elem.STRING));
 							aa.fg(Elem.STRING);
 							insideNumStyle = false;
 						}
-						sb.append(c);
+//						sb.append(c);
 						aa.a(c);
 					}
 				} else {  // not styled text, just normal append
-					sb.append(c);
+//					sb.append(c);
 					aa.a(c);
 				}
 			}
 		}
-//		jansi.a(sb.toString());
-//		this.jansi.a(aa);
 		a(aa);
 		return this;
 	}
@@ -502,10 +511,6 @@ public class AaAnsi {
 	/** This one actually resets to the ANSI default, rather than (perhaps) my own custom default colour */
 	public static void resetAnsi(PrintStream out) {
 		out.print(new Ansi().reset().toString());
-	}
-
-	public static void main(String... args) {
-//		test();
 	}
 	
 	static void test() {
