@@ -2,7 +2,7 @@
 #
 #     1) ./gradlew clean assemble      (or download a pre-built release from GitHub)
 #     2) cd build/distributions
-#     3) unzip PrettyDump.zip
+#     3) unzip prettydump.zip
 #     4) cd ../..
 #     5) docker build -t solace-pretty-dump:latest --file Dockerfile .
 #
@@ -46,13 +46,11 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=corretto-jdk /jre $JAVA_HOME
 
-#RUN mkdir -p /opt/PrettyDump
-#WORKDIR /opt/PrettyDump
 RUN mkdir -p /opt/pretty
 WORKDIR /opt/pretty
 
 # after doing ./gradlew assemble, unzip a distribution, and then this will copy all the build/staged into the Docker image
-COPY build/distributions/PrettyDump/ ./
+COPY build/distributions/prettydump/ ./
 
-ENTRYPOINT ["./bin/PrettyDump"] 
+ENTRYPOINT ["./bin/prettydump"] 
 

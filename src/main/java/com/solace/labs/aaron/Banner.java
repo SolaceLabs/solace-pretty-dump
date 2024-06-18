@@ -103,7 +103,7 @@ public class Banner {
     	switch (AaAnsi.getColorMode()) {
     	case VIVID:
     		return printBannerVivid2(banner);
-    	case MONO:
+    	case MATRIX:
     		return printBannerMatrix(banner);
     	case LIGHT:
     		return printBannerLight(banner);

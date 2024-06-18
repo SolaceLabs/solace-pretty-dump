@@ -51,7 +51,7 @@ $ docker create --name pretty-baseline solace-pretty-dump:latest
 
 $ docker ps -a | grep pretty
 CONTAINER ID   IMAGE                       COMMAND              CREATED         NAMES
-b4e9d2dd3640   solace-pretty-dump:latest   "./bin/PrettyDump"   9 seconds ago   pretty-baseline
+b4e9d2dd3640   solace-pretty-dump:latest   "./bin/prettydump"   9 seconds ago   pretty-baseline
 ```
 
 Copy out required Protobuf JAR file (used for building the Java class files in Step 4), and properties file (Step 5).  The first command is to verify the exact version that's inside the container (you can't use wildcards with `docker cp`).
@@ -191,7 +191,7 @@ You need the container ID of the `pretty-baseline` container.  User `docker ps -
 ```bash
 $ docker ps -a | grep pretty
 CONTAINER ID   IMAGE                       COMMAND
-b4e9d2dd3640   solace-pretty-dump:latest   "./bin/PrettyDump"
+b4e9d2dd3640   solace-pretty-dump:latest   "./bin/prettydump"
 
 $ docker commit b4e9d2dd3640 pretty-modded
 sha256:b542460354cbaf155a2cf0ca83208acd6b63dd9c58e15ce00c6d7fecde03d68d
@@ -225,8 +225,8 @@ Substituting your broker URL, VPN name, username, and password as appropriate. S
 
 ```bash
 $ docker run -it --rm pretty-modded -h
-Usage: PrettyDump [host:port] [msg-vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]
-   or: PrettyDump <topics|q:queue|b:queue|f:queue> [indent]    for "shortcut" mode
+Usage: prettydump [host:port] [msg-vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]
+   or: prettydump <topics|q:queue|b:queue|f:queue> [indent]    for "shortcut" mode
 ...
 ```
 
@@ -248,11 +248,6 @@ Probably easiset to just make an `alias`:
 $ alias pretty='docker run -it --rm -e "PRETTY_COLORS=vivid" -e"TERM=xterm-256color" pretty-modded:latest'
 $ pretty public.messaging.solace.cloud public public public ">"
 ```
-
-
-
-
-
 
 
 

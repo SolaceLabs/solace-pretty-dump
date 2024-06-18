@@ -74,31 +74,39 @@ public class PrettyDump {
     	
     	for (String arg : args) {
     		if (arg.equals("-h") || arg.startsWith("--h") || arg.equals("-?") || arg.startsWith("--?") || args.length > 6) {
-                System.out.printf("Usage: %s [host:port] [msg-vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]%n", APP_NAME);
-                System.out.printf("   or: %s <topics|q:queue|b:queue|f:queue> [indent]    for \"shortcut\" mode%n%n", APP_NAME);
+                System.out.printf("Usage: %s [host:port] [vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]%n", APP_NAME.toLowerCase());
+                System.out.printf("   or: %s <topics|q:queue|b:queue|f:queue> [indent]    for \"shortcut\" mode%n%n", APP_NAME.toLowerCase());
                 System.out.println(" - If using TLS, remember \"tcps://\" before host");
                 System.out.println(" - Default parameters will be: localhost default foo bar \"#noexport/>\" 4");
 //                System.out.println("     (FYI: if client-username 'default' is enabled in VPN, you can use any username)");
-                System.out.println(" - Subscribing options (param 5, or shortcut param 1), one of:");
-                System.out.println("    - comma-separated list of Direct topic subscriptions");
-                System.out.println("       - strongly consider prefixing with '#noexport/' if using DMR or MNR");
+                System.out.println(" - Subscribing options (param 5, or shortcut mode param 1), one of:");
+                System.out.println("    - Comma-separated list of Direct topic subscriptions");
+                System.out.println("       - Strongly consider prefixing with '#noexport/' if using DMR or MNR");
                 System.out.println("    - q:queueName to consume from queue");
                 System.out.println("    - b:queueName to browse a queue (all messages, or range of messages by ID)");
 //                System.out.println("       - Can browse all messages, or specific messages by ID");
                 System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
                 System.out.println(" - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting");
-                System.out.println("    - Use negative indent value (column width) for one-line topic & payload only");
+                System.out.println("    - One-line mode, use negative indent value (trim topic length) for topic & payload only");
                 System.out.println("       - Or use -1 for auto column width adjustment");
-                System.out.println("       - Use negative zero \"-0\" for only topic, no payload");
-                System.out.println(" - Shortcut mode: first argument contains '>' or starts '[qbf]:', assume localhost default broker");
-                System.out.println("    - e.g. bin/PrettyDump \"logs/>\" -1   ~or~   bin/PrettyDump q:q1");
-                System.out.println("    - Or queues as well: e.g. ./bin/PrettyDump q:q1   ~or~   ./bin/PrettyDump b:dmq -1");
+                System.out.println("       - Use negative zero -0 for topic only, no payload");
+                System.out.println(" - Shortcut mode: first argument contains '>', '*', or starts '[qbf]:', assume default broker");
+                System.out.println("    - e.g. prettydump \"logs/>\" -1  ~or~  prettydump q:q1  ~or~  prettydump b:dmq -0");
+                System.out.println("    - Or if first argument parses as integer, select as indent, rest default options");
+                
+//                System.out.println("    - e.g. bin/prettydump \"logs/>\" -1   ~or~   bin/prettydump q:q1");
+//                System.out.println("    - Or queues as well: e.g. ./bin/prettydump q:q1   ~or~   ./bin/prettydump b:dmq -1");
 //                System.out.println("    - If zero parameters, assume localhost default broker and subscribe to \"#noexport/>\"");
+                System.out.println(" - One-line mode (negative indent) runtime options:");
+                System.out.println("    - Press \"t[ENTER]\" to toggle payload trim to terminal width");
+                System.out.println("    - Press \"+[ENTER]\" to enable topic level spacing/alignment (\"-[ENTER]\" to revert)");
+                System.out.println("    - Press \"[1-9][ENTER]\" to highlight a particular topic level (\"0[ENTER]\" to revert)");
                 System.out.println("Environment variable options:");
                 System.out.println(" - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever");
-                System.out.println("    - Choose: \"standard\" (default), \"minimal\", \"vivid\", \"light\", \"off\"");
+                System.out.println("    - Choose: \"standard\" (default), \"vivid\", \"light\", \"minimal\", \"matrix\", \"off\"");
                 System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=whatever");
                 System.out.println("    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or \"set\" on Windows)");
+                System.out.println("SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to \" | prettydump wrap\" to prettify");
                 System.out.println();
 //                System.out.println("v0.1.0, 2024/01/09");
 //                System.out.println();
@@ -115,7 +123,7 @@ public class PrettyDump {
     	boolean shortcut = false;
     	// new shortcut MODE... if first arg looks like topics, assume topic wildcard, and assume localhost default connectivity for rest
     	if (args.length > 0) {
-    		if (args[0].contains(">") || args[0].contains("*/")) {  // shortcut MODE
+    		if (args[0].contains(">") || args[0].contains("*")) {  // shortcut MODE
     			shortcut = true;
     			topics = args[0].split("\\s*,\\s*");  // split on commas, remove any whitespace around them
     		} else if (args[0].matches("^[qbf]:.*")) {  // either browse, queue consume, or browse first to localhost

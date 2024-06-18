@@ -10,6 +10,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -127,13 +130,9 @@ Destination:                            Topic 'q1/abc'
     	return "";
     }
     
-
-//    static volatile boolean seenInput = false;
+    static volatile boolean shutdown = false;
     
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
-		
-//		System.out.println(extractTopic("Destination:                            Topic 'q1/abc'"));
-//		System.exit(1);
 		
 		AnsiConsole.systemInstall();
 		
@@ -143,7 +142,6 @@ Destination:                            Topic 'q1/abc'
 //		System.exit(0);
         protobufCallbacks = ProtoBufUtils.loadProtobufDefinitions();
     	PayloadHelper payloadHelper = new PayloadHelper(StandardCharsets.UTF_8);
-//		InputStreamReader r = new InputStreamReader(System.in);
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 		boolean insideMessage = false;
 		boolean insidePayloadSection = false;
@@ -155,24 +153,13 @@ Destination:                            Topic 'q1/abc'
 		boolean legalPayload = true;
 		boolean ignore = false;
 		String topic = "";
-//		ScheduledExecutorService pool = Executors.newScheduledThreadPool(1);
-//		pool.schedule(new Runnable() {
-//			@Override
-//			public void run() {
-//				if (!seenInput) {
-//				if (!seenAtLeastSomeInputInOneSecond.get()) {
-//					System.out.println("Have not detected any input.  Are you sure you have piped SdkPerf into this app?  Exiting.");
-//					System.exit(1);
-//				}
-//			}
-//		}, 10, TimeUnit.SECONDS);
+		ScheduledExecutorService pool = Executors.newScheduledThreadPool(1);
 		
         System.out.println(Banner.printBanner(Which.WRAP));
         System.out.print(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(String.format("PrettyDump WRAP mode for SdkPerf enabled... 😎%n%n")).toString());
         AaAnsi.resetAnsi(System.out);
-        
 		try {
-			while (true) {
+			while (!shutdown) {
 				String input = in.readLine();
 				if (input == null) {  // nothing to do
 					Thread.sleep(50);
@@ -294,6 +281,14 @@ Destination:                            Topic 'q1/abc'
 								logger.info("Had an issue trying to pretty-print the message rates",e);
 								wrapPrintln(input);
 							}
+						} else if (input.startsWith("CPU usage")) {  // detected shutdown of SdkPerf
+							pool.schedule(new Runnable() {
+								@Override
+								public void run() {
+									shutdown = true;
+								}
+							}, 500, TimeUnit.MILLISECONDS);
+							
 						} else {  // outside message and not a rate, so like a log or something
 							wrapPrintln(input);
 //							wrapPrintln(AaAnsi.n().aStyledString(input).toString());
@@ -307,6 +302,7 @@ Destination:                            Topic 'q1/abc'
     		e.printStackTrace();
     		Runtime.getRuntime().halt(1);
     	} finally {
+        	System.out.println("Goodbye! 👋🏼");
             AnsiConsole.systemUninstall();
     	}
 	}

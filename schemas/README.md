@@ -68,7 +68,7 @@ Then copy the JAR into the `lib` directory and rebuild
 
 ## Step 4: update the topic-to-proto mapping
 
-Locate the file `protobuf.properties` (either inside the `lib` directory of the built distribution, or inside `./protobuf/protobufs/protobufs`).  Add one line for each topic subscription -> ProtoBuf definition Java class.  This may take a bit of investigation into the generated source files.  But should look something like:
+Locate the file `protobuf.properties` (either inside the `lib` directory of the built distribution, or inside `./schemas/classes/classes` dir).  Add one line for each topic subscription -> ProtoBuf definition Java class.  This may take a bit of investigation into the generated source files.  But should look something like:
 ```
 solace/topic/to/match/>=<java.package.name>.<generatedClassName>$<internalClassNameForMessageType>
 ```

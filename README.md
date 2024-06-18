@@ -22,8 +22,8 @@ Also with a display option for a minimal one-line-per-message view.
 ```
 ./gradlew assemble
 cd build/distributions
-unzip PrettyDump.zip
-cd PrettyDump
+unzip prettydump.zip
+cd prettydump
 ```
 
 Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-dump/releases) with everything already built.
@@ -33,7 +33,7 @@ Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-d
 
 #### No args, default options
 ```
-$ bin/PrettyDump
+$ bin/prettydump
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'default' on broker 'localhost'.
@@ -45,7 +45,6 @@ Destination:                            Topic 'hello/world'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
-Message Id:                             42
 Binary Attachment:                      len=26
 TextMessage, JSON Object:
 {
@@ -56,7 +55,7 @@ TextMessage, JSON Object:
 
 #### Consume from a Solace Cloud queue
 ```
-$ bin/PrettyDump demo.messaging.solace.cloud demo-vpn user pw q:q1
+$ bin/prettydump demo.messaging.solace.cloud demo-vpn user pw q:q1
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'demo-vpn' on broker 'demo.messaging.solace.cloud'.
@@ -65,7 +64,7 @@ Attempting to bind to queue 'q1' on the broker... success!
 
 #### Shorcut mode: localhost broker, wildcard topics, and one-line output
 ```
-$ bin/PrettyDump "solace/>" -30
+$ bin/prettydump "solace/>" -30
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'default' on broker 'localhost'.
@@ -80,31 +79,36 @@ solace/samples/testing       This is a text payload.
 ## Command-line parameters
 
 ```
-$ bin/PrettyDump -h   or  --help
+$ bin/prettydump -h   or  --help
 
-Usage: PrettyDump [host:port] [msg-vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]
-   or: PrettyDump <topics|q:queue|b:queue|f:queue> [indent]    for "shortcut" mode
+Usage: prettydump [host:port] [vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]
+   or: prettydump <topics|q:queue|b:queue|f:queue> [indent]    for "shortcut" mode
 
  - If using TLS, remember "tcps://" before host
  - Default parameters will be: localhost default foo bar "#noexport/>" 4
- - Subscribing options (param 5, or shortcut param 1), one of:
-    - comma-separated list of Direct topic subscriptions
-       - strongly consider prefixing with '#noexport/' if using DMR or MNR
+ - Subscribing options (param 5, or shortcut mode param 1), one of:
+    - Comma-separated list of Direct topic subscriptions
+       - Strongly consider prefixing with '#noexport/' if using DMR or MNR
     - q:queueName to consume from queue
     - b:queueName to browse a queue (all messages, or range of messages by ID)
     - f:queueName to browse/dump only first oldest message on a queue
  - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting
-    - Use negative indent value (column width) for one-line topic & payload only
+    - One-line mode, use negative indent value (trim topic length) for topic & payload only
        - Or use -1 for auto column width adjustment
-       - Use negative zero "-0" for only topic, no payload
- - Shortcut mode: first argument contains '>' or starts '[qbf]:', assume localhost default broker
-    - e.g. bin/PrettyDump "logs/>" -1   ~or~   bin/PrettyDump q:q1
-    - Or queues as well: e.g. ./bin/PrettyDump q:q1   ~or~   ./bin/PrettyDump b:dmq -1
+       - Use negative zero -0 for topic only, no payload
+ - Shortcut mode: first argument contains '>', '*', or starts '[qbf]:', assume default broker
+    - e.g. prettydump "logs/>" -1  ~or~  prettydump q:q1  ~or~  prettydump b:dmq -0
+    - Or if first argument parses as integer, select as indent, rest default options
+ - One-line mode (negative indent) runtime options:
+    - Press "t[ENTER]" to toggle payload trim to terminal width
+    - Press "+[ENTER]" to enable topic level spacing/alignment ("-[ENTER]" to revert)
+    - Press "[1-9][ENTER]" to highlight a particular topic level ("0[ENTER]" to revert)
 Environment variable options:
  - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever
-    - Choose: "standard" (default), "minimal", "vivid", "light", "off"
+    - Choose: "standard" (default), "vivid", "light", "minimal", "matrix", "off"
  - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=whatever
     - e.g. export PRETTY_CHARSET=ISO-8859-1  (or "set" on Windows)
+SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to " | prettydump wrap" to prettify
 ```
 
 
@@ -163,7 +167,7 @@ To find the ID of the messages on a queue, either use PubSub+ Manager, CLI, or S
 **NOTE:** Use `f:<queueName>` to browse just the first/oldest message on the queue. Very useful for "poison pills" or "head-of-line blocking" messages.
 
 ```
-$ bin/PrettyDump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1
+$ bin/prettydump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'aaron-demo-singapore' on broker 'aaron.messaging.solace.cloud'.
