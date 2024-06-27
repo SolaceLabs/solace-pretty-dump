@@ -4,7 +4,7 @@
 #     2) cd build/distributions
 #     3) unzip prettydump.zip
 #     4) cd ../..
-#     5) docker build -t solace-pretty-dump:latest --file Dockerfile .
+#     5) docker build -t solace-pretty-dump:<version> --file Dockerfile .
 #
 #
 # To RUN:

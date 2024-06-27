@@ -236,7 +236,7 @@ public class PayloadHelper {
 				} catch (IOException e) {
         			type = charset.displayName() + " charset, INVALID JSON payload";
 //        			formatted = new AaAnsi().setError().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
-        			formatted = new AaAnsi().ex(e).a('\n').a(text);
+        			formatted = new AaAnsi().ex(e).a('\n').a(trimmed);
 				}
         	} else if (trimmed.startsWith("[") && trimmed.endsWith("]")) {  // try JSON array
         		try {
@@ -245,7 +245,7 @@ public class PayloadHelper {
         		} catch (IOException e) {
         			type = charset.displayName() + " charset, INVALID JSON payload";
 //        			formatted = new AaAnsi().setError().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
-        			formatted = new AaAnsi().ex(e).a('\n').a(text);
+        			formatted = new AaAnsi().ex(e).a('\n').a(trimmed);
 				}
         	} else if (trimmed.startsWith("<") && trimmed.endsWith(">")) {  // try XML
     			try {
@@ -254,12 +254,13 @@ public class PayloadHelper {
                     formatted = handler.getResult();  // overwrite
                     type = charset.displayName() + " charset, XML document";
 				} catch (SaxParserException e) {
+					logger.error("Couldn't parse xml", e);
         			type = charset.displayName() + " charset, INVALID XML payload";
-        			formatted = new AaAnsi().ex(e).a('\n').a(text);
+        			formatted = new AaAnsi().ex(e).a('\n').a(trimmed);
 				}
         	} else {  // it's neither JSON or XML, but has text content
         		type = charset.displayName() + " String";
-        		formatted = new AaAnsi().aStyledString(text).reset();
+        		formatted = new AaAnsi().aStyledString(trimmed).reset();
 //        		formatted = text;
         	}
 		}
@@ -403,7 +404,7 @@ public class PayloadHelper {
     
     // Helper class, for printing message to the console ///////////////////////////////////////
 
-	private static final int DIVIDER_LENGTH = 58;  // same as SdkPerf JCSMP
+	private static final int DIVIDER_LENGTH = 60;  // same as SdkPerf JCSMP
 
 	public String printMessageStart() {
         String head = "^^^^^ Start Message #" + ++msgCount + " ^^^^^";

@@ -70,6 +70,8 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 //			assert startTagForLater != null;
 			ansi.a(startTagForLater).reset().a('>');
 			if (indent > 0) ansi.a('\n');
+		} else if (previous == Tag.END) {  // aa debug june 25
+			if (indent > 0) ansi.a('\n');
 		}
 		startTagForLater = new AaAnsi();  // reset for new start tag
 		if (indent > 0 && level > 0) {
@@ -132,13 +134,14 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 				ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');
 			}
 		} else {  // previous tag was another END tag
+			if (indent > 0) ansi.a('\n');  // aaron debug june 25
 			if (indent > 0 && level > 0) {
 				ansi.a(UsefulUtils.indent(indent * level));
 			}
 			if (chars.length() > 0) ansi.a(guessAndFormatChars(chars, qName)).reset();
 			ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');
 		}
-		if (indent > 0) ansi.a('\n');
+//		if (indent > 0) ansi.a('\n');  // aaron debug june 25
 		characterDataSb.setLength(0);
 		previous = Tag.END;
 	}
@@ -151,7 +154,8 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 //				if (indent > 0) ansi.a('\n');
 				startTagForLater = null;
 			}
-			ansi.fg(Elem.MSG_BREAK).a("<!--").a(String.copyValueOf(ch, start, length)).a("-->\n");
+			ansi.fg(Elem.MSG_BREAK).a("<!--").a(String.copyValueOf(ch, start, length)).a("-->");
+//			ansi.fg(Elem.MSG_BREAK).a("<!--").a(String.copyValueOf(ch, start, length)).a("-->\n");
 		}
 	}
 	

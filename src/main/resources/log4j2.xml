@@ -11,16 +11,22 @@
         <!--JSONLayout/-->
       </PatternLayout>
     </File>
+    <!-- Solace name="solaceLogger" host="public.messaging.solace.cloud" vpn="public" username="public" password="public" direct="true" appName="blah">
+      <PatternLayout>
+        <Pattern>%d %p %c{1} [%t] %m</Pattern>
+      </PatternLayout>
+    </Solace -->
   </Appenders>
   <Loggers>
     <!-- you can dynamically set the log level from the command line using jvm system variables -->
     <!-- e.g. '-Djcsmp_api_log_level=debug', or use the Gradle env variable: 'export JAVA_OPTS=-Djcsmp_api_log_level=debug' -->
     <!-- or override this file completely by specifying your own: 'export JAVA_OPTS=-Dlog4j2.configurationFile=log4j2-override.xml' -->
     <Logger name="com.solacesystems" level="${sys:jcsmp_api_log_level:-info}"/>
-    <Logger name="com.solace" level="${sys:pretty_app_log_level:-debug}"/>
+    <Logger name="com.solace" level="${sys:pretty_app_log_level:-info}"/>
     <Root level="${sys:root_log_level:-info}">
       <!-- AppenderRef ref="console"/ -->
       <AppenderRef ref="logfile"/>
+      <!-- AppenderRef ref="solaceLogger"/ -->
     </Root>
   </Loggers>
 </Configuration>

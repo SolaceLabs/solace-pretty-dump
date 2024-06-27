@@ -12,10 +12,13 @@ Also with a display option for a minimal one-line-per-message view.
 - [Output Indent options](#output-indent-options---the-6th-argument)
 - [Error checking](#error-checking)
 
+
 ## Requirements
 
 - Java 8+  ~or~  Docker
-- Network access to a Solace broker (localhost software, cloud, appliance, etc.)
+- Network access to a Solace broker (software, cloud, appliance)
+
+
 
 ## Building
 
@@ -27,6 +30,7 @@ cd prettydump
 ```
 
 Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-dump/releases) with everything already built.
+
 
 
 ## Running
@@ -46,10 +50,10 @@ Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Binary Attachment:                      len=26
-TextMessage, JSON Object:
+SDT TextMessage, JSON Object:
 {
-    "hello": "world"
-}
+    "hello": "world" }
+
 ^^^^^^^^^^^^^^^^^ End Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
@@ -93,7 +97,7 @@ Usage: prettydump [host:port] [vpn] [username] [password] [topics|q:queue|b:queu
     - b:queueName to browse a queue (all messages, or range of messages by ID)
     - f:queueName to browse/dump only first oldest message on a queue
  - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting
-    - One-line mode, use negative indent value (trim topic length) for topic & payload only
+    - One-line mode: use negative indent value (trim topic length) for topic & payload only
        - Or use -1 for auto column width adjustment
        - Use negative zero -0 for topic only, no payload
  - Shortcut mode: first argument contains '>', '*', or starts '[qbf]:', assume default broker
@@ -109,6 +113,7 @@ Environment variable options:
  - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=whatever
     - e.g. export PRETTY_CHARSET=ISO-8859-1  (or "set" on Windows)
 SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to " | prettydump wrap" to prettify
+ - Note: add the 'bin' directory to your path to make it easier
 ```
 
 

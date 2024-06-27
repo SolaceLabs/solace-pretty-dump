@@ -344,6 +344,11 @@ public class AaAnsi {
 		return count;
 	}
 	
+//	String trim() {
+//		if (jansi.)
+//	}
+	
+	
 	String trim(int len) {
 		assert len > 0;
 		String s = toString();
@@ -433,7 +438,7 @@ public class AaAnsi {
 			char c = s.charAt(i);
 //			incChar();
 			if (c < 0x20 || c == 0x7f) {  // special handling of control characters, make them visible
-				if (c == 0x09 || c == 0x0A || c == 0x0D) {  // tab, line feed, carriage return... leave alone
+				if (c == 0x09 || c == 0x0a || c == 0x0d) {  // tab, line feed, carriage return... leave alone
 //					sb.append(c);
 					aa.a(c);
 				} else if (c == 0) {

@@ -116,7 +116,7 @@ public class SaxParser {
             	// ignore this... during schema loading at program startup, will throw an exception since SempReplySchemaLoader uses a DefaultHandler
             	// during runtime, the GenericSempSaxHandler implements the required methods
             }
-            inputSource.setEncoding("UTF-8");
+            inputSource.setEncoding("UTF-8");  // only parsing Java Strings, and payload already converted if here
             xmlReader.parse(inputSource);
         } catch (ParserConfigurationException e) {
             throw new SaxParserException(e);

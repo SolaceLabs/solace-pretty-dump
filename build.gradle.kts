@@ -74,7 +74,8 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-api:2.+")
     implementation("org.apache.logging.log4j:log4j-core:2.+")
     // needed to 'bridge' the JCSMP API logs from JCL to log4j
-    implementation("org.apache.logging.log4j:log4j-jcl:2.+")
+    runtimeOnly("commons-logging:commons-logging:1.3.2")
+    runtimeOnly("org.apache.logging.log4j:log4j-jcl:2.+")
 
     // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
     implementation("com.google.protobuf:protobuf-java:3.+")

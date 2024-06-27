@@ -38,6 +38,7 @@ import com.solacesystems.jcsmp.DeliveryMode;
 import com.solacesystems.jcsmp.FlowEventArgs;
 import com.solacesystems.jcsmp.FlowEventHandler;
 import com.solacesystems.jcsmp.FlowReceiver;
+import com.solacesystems.jcsmp.InvalidPropertiesException;
 import com.solacesystems.jcsmp.JCSMPChannelProperties;
 import com.solacesystems.jcsmp.JCSMPException;
 import com.solacesystems.jcsmp.JCSMPFactory;
@@ -71,7 +72,24 @@ public class PrettyDump {
     @SuppressWarnings("deprecation")  // this is for our use of Message ID for the browser
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
     	// test code goes here
-    	
+
+/*    	JCSMPProperties props = new JCSMPProperties();
+    	props.setProperty(JCSMPProperties.HOST, "localhost");
+    	props.setProperty(JCSMPProperties.USERNAME, "aaron");
+    	try {
+    		JCSMPFactory.onlyInstance().createSession(props).connect();
+    		while (true) {
+    			try {
+    				Thread.sleep(1000);
+    			} catch (InterruptedException e) {
+    				break;
+    			}
+    		}
+    		System.exit(1);
+    	} catch (InvalidPropertiesException e) {
+    		logger.error("This is an exception log4j", e);
+    	}
+*/
     	for (String arg : args) {
     		if (arg.equals("-h") || arg.startsWith("--h") || arg.equals("-?") || arg.startsWith("--?") || args.length > 6) {
                 System.out.printf("Usage: %s [host:port] [vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]%n", APP_NAME.toLowerCase());
@@ -87,7 +105,7 @@ public class PrettyDump {
 //                System.out.println("       - Can browse all messages, or specific messages by ID");
                 System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
                 System.out.println(" - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting");
-                System.out.println("    - One-line mode, use negative indent value (trim topic length) for topic & payload only");
+                System.out.println("    - One-line mode: use negative indent value (trim topic length) for topic & payload only");
                 System.out.println("       - Or use -1 for auto column width adjustment");
                 System.out.println("       - Use negative zero -0 for topic only, no payload");
                 System.out.println(" - Shortcut mode: first argument contains '>', '*', or starts '[qbf]:', assume default broker");
@@ -107,6 +125,7 @@ public class PrettyDump {
                 System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=whatever");
                 System.out.println("    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or \"set\" on Windows)");
                 System.out.println("SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to \" | prettydump wrap\" to prettify");
+                System.out.println(" - Note: add the 'bin' directory to your path to make it easier");
                 System.out.println();
 //                System.out.println("v0.1.0, 2024/01/09");
 //                System.out.println();
