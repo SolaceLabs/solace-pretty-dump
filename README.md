@@ -13,7 +13,7 @@ Also with a display option for a minimal one-line-per-message view.
 - [Charset Encoding](#charset-encoding)
 - [Error Checking](#error-checking)
 - [Protobuf Stuff](#protobuf-stuff) & Distributed Trace
-- [SdkPerf Wrap Mode]
+- [SdkPerf Wrap Mode](#sdkperf-wrap-mode)
 
 
 
@@ -40,7 +40,7 @@ For Docker container usage, read the comments in [the Dockerfile](Dockerfile).
 
 ## Running
 
-#### No args, default options
+#### No args, default broker options
 ```
 $ bin/prettydump
 
@@ -188,7 +188,7 @@ Browse all messages -> press [ENTER],
  or range of IDs (e.g. "25909-26183" or "9517-"): 31737085
 
 Starting. Press Ctrl-C to quit.
-^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'bus_trak/gps/v2/004M/01398/001.31700/0103.80721/30/OK'
 Priority:                               4
 Class Of Service:                       USER_COS_1
@@ -196,7 +196,7 @@ DeliveryMode:                           NON_PERSISTENT
 Message Id:                             31737085
 Replication Group Message ID:           rmid1:102ee-0b5760c9706-00000000-01e444fd
 Binary Attachment:                      len=173
-TextMessage, JSON Object:
+TextMessage, UTF-8 charset, JSON Object:
 {
     "psgrCap": 1,
     "heading": 228,
@@ -206,9 +206,9 @@ TextMessage, JSON Object:
     "speed": 60,
     "routeNum": "4M",
     "longitude": 103.80721,
-    "status": "OK"
-}
-^^^^^^^^^^^^^^^^^ End Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^
+    "status": "OK" }
+
+^^^^^^^^^^^^^^^^^^ End Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 Browsing finished!
 Main thread exiting.
 Shutdown detected, quitting...
@@ -221,14 +221,14 @@ Shutdown detected, quitting...
 
 Valid vales are between 1 and 20.  Indent is default 4 in these examples:
 ```
-^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^ Start Message #7 ^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Message Id:                             4728274
 Binary Attachment:                      len=100
-BytesMessage, XML:
+Raw BytesMessage, valid UTF-8 charset, XML document:
 <apps>
     <version>23</version>
     <stick>this</stick>
@@ -236,22 +236,22 @@ BytesMessage, XML:
         <level>deeper</level>
     </nested>
 </apps>
-^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^ End Message #7 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^ Start Message #8 ^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Message Id:                             4728275
 Binary Attachment:                      len=159
-TextMessage, JSON Object:
+SDT TextMessage, UTF-8 charset, JSON Object:
 {
     "firstName": "Aaron",
     "lastName": "Lee",
     "zipCode": "12345",
     "streetAddress": "Singapore",
     "customerId": "12345" }
-^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^ End Message #8 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
 ### Compact: indent = 0
@@ -260,23 +260,23 @@ Specifying "0" as the indent value will cause JSON and XML strings to be compres
 
 ```
 PrettyDump connected, and running. Press Ctrl-C to quit.
-^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^ Start Message #4 ^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Message Id:                             4729017
 Binary Attachment:                      len=58
-BytesMessage, XML:
+Raw BytesMessage, valid UTF-8 charset, XML document:
 <apps><another>hello</another><that>this</that></apps>
-^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^ Start Message #5 ^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Message Id:                             4729156
 Binary Attachment:                      len=159
-TextMessage, JSON Object:
+SDT TextMessage, UTF-8 charset, JSON Object:
 {"firstName":"Aaron","lastName":"Lee","zipCode":"12345","streetAddress":"Singapore","customerId":"12345"}
 ```
 
@@ -331,6 +331,7 @@ If PrettyDump detects an invalid encoding, it will replace the invalid character
 "¿", and also provide a binary dump of the message to help you locate the invalid character(s):
 
 ```
+⋮
 Binary Attachment:                      len=36
 Raw BytesMessage, Non UTF-8 encoded string:
 The currency is in ¿ Pound Sterling.
