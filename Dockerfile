@@ -1,24 +1,32 @@
-# To BUILD:
-#
-#     1) ./gradlew clean assemble      (or download a pre-built release from GitHub)
-#     2) cd build/distributions
-#     3) unzip prettydump.zip
-#     4) cd ../..
-#     5) docker build -t solace-pretty-dump:<version> --file Dockerfile .
-#
+# Download a Docker tarball from https://github.com/SolaceLabs/pretty-dump/releases
+# Load into Docker Images with: docker load -i solace-pretty-dump-1.0.0.tar.gz
 #
 # To RUN:
 #
 #     docker run -it --rm -e "TERM=xterm-256color" solace-pretty-dump:latest broker.messaging.solace.cloud vpn-name user pw ">" -1
 #
+# or make an alias: pretty='docker run -it --rm -e "TERM=xterm-256color" solace-pretty-dump:latest'
 #
-# To RUN in "wrap" mode:  (can't use -t pseudo-TTY mode since pipe | doesn't work
+#
+# To RUN in "wrap" mode around SdkPerf:  (can't use -t pseudo-TTY mode since pipe | doesn't work
 #
 #     ./sdkperf_java.sh -cip=0 -sql=q1 -md | docker run -i --rm solace-pretty-dump:latest wrap
 #
 #    (maybe one day something like this could work: https://stackoverflow.com/questions/1401002/how-to-trick-an-application-into-thinking-its-stdout-is-a-terminal-not-a-pipe )
 
 
+
+
+
+# To BUILD:
+#
+#     1) ./gradlew clean assemble      (or download a pre-built release from GitHub)
+#     2) cd build/distributions
+#     3) unzip prettydump.zip
+#     4) cd ../..
+#     5) docker build -t solace-pretty-dump:latest --file Dockerfile .
+#     6) docker save solace-pretty-dump:latest | gzip > solace-pretty-dump-1.0.0.tar.gz
+#
 
 # Go and make a custom JRE in the distribution lib folder:
 # jlink --add-modules ALL-MODULE-PATH --strip-debug --no-man-pages --no-header-files --compress=2  --output ../jre
@@ -53,4 +61,3 @@ WORKDIR /opt/pretty
 COPY build/distributions/prettydump/ ./
 
 ENTRYPOINT ["./bin/prettydump"] 
-

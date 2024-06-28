@@ -85,7 +85,7 @@ public class PayloadHelper {
     }
     
     
-    private String updateTopic2(String topic) {
+    private String updateTopicSpaceOutLevels(String topic) {
     	String[] levels = topic.split("/");
     	if (levelLengths.size() < levels.length) {
     		for (int i=levelLengths.size(); i < levels.length; i++) {
@@ -224,12 +224,16 @@ public class PayloadHelper {
 		}
 		
 		void formatString(final String text) {
+			formatString(text, null);
+		}
+		
+		void formatString(final String text, final String contentType) {
 			if (text == null || text.isEmpty()) {
 				formatted = AaAnsi.n();
 				return;
 			}
 			String trimmed = text.trim();
-        	if (trimmed.startsWith("{") && trimmed.endsWith("}")) {  // try JSON object
+        	if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || "application/json".equals(contentType)) {  // try JSON object
         		try {
             		formatted = GsonUtils.parseJsonObject(trimmed, Math.max(INDENT, 0));
         			type = charset.displayName() + " charset, JSON Object";
@@ -238,7 +242,7 @@ public class PayloadHelper {
 //        			formatted = new AaAnsi().setError().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
         			formatted = new AaAnsi().ex(e).a('\n').a(trimmed);
 				}
-        	} else if (trimmed.startsWith("[") && trimmed.endsWith("]")) {  // try JSON array
+        	} else if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || "application/json".equals(contentType)) {  // try JSON array
         		try {
             		formatted = GsonUtils.parseJsonArray(trimmed, Math.max(INDENT, 0));
         			type = charset.displayName() + " charset, JSON Array";
@@ -247,7 +251,8 @@ public class PayloadHelper {
 //        			formatted = new AaAnsi().setError().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
         			formatted = new AaAnsi().ex(e).a('\n').a(trimmed);
 				}
-        	} else if (trimmed.startsWith("<") && trimmed.endsWith(">")) {  // try XML
+        	} else if ((trimmed.startsWith("<") && trimmed.endsWith(">")) ||
+        			"application/xml".equals(contentType)  || "text/xml".equals(contentType)) {  // try XML
     			try {
     				SaxHandler handler = new SaxHandler(INDENT);
 					SaxParser.parseString(trimmed, handler);
@@ -259,18 +264,26 @@ public class PayloadHelper {
         			formatted = new AaAnsi().ex(e).a('\n').a(trimmed);
 				}
         	} else {  // it's neither JSON or XML, but has text content
-        		type = charset.displayName() + " String";
+//        		type = charset.displayName() + " String";
+        		type = charset.displayName() + " encoded string";
         		formatted = new AaAnsi().aStyledString(trimmed).reset();
 //        		formatted = text;
         	}
 		}
 
-		void formatBytes(byte[] bytes) {
+		void formatBytes(byte[] bytes, String contentType) {
 			String parsed = decodeToString(bytes);
 			boolean malformed = parsed.contains("\ufffd");
-			formatString(parsed);  // call the String version
+			formatString(parsed, contentType);  // call the String version
         	if (malformed) {
 				type = "Non " + type;
+        	} else {
+        		type = "valid " + type;
+        	}
+        	System.out.println((formatted.controlChars + formatted.replacementChars) / formatted.getCharCount());
+        	if (malformed && ((1.0 * formatted.controlChars + formatted.replacementChars) / formatted.getCharCount() > 0.02)) {  // very very likely a binary file
+				formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, INDENT, currentScreenWidth);
+        	} else if (malformed || formatted.controlChars > 3) {  // 3 is arbitrary
 				if (INDENT > 0) {
 					formatted.a('\n').a(UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, INDENT, currentScreenWidth));
 				}
@@ -385,7 +398,7 @@ public class PayloadHelper {
         	} else {  // a Topic
         		msgDestName = orig.getDestination().getName();
         		if (autoSpaceTopicLevels) {
-        			msgDestName = updateTopic2(msgDestName);
+        			msgDestName = updateTopicSpaceOutLevels(msgDestName);
         		}
             	if (autoResizeIndent) {
             		updateTopicIndentValue(msgDestName.length());
@@ -484,7 +497,7 @@ public class PayloadHelper {
 	            	ms.binary.formatted = SdtUtils.printStream(((StreamMessage)message).getStream(), Math.max(INDENT, 0));
 	            } else {  // either text or binary, try/hope that the payload is a string, and then we can try to format it
 		            if (message instanceof TextMessage) {
-		            	ms.binary.formatString(((TextMessage)message).getText());
+		            	ms.binary.formatString(((TextMessage)message).getText(), message.getHTTPContentType());
 		            	ms.msgType = ms.binary.formatted.getCharCount() == 0 ? "Empty SDT TextMessage" : "SDT TextMessage";
 		            } else {  // bytes message
 //		            	ms.msgType = "Raw BytesMessage";
@@ -517,7 +530,7 @@ public class PayloadHelper {
 										}
 			            			}
 			            		}
-		            		if (!topicMatch) ms.binary.formatBytes(bytes);
+		            		if (!topicMatch) ms.binary.formatBytes(bytes, message.getHTTPContentType());
 	                    }
 		            }
 	            }
@@ -528,7 +541,7 @@ public class PayloadHelper {
             // what if there is XML content??
             if (message.hasContent()) {  // try the XML portion of the payload (OLD SCHOOL!!!)
             	ms.xml = new PayloadSection();
-            	ms.xml.formatBytes(message.getBytes());
+            	ms.xml.formatBytes(message.getBytes(), message.getHTTPContentType());
             }
             if (message.getProperties() != null && !message.getProperties().isEmpty()) {
             	ms.userProps = new PayloadSection();
@@ -580,7 +593,9 @@ public class PayloadHelper {
                 	} else if (line.startsWith("Message Id:") && message.getDeliveryMode() == DeliveryMode.DIRECT) {
                 		// skip it, hide the auto-generated message ID on Direct messages
                 	} else {  // everything else
-                		System.out.println(new AaAnsi().a(line));
+//                		System.out.println(new AaAnsi().a(line));
+//                		System.out.println(AaAnsi.n().a(UsefulUtils.guessIfMapLookingThing(line)));
+                		System.out.println(UsefulUtils.guessIfMapLookingThing(line));
                 	}
                 }
                 if (!message.hasContent() && !message.hasAttachment()) {

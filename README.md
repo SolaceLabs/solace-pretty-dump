@@ -1,16 +1,19 @@
 # PrettyDump: pretty-print for Solace messages
 
-A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON**, **XML**, **Protobuf**, and Solace SDT Maps and Streams.
+A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON**, **XML**, **Protobuf**, and Solace **SDT** Maps and Streams.
 Also with a display option for a minimal one-line-per-message view.
 
-**Latest release: v1.0.0  2024/04/13**
+**Latest release: v1.0.0  2024/06/28**
 
 - [Building](#building)
 - [Running](#running)
 - [Command-line parameters](#command-line-parameters)
 - Subscribing options: [Direct topic subscriptions](#direct-subscriptions), [Queue consume](#queue-consume), [Browsing a queue](#browsing-a-queue)
 - [Output Indent options](#output-indent-options---the-6th-argument)
-- [Error checking](#error-checking)
+- [Charset Encoding](#charset-encoding)
+- [Error Checking](#error-checking)
+- [Protobuf Stuff](#protobuf-stuff) & Distributed Trace
+
 
 
 ## Requirements
@@ -31,6 +34,7 @@ cd prettydump
 
 Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-dump/releases) with everything already built.
 
+For Docker container usage, read the comments in [the Dockerfile](Dockerfile).
 
 
 ## Running
@@ -44,17 +48,17 @@ PrettyDump connected to VPN 'default' on broker 'localhost'.
 Subscribed to Direct topic: '#noexport/>'
 
 Starting. Press Ctrl-C to quit.
-^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'hello/world'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 Binary Attachment:                      len=26
-SDT TextMessage, JSON Object:
+SDT TextMessage, UTF-8 charset, JSON Object:
 {
     "hello": "world" }
 
-^^^^^^^^^^^^^^^^^ End Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^ End Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
 #### Consume from a Solace Cloud queue
@@ -316,21 +320,100 @@ bus_trak/gps/v2/006A/01291/001.29687/0103.78305/21/STOPPED
 ```
 
 
-## Error checking
+## Charset Encoding
+
+When publishing (Structured Data Type) **TextMessages** in Solace, the Strings are encoded as UTF-8.  However if publishing Strings as
+raw **BytesMessages**, the binary encoding is determined by the publisher.  For example, if using our JavaScript API,
+`message.setBinaryAttachment(String)` is encoded as Latin 1 / ISO-8859-1. (you should really use a `TextEncoder` and `Uint8Array` in JS).
+Therefore, the String `"The currency is £ Pound Sterling."` will end up encoding the Pound sign as `0xA3` instead of UTF-8 `0xC2A3`. 
+If PrettyDump detects an invalid encoding, it will replace the invalid characters with a highlighted upside-down question mark
+"¿", and also provide a binary dump of the message to help you locate the invalid character(s):
+
+```
+Binary Attachment:                      len=36
+Raw BytesMessage, Non UTF-8 encoded string:
+The currency is in ¿ Pound Sterling.
+    54 68 65 20 63 75 72 72    65 6e 63 79 20 69 73 20    The curr  ency is
+    69 6e 20 a3 20 50 6f 75    6e 64 20 53 74 65 72 6c    in · Pou  nd Sterl
+    69 6e 67 2e                                           ing.
+
+^^^^^^^^^^^^^^^^^^^^^^ End Message #3 ^^^^^^^^^^^^^^^^^^^^^^
+```
+
+
+
+## Error Checking
 
 As part of the parsing for JSON and XML, it detects if the payload is malformed and prints out some text to indicate that.
 This can be helpful if trying to hand-code a payload and don't get it quite right.
 
 ```
-^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^
-Destination:                            Topic 'xml/bad/test'
+^^^^^^^^^^^^^^^^^^^^^ Start Message #2 ^^^^^^^^^^^^^^^^^^^^^
+Destination:                            Topic 'bad/xml/test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
-Message Id:                             9
+HTTP Content Type:                      application/xml
 Binary Attachment:                      len=43
-BytesMessage, INVALID XML:
-<bad>not having</bad><a>closing bracket/a>
+Raw BytesMessage, UTF-8 charset, INVALID XML payload:
+SaxParserException - org.xml.sax.SAXParseException; lineNumber: 1; columnNumber: 23;
+ The markup in the document following the root element must be well-formed.
+<bad>not having</bad><a>closing bracket</a
 
-^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^ End Message #2 ^^^^^^^^^^^^^^^^^^^^^^
+
 ```
+
+
+
+## Protobuf Stuff
+
+PrettyDump come preloaded with Protobuf decoders for:
+- Solace Distributed Trace messages
+- Sparkplug B
+
+Check the `protobuf.properties` file for topic-to-class mapping.  PrettyDump uses topic dispatch to
+selectively choose which Protobuf decoder to use based on the incoming messages' topics.
+
+Check the README file in the `schemas` directory for more information on how to compile and include
+your custom Protobuf decoders.
+
+
+### Distributed Trace
+
+If you want to demo/test the Solace broker's Distributed Trace functionality without connecting the
+OpenTelemetry Collector and deploying a backend such as Jaeger or DataDog, you can use PrettyDump to 
+sniff the messages from the `#telemetry-xxxxx` (or whatever name) queue.  Simply bind to the queue
+(either `q:xxxxx` or `b:xxxxx`) 
+with whatever username and password you created with the telemetry profile.  PrettyDump will decode
+the messages and print them out for you:
+```
+Raw BytesMessage, SpanData ProtoBuf:
+    'trace_id' (BYTES): [7a f5 37 bf 0e f0 00 02 ce 9a c0 59 b2 57 0f e5]
+    'span_id' (BYTES): [9b c7 5c 9f 66 de 57 2a]
+    'start_time_unix_nano' (SFIXED64): 1719524089241349700 (Thu 2024-06-27 14:34:49.241 PDT)
+    'end_time_unix_nano' (SFIXED64): 1719524089241357600 (Thu 2024-06-27 14:34:49.241 PDT)
+    'topic' (STRING): "q1/a/b/c"
+    'client_name' (STRING): "AaronsThinkPad3/20033/000f0001/6OZBwoOWb7"
+    'client_username' (STRING): "default"
+    'host_ip' (BYTES): [ac 11 00 02] (172.17.0.2)
+    'host_port' (UINT32): 55555
+    'peer_ip' (BYTES): [ac 11 00 01] (172.17.0.1)
+    'peer_port' (UINT32): 49382
+    'broker_receive_time_unix_nano' (SFIXED64): 1719524089241258000 (Thu 2024-06-27 14:34:49.241 PDT)
+    'enqueue_events' (MESSAGE[]): [
+      (MESSAGE):
+        'time_unix_nano' (SFIXED64): 1719524089241355000 (Thu 2024-06-27 14:34:49.241 PDT)
+        'queue_name' (STRING): "q1" ]
+    'router_name' (STRING): "solace1081"
+    'message_vpn_name' (STRING): "default"
+    'replication_group_message_id' (BYTES): [01 33 ed ce 7c 36 16 84 36 00 00 00 00 00 00 05 c9]
+    'protocol' (STRING): "SMF"
+    'protocol_version' (STRING): "3.0"
+    'priority' (UINT32): 4
+    'binary_attachment_size' (UINT32): 510
+    'solos_version' (STRING): "10.8.1.126"
+```
+
+
+

@@ -57,17 +57,17 @@ public class AaAnsi {
 	}
 	
 	private Ansi jansi = new Ansi();
-	private int charCount2 = 0;
+	private int charCount = 0;
 	private Elem curElem = null;  // used to track which element type we're inside (useful for switching colours back in styleString append)
+	int controlChars = 0;  // we'll turn this to true if we get too many control chars
+	int replacementChars = 0;
 	
 	private void incChar(int amount) {
-//		System.out.printf("%d,", amount);
-		charCount2 += amount;
+		charCount += amount;
 	}
 	
 	private void incChar() {
-//		System.out.print("1,");
-		charCount2 ++;
+		charCount ++;
 	}
 	
 	private boolean isOn() {
@@ -83,7 +83,7 @@ public class AaAnsi {
 	}
 
 	public int getCharCount() {
-		return charCount2;
+		return charCount;
 	}
 	
 	/** Convenience static builder */
@@ -116,14 +116,10 @@ public class AaAnsi {
 		maxLengthTopicLevels.insert(levels.length);
 		if (highlight >= 0) makeFaint();
 		for (int i=0; i<levels.length; i++) {
-//			jansi.bg(0);
-//			charCount += levels[i].length();   // need to update manually since adjusting the jansi directly
 			incChar(levels[i].length());   // need to update manually since adjusting the jansi directly
-//			fg(Elem.DESTINATION).a(levels[i]);
 			if (i == highlight) {
 				jansi.reset();  // back to bright!
 			}
-//			fg(Elem.DESTINATION);
 			fg(figureColor(i, highlight));
 			if (i == highlight) {
 				int firstDot = levels[i].indexOf('⋅');
@@ -136,7 +132,6 @@ public class AaAnsi {
 					jansi.a(levels[i].substring(firstDot));
 				}
 			} else {
-//				jansi.a(levels[i]);  // the whole thing.  maybe we should turn it back to faint after dots start
 				int firstDot = levels[i].indexOf('⋅');
 				if (firstDot == -1) {
 					jansi.a(levels[i]);
@@ -148,7 +143,6 @@ public class AaAnsi {
 			}
 			if (i < levels.length-1) {
 				if (highlight == -1) reset();
-//				jansi.bg(0);
 				fg(Elem.TOPIC_SEPARATOR).a('/');  // this does the charCount!
 			}
 		}
@@ -318,10 +312,10 @@ public class AaAnsi {
 	}
 
 	public int length() {
-		return length(this.toString());
+		return calcLength(this.toString());
 	}
 	
-	static int length(String ansiString) {
+	static int calcLength(String ansiString) {
 		int count = 0;
 		int pos = 0;
 		boolean insideEscape = false;
@@ -390,29 +384,23 @@ public class AaAnsi {
 
 	/** Just copy the whole AaAnsi into this one. */
 	public AaAnsi a(AaAnsi ansi) {
-//		aRaw(ansi.toString());
 		jansi.a(ansi.toString());
-		incChar(ansi.charCount2);
+		charCount += ansi.charCount;
+		controlChars += ansi.controlChars;
+		replacementChars += ansi.replacementChars;
 		return this;
 	}
 	
 	public AaAnsi a(char c) {
-//		if (raw.length() == MAX_LENGTH) return this;
 		jansi.a(c);
-//		raw.append(c);
 		incChar();
 		return this;
 	}
 
 	public AaAnsi a(boolean b) {
 		String bs = Boolean.toString(b);
-//		int space = MAX_LENGTH - raw.length();
-//		if (bs.length() > space) {
-//			bs = bs.substring(0, space);
-//		}
 		jansi.a(bs);
 		incChar(bs.length());
-//		raw.append(bs);
 		return this;
 	}
 
@@ -438,17 +426,20 @@ public class AaAnsi {
 			char c = s.charAt(i);
 //			incChar();
 			if (c < 0x20 || c == 0x7f) {  // special handling of control characters, make them visible
-				if (c == 0x09 || c == 0x0a || c == 0x0d) {  // tab, line feed, carriage return... leave alone
+				if (c == 0x09 || c == 0x0a || c == 0x0d || c == 0x1b) {  // tab, line feed, carriage return, escape... leave alone
 //					sb.append(c);
 					aa.a(c);
 				} else if (c == 0) {
 //					sb.append('∅');  // make NULL more visible
 					aa.a('∅');
+					if (i != s.length()-1) controlChars++;  // if not at very end of string, then count it (shouldn't have null mid-string)
 				} else {
 //					sb.append("·");  // all other control chars
 					aa.a('·');  // all other control chars
+					controlChars++;
 				}
 			} else if (c == '\ufffd') {  // the replacement char introduced when trying to parse the bytes with the specified charset
+				replacementChars++;
 				if (isOn()) {  // bright red background, upsidedown ?
 					Ansi a = new Ansi().reset().bg(Elem.ERROR.getCurrentColor().value).fg(231).a('¿').bgDefault().fg(curElem.getCurrentColor().value);
 //					sb.append(a.toString());

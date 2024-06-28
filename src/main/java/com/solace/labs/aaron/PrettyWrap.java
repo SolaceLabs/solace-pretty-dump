@@ -62,41 +62,6 @@ public class PrettyWrap {
     	}
     	return count;
     }
-
-    private static final String SPLIT_ON_COMMAS = ", *(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
-    private static final String SPLIT_ON_COLONS = ":(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
-    private static final String SPLIT_ON_EQUALS = "=(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
-    
-    private static String formatMapLookingThing(String s) {
-    	s = s.trim();
-    	assert s.startsWith("{");
-    	assert s.startsWith("}");
-    	s = s.substring(1, s.length()-1);
-    	AaAnsi aa = AaAnsi.n().fg(Elem.BRACE).a('{');
-    	String[] tokens = s.split(SPLIT_ON_COMMAS);  //,-1);
-    	boolean validForColons = true;
-    	boolean validForEquals = true;
-    	for (String token : tokens) {
-        	String[] splitOnColons = token.split(SPLIT_ON_COLONS, -1);  // -1 means if trailing : then have empty string
-        	String[] splitOnEquals = token.split(SPLIT_ON_EQUALS, -1);
-        	if (splitOnColons.length != 2) validForColons = false;
-        	if (splitOnEquals.length != 2) validForEquals = false;
-    	}
-    	if (!(validForColons ^ validForEquals)) {  // either both true, or both false
-    		return aa.reset().a(s).fg(Elem.BRACE).a('}').toString();  // don't know which to split on, so bail out
-    	}
-    	final String whichSplit = validForColons ? SPLIT_ON_COLONS : SPLIT_ON_EQUALS;
-    	final char separator = validForColons ? ':' : '=';
-    	Iterator<String> it = Arrays.stream(tokens).iterator();
-    	while (it.hasNext()) {
-    		String[] keyValPair = it.next().split(whichSplit, -1);
-//    		aa.fg(Elem.KEY).a('\'').a(keyValPair[0]).a('\'').reset().a(separator);
-    		aa.fg(Elem.KEY).a(keyValPair[0]).reset().a(separator);
-    		aa.a(SaxHandler.guessAndFormatChars(keyValPair[1], keyValPair[0]));
-    		if (it.hasNext()) aa.reset().a(',');
-    	}
-    	return aa.fg(Elem.BRACE).a('}').toString();
-    }
     
     private static long lineIndentCount = 0;
     private static final int[] bgCols = new int[] { 17, 53, 52, 58, 22, 23 };
@@ -244,13 +209,14 @@ Destination:                            Topic 'q1/abc'
 //						AaAnsi ansi = new AaAnsi().a(input.substring(0,40)).aStyledString(input.substring(40));
 //						System.out.println(ansi);
 					} else if (insideMessage) {
-						if (input.length() > 42 && input.charAt(40) == '{' && input.endsWith("}")) {
-							String sub = formatMapLookingThing(input.substring(40));
-							wrapPrintln(new StringBuilder().append(input.substring(0,40)).append(sub).toString());
-						} else {
-							wrapPrintln(input);
-//							wrapPrintln(AaAnsi.n().aStyledString(input).toString());
-						}
+//						if (input.length() > 42 && input.charAt(40) == '{' && input.endsWith("}")) {
+//							String sub = formatMapLookingThing(input.substring(40));
+//							wrapPrintln(new StringBuilder().append(input.substring(0,40)).append(sub).toString());
+//						} else {
+//							wrapPrintln(input);
+////							wrapPrintln(AaAnsi.n().aStyledString(input).toString());
+//						}
+						wrapPrintln(UsefulUtils.guessIfMapLookingThing(input));
 //						if (input.isEmpty()) makeFancyString = false;
 //						if (makeFancyString) wrapPrintln(AaAnsi.n().aStyledString(input).toString());
 //						else wrapPrintln(input);

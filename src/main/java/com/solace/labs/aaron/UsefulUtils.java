@@ -17,7 +17,9 @@
 package com.solace.labs.aaron;
 
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -61,7 +63,7 @@ public class UsefulUtils {
 			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
 //			/* '╳'*/'∅'/*'Ø'*/,'☺','☻','♥','♦','♣','♠','•','◘','○','◙','♂','♀','♪','♫','☼',  // how to represent NULL?
 //			'►','◄','↕','‼','¶','§','▬','↨','↑','↓','→','←','∟','↔','▲','▼',
-			' ','!','"','#','$','%','&','\'','(',')','*','+',',','-','.','/',
+			/* '␣', */' ','!','"','#','$','%','&','\'','(',')','*','+',',','-','.','/',
 			'0','1','2','3','4','5','6','7','8','9',':',';','<','=','>','?',
 			'@','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O',
 			'P','Q','R','S','T','U','V','W','X','Y','Z','[','\\',']','^','_',
@@ -490,5 +492,47 @@ public class UsefulUtils {
 		return null;
 	}
 
+	
+	public static String guessIfMapLookingThing(String headerLine) {
+		if (headerLine.length() > 42 && headerLine.charAt(40) == '{' && headerLine.endsWith("}")) {
+			String sub = formatMapLookingThing(headerLine.substring(40));
+			return new StringBuilder().append(headerLine.substring(0,40)).append(sub).toString();
+		} else return headerLine;
+	}
+	
+    private static final String SPLIT_ON_COMMAS = ", *(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
+    private static final String SPLIT_ON_COLONS = ":(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
+    private static final String SPLIT_ON_EQUALS = "=(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)";
+    
+    private static String formatMapLookingThing(String s) {
+    	s = s.trim();
+    	assert s.startsWith("{");
+    	assert s.startsWith("}");
+    	s = s.substring(1, s.length()-1);
+    	AaAnsi aa = AaAnsi.n().fg(Elem.BRACE).a('{');
+    	String[] tokens = s.split(SPLIT_ON_COMMAS);  //,-1);
+    	boolean validForColons = true;
+    	boolean validForEquals = true;
+    	for (String token : tokens) {
+        	String[] splitOnColons = token.split(SPLIT_ON_COLONS, -1);  // -1 means if trailing : then have empty string
+        	String[] splitOnEquals = token.split(SPLIT_ON_EQUALS, -1);
+        	if (splitOnColons.length != 2) validForColons = false;
+        	if (splitOnEquals.length != 2) validForEquals = false;
+    	}
+    	if (!(validForColons ^ validForEquals)) {  // either both true, or both false
+    		return aa.reset().a(s).fg(Elem.BRACE).a('}').toString();  // don't know which to split on, so bail out
+    	}
+    	final String whichSplit = validForColons ? SPLIT_ON_COLONS : SPLIT_ON_EQUALS;
+    	final char separator = validForColons ? ':' : '=';
+    	Iterator<String> it = Arrays.stream(tokens).iterator();
+    	while (it.hasNext()) {
+    		String[] keyValPair = it.next().split(whichSplit, -1);
+//    		aa.fg(Elem.KEY).a('\'').a(keyValPair[0]).a('\'').reset().a(separator);
+    		aa.fg(Elem.KEY).a(keyValPair[0]).reset().a(separator);
+    		aa.a(SaxHandler.guessAndFormatChars(keyValPair[1], keyValPair[0]));
+    		if (it.hasNext()) aa.reset().a(',');
+    	}
+    	return aa.fg(Elem.BRACE).a('}').toString();
+    }
 
 }
