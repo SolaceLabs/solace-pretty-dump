@@ -370,7 +370,7 @@ SaxParserException - org.xml.sax.SAXParseException; lineNumber: 1; columnNumber:
 
 ## Protobuf Stuff
 
-PrettyDump come preloaded with Protobuf decoders for:
+PrettyDump comes preloaded with Protobuf decoders for:
 - Solace Distributed Trace messages
 - Sparkplug B
 
@@ -430,10 +430,9 @@ as well as a few other goodies.  Simply type your SdkPerf command, and then pipe
  __________                 __    __           __      __
  \______   \_______   _____/  |__/  |_ ___.__./  \    /  \____________  ______
   |     ___/\_  __ \_/ __ \   __\   __<   |  |\   \/\/   /\_  __ \__  \ \____ \
-  |    |  ___|  | \/\  ___/|  | _|  | _\___  | \        /  |  | \// __ \|  |_> >\
-  |____| |   |__| | \\___  >__| ||__| |/ ____| |\__/\  /  /|__|  (____  /   __/> >
-    |____|     |__|    \_\/  >__|  |__|\// ____|  \__\/  / by Aaron __\/|__|  __/
-                           \/            \/            \/               \/|__|
+  |    |     |  | \/\  ___/|  |  |  |  \___  | \        /  |  | \// __ \|  |_> >
+  |____|     |__|    \___  >__|  |__|  / ____|  \__/\  /   |__|  (____  /   __/
+                         \/            \/            \/    by Aaron   \/|__|
 
 PrettyDump WRAP mode for SdkPerf enabled... 😎
 ```
