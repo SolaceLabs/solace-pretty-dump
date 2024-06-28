@@ -424,7 +424,7 @@ Raw BytesMessage, SpanData ProtoBuf:
 If you really need to use SdkPerf (e.g. for additional features like request-reply, publish-on-receive, or basic performance
 testing), you can use PrettyDump in "wrap" mode to beautify your console: it will pretty-print any displayed message content, 
 as well as a few other goodies.  Simply type your SdkPerf command, and then pipe `|` to `prettydump wrap`. 
-`wrap` must be the one and only argument.
+
 
 ```
  __________                 __    __           __      __
@@ -432,8 +432,11 @@ as well as a few other goodies.  Simply type your SdkPerf command, and then pipe
   |     ___/\_  __ \_/ __ \   __\   __<   |  |\   \/\/   /\_  __ \__  \ \____ \
   |    |     |  | \/\  ___/|  |  |  |  \___  | \        /  |  | \// __ \|  |_> >
   |____|     |__|    \___  >__|  |__|  / ____|  \__/\  /   |__|  (____  /   __/
-                         \/            \/            \/    by Aaron   \/|__|
-
+                         \/            \/            \/               \/|__|
 PrettyDump WRAP mode for SdkPerf enabled... 😎
-```
 
+PUB MR(5s)=    0↑, SUB MR(5s)=    0↓, CPU=0
+PUB MR(5s)=10009↑, SUB MR(5s)= 9970↓, CPU=0
+PUB MR(5s)= 9993↑, SUB MR(5s)= 9989↓, CPU=0
+PUB MR(5s)=10004↑, SUB MR(5s)=10023↓, CPU=0
+```
