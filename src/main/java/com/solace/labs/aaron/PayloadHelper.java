@@ -280,7 +280,7 @@ public class PayloadHelper {
         	} else {
         		type = "valid " + type;
         	}
-        	System.out.println((formatted.controlChars + formatted.replacementChars) / formatted.getCharCount());
+//        	System.out.println((formatted.controlChars + formatted.replacementChars) / formatted.getCharCount());
         	if (malformed && ((1.0 * formatted.controlChars + formatted.replacementChars) / formatted.getCharCount() > 0.02)) {  // very very likely a binary file
 				formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, INDENT, currentScreenWidth);
         	} else if (malformed || formatted.controlChars > 3) {  // 3 is arbitrary

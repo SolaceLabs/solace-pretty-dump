@@ -237,19 +237,26 @@ public class UsefulUtils {
 
 	private static String printBinaryBytesSdkPerfStyle2(byte[] bytes, int indent) {
 		ByteArray ba = new ByteArray(bytes);
+		byte[] ba2 = ba.asBytes();
+		if (ba.getLength() > 100) {
+			String ts = ba.toString();  // this toString() only returns the first 100 bytes of the array
+			ts = ts.replace("]", ",...]");  // to indicate there is more
+			return indent(indent) + ts;
+		}
 		return indent(indent) + ba.toString();
 	}
 	
-	static AaAnsi printBinaryBytesSdkPerfStyle(byte[] bytes, int indent) {
-		return printBytes(bytes, indent, 16);  // default
-	}
-
-	static AaAnsi printBinaryBytesSdkPerfStyle(byte[] bytes) {
-		return printBytes(bytes, 4, 16);  // default
-	}
+//	static AaAnsi printBinaryBytesSdkPerfStyle(byte[] bytes, int indent) {
+//		return printBytes(bytes, indent, 16);  // default
+//	}
+//
+//	static AaAnsi printBinaryBytesSdkPerfStyle(byte[] bytes) {
+//		return printBytes(bytes, 4, 16);  // default
+//	}
 	
 	static AaAnsi printBinaryBytesSdkPerfStyle(byte[] bytes, int indent, int terminalWidth) {
-		if (terminalWidth > 147 + indent) return printBytes(bytes, indent, 32);
+		if (terminalWidth > 149) return printBytes(bytes, indent, 32);  // widescreen
+//		if (terminalWidth > 147 + indent) return printBytes(bytes, indent, 32);
 		else return printBytes(bytes, indent, 16);
 	}
 	
@@ -270,6 +277,7 @@ public class UsefulUtils {
 //			return new AaAnsi().reset().a("[").fg(Elem.BYTES_CHARS).a(getSimpleString(bytes)).reset().a("]").toString();  // just a long string of chars
 			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset();  // byte values
 		}
+		indent = 2;  // force override, 2 is what SdkPerf does too
 //		String[] hex = bytesToHexStringArray(bytes);
 		String hex2 = bytesToLongHexString(bytes);
 		AaAnsi aa = new AaAnsi();
