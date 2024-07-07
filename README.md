@@ -1,5 +1,4 @@
 ![PrettyDump Banner](https://github.com/SolaceLabs/pretty-dump/blob/main/src/prettydump3.png)
-
 # PrettyDump: pretty-print for Solace messages
 
 A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON**, **XML**, **Protobuf**, and Solace **SDT** Maps and Streams.
