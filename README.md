@@ -10,7 +10,8 @@ Also with a display option for a minimal one-line-per-message view.
 - [Running](#running)
 - [Command-line parameters](#command-line-parameters)
 - Subscribing options: [Direct topic subscriptions](#direct-subscriptions), [Queue consume](#queue-consume), [Browsing a queue](#browsing-a-queue)
-- [Output Indent options](#output-indent-options---the-6th-argument)
+- [Output Indent options](#output-indent-options---the-6th-argument) ([One-line Mode](#one-line-indent--0))
+- [One-line Mode: Runtime options](#one-line-mode-runtime-options)
 - [Charset Encoding](#charset-encoding)
 - [Error Checking](#error-checking)
 - [Protobuf Stuff](#protobuf-stuff) & Distributed Trace
