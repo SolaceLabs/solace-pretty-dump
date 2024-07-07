@@ -1,7 +1,7 @@
 #
 # https://help.github.com/articles/dealing-with-line-endings/
 
-* text eol=lf
+*.java text eol=lf
 
 
 
