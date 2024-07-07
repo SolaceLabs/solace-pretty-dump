@@ -1,4 +1,4 @@
-![PrettyDump Banner](https://github.com/SolaceLabs/pretty-dump/blob/main/src/prettydump3.jpg)
+![PrettyDump Banner](https://github.com/SolaceLabs/pretty-dump/blob/main/src/prettydump3.png)
 
 # PrettyDump: pretty-print for Solace messages
 
