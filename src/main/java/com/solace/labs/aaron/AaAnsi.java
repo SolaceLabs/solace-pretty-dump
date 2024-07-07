@@ -103,6 +103,10 @@ public class AaAnsi {
 //		return aa;
 //	}
 
+	public static AaAnsi colorizeTopic(String topic) {
+		return AaAnsi.n().colorizeTopic(topic, -1);
+	}
+		
 	public AaAnsi colorizeTopic(String topic, int highlight) {
 		/*
 		 * if (MODE == ColorMode.VIVID) return colorizeTopicRainbow(topic,highlight);
@@ -384,7 +388,10 @@ public class AaAnsi {
 
 	/** Just copy the whole AaAnsi into this one. */
 	public AaAnsi a(AaAnsi ansi) {
+//		Ansi a = new Ansi().reset().bg(Elem.ERROR.getCurrentColor().value).fg(231).a('¿').bgDefault().fg(curElem.getCurrentColor().value);
+//		jansi.a(ansi.toString());
 		jansi.a(ansi.toString());
+		if (curElem != null) jansi.fg(curElem.getCurrentColor().value);  // put it back to whatever color it was before
 		charCount += ansi.charCount;
 		controlChars += ansi.controlChars;
 		replacementChars += ansi.replacementChars;
