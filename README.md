@@ -2,9 +2,7 @@
 # PrettyDump: pretty-print for Solace messages
 
 A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON**, **XML**, **Protobuf**, and Solace **SDT** Maps and Streams.
-Also with a display option for a minimal one-line-per-message view.
-
-**Latest release: v1.0.0  2024/06/28**
+Also with a display option for a minimal one-line-per-message view.  Supports Direct topic subscriptions, Queues, browsing, and temporary Queue w/subs.
 
 - [Building](#building)
 - [Running](#running)
@@ -328,8 +326,21 @@ bus_trak/gps/v2/006A/01291/001.29687/0103.78305/21/STOPPED
 When using one-line mode, you can do some extra stuff:
 
  - press 't' [ENTER] to enable trim for message payloads... will cause the payload to get truncated at the terminal width
+```
+bus_trak/gps/v2/022A/01228/001.32266/0103.69693/21/OK       {"psgrCap":0.75,"heading":176,"busNum":12…
+bus_trak/gps/v2/036X/01431/001.37858/0103.92294/32/STOPPED  {"psgrCap":0.5,"heading":288,"busNum":143…
+bus_trak/gps/v2/012A/01271/001.38968/0103.76101/31/STOPPED  {"psgrCap":0,"heading":254,"busNum":1271,…
+bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK       {"psgrCap":0.75,"heading":272,"busNum":13…
+```
  - press '+' [ENTER] to add spacing to the topic hierarchy display, more of a "column" view of the topic levels
     - press '-' [ENTER] to go back to regular (compressed) topic display
+```
+#STATS⋅/VPN⋅⋅⋅⋅/sgdemo1⋅/aaron⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅/vpn_stats
+#STATS⋅/VPN⋅⋅⋅⋅/sgdemo1⋅/singtelbusdemo⋅⋅⋅⋅⋅⋅/vpn_stats
+#STATS⋅/SYSTEM⋅/sgdemo1⋅/stats_client_detail
+#STATS⋅/SYSTEM⋅/sgdemo1⋅/MSG-SPOOL
+#STATS⋅/SYSTEM⋅/sgdemo1⋅/REDUNDANCY
+```
  - press '[1-9]' [ENTER] to highlight a specific level of the topic hierarchy
     - press '0' [ENTER] to go back to regular full-topic highlighting
 
