@@ -322,6 +322,19 @@ bus_trak/gps/v2/006A/01291/001.29687/0103.78305/21/STOPPED
 ```
 
 
+## One-Line mode: runtime options
+
+When using one-line mode, you can do some extra stuff:
+
+ - press 't' [ENTER] to enable trim for message payloads... will cause the payload to get truncated at the terminal width
+ - press '+' [ENTER] to add spacing to the topic hierarchy display, more of a "column" view of the topic levels
+    - press '-' [ENTER] to go back to regular (compressed) topic display
+ - press '[1-9]' [ENTER] to highlight a specific level of the topic hierarchy
+    - press '0' [ENTER] to go back to regular full-topic highlighting
+
+
+
+
 ## Charset Encoding
 
 When publishing (Structured Data Type) **TextMessages** in Solace, the Strings are encoded as UTF-8.  However if publishing Strings as
