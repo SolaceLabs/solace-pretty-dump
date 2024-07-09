@@ -427,7 +427,7 @@ public class AaAnsi {
 		AaAnsi aa = new AaAnsi(false);
 //		if (styled) aa.fg(Elem.STRING);
 		boolean insideNumStyle = false;  // these two vars are for my "styled string" code below
-		boolean insideWordStyle = false;
+//		boolean insideWordStyle = false;
 		
 		for (int i=0; i<s.length(); i++) {
 			char c = s.charAt(i);
@@ -458,7 +458,7 @@ public class AaAnsi {
 			} else {  // all good, normal char
 				if (styled && isOn()) {  // styled is for normal strings, we'll do some colour coding to make it look cooler
 					if (Character.isMirrored(c) || c == '\'' || c == '"') {  // things like () {} [] 
-						AaAnsi a = new AaAnsi().fg(Elem.BRACE).a(c).fg(Elem.STRING);
+//						AaAnsi a = new AaAnsi().fg(Elem.BRACE).a(c).fg(Elem.STRING);
 //						sb.append(a.toString());
 //						aa.a(a);
 						aa.fg(Elem.BRACE).a(c).fg(Elem.STRING);
@@ -469,7 +469,7 @@ public class AaAnsi {
 							aa.a(c);
 						} else if (Character.isWhitespace(s.charAt(i+1)) || c == ',' || c == ';') {
 							// let's change , ; . : - to default colour as long as the next char is whitespace
-							AaAnsi a = new AaAnsi().reset().a(c).fg(Elem.STRING);
+//							AaAnsi a = new AaAnsi().reset().a(c).fg(Elem.STRING);
 //							sb.append(a.toString());
 //							aa.a(a);
 							aa.reset().a(c).fg(Elem.STRING);

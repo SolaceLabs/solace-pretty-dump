@@ -237,7 +237,7 @@ public class UsefulUtils {
 
 	private static String printBinaryBytesSdkPerfStyle2(byte[] bytes, int indent) {
 		ByteArray ba = new ByteArray(bytes);
-		byte[] ba2 = ba.asBytes();
+//		byte[] ba2 = ba.asBytes();
 		if (ba.getLength() > 100) {
 			String ts = ba.toString();  // this toString() only returns the first 100 bytes of the array
 			ts = ts.replace("]", ",...]");  // to indicate there is more

@@ -88,8 +88,8 @@ public class PrettyDump {
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
 		for (String arg : args) {
 			if (arg.equals("-h") || arg.startsWith("--h") || arg.equals("-?") || arg.startsWith("--?") || args.length > 7) {
-				System.out.printf("Usage: %s [host:port] [vpn] [user] [pw] [topics|q:queue|b:queue|f:queue|tq:topics] [indent] [count]%n", APP_NAME.toLowerCase());
-				System.out.printf("   or: %s <topics|q:queue|b:queue|f:queue|tq:topics> [indent] [count]  for \"shortcut\" mode%n%n", APP_NAME.toLowerCase());
+				System.out.printf("Usage: %s [host:port] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [indent] [count]%n", APP_NAME.toLowerCase());
+				System.out.printf("   or: %s <topics|[qbf]:queueName|tq:topics> [indent] [count]  for \"shortcut\" mode%n%n", APP_NAME.toLowerCase());
 				//                System.out.println(" - If using TLS, remember \"tcps://\" before host; or \"ws://\" or \"wss://\" for WebSocket");
 				System.out.println(" - Default protocol \"tcp://\"; for TLS use \"tcps://\"; or \"ws://\" or \"wss://\" for WebSocket");
 				System.out.println(" - Default parameters will be: localhost:55555 default foo bar \"#noexport/>\" 4");
@@ -101,6 +101,7 @@ public class PrettyDump {
 				System.out.println("    - b:queueName to browse a queue (all messages, or range of messages by ID)");
 				//                System.out.println("       - Can browse all messages, or specific messages by ID");
 				System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
+				System.out.println("    - tq:topics to provision a tempQ with topics subscribed (can use NOT '!' topics");
 				System.out.println(" - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting");
 				System.out.println("    - One-line mode: use negative indent value (trim topic length) for topic & payload only");
 				System.out.println("       - Or use -1 for auto column width adjustment");

@@ -3,13 +3,9 @@ package com.solace.labs.aaron;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -20,13 +16,12 @@ import org.fusesource.jansi.Ansi;
 import org.fusesource.jansi.AnsiConsole;
 
 import com.solace.labs.aaron.Banner.Which;
-import com.solace.labs.topic.Sub;
 import com.solacesystems.jcsmp.JCSMPException;
 
 public class PrettyWrap {
 
     private static final Logger logger = LogManager.getLogger(PrettyWrap.class);
-    private static Map<Sub, Method> protobufCallbacks = new HashMap<>();
+//    private static Map<Sub, Method> protobufCallbacks = new HashMap<>();
 
     /** ensures that c is either 0-9a-f */
     private static boolean invalidHex(char c) {
@@ -64,7 +59,7 @@ public class PrettyWrap {
     }
     
     private static long lineIndentCount = 0;
-    private static final int[] bgCols = new int[] { 17, 53, 52, 58, 22, 23 };
+//    private static final int[] bgCols = new int[] { 17, 53, 52, 58, 22, 23 };
     
     private static void wrapPrintln(String s) {
     	if ("indent".equals("indent") && (AaAnsi.getColorMode() == AaAnsi.ColorMode.VIVID || AaAnsi.getColorMode() == AaAnsi.ColorMode.LIGHT)) {
@@ -87,7 +82,7 @@ public class PrettyWrap {
     /*
 Destination:                            Topic 'q1/abc'
 	*/
-    private static String extractTopic(String line) {
+    static String extractTopic(String line) {
     	if (line.startsWith("Destination:                            Topic '") && line.endsWith("'")) {
     		String topic = line.substring(47, line.length()-1);
     		return topic;
@@ -105,7 +100,7 @@ Destination:                            Topic 'q1/abc'
 //		test = "{JMS_Solace_DeliverToOne:false,JMS_Solace_DeadMsgQueueEligible:false,JMS_Solace_ElidingEligible:false,Solace_JMS_Prop_IS_Reply_Message:false,JMSXDeliveryCount:1}";
 //		System.out.println(formatMapLookingThing(test));
 //		System.exit(0);
-        protobufCallbacks = ProtoBufUtils.loadProtobufDefinitions();
+//        protobufCallbacks = ProtoBufUtils.loadProtobufDefinitions();
     	PayloadHelper payloadHelper = new PayloadHelper(StandardCharsets.UTF_8);
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 		boolean insideMessage = false;
@@ -117,7 +112,7 @@ Destination:                            Topic 'q1/abc'
 //		int msgCount = 0;
 		boolean legalPayload = true;
 		boolean ignore = false;
-		String topic = "";
+//		String topic = "";
 		ScheduledExecutorService pool = Executors.newScheduledThreadPool(1);
 		
         System.out.println(Banner.printBanner(Which.WRAP));
@@ -174,7 +169,7 @@ Destination:                            Topic 'q1/abc'
 //						wrapPrintln(input);
 					} else if (input.startsWith("Destination:      ") || input.startsWith("JMSDestination:    ")) {
 						if (input.startsWith("Dest")) {
-							topic = extractTopic(input);  // if it is an actual topic, this will return it; otherwise empty string
+//							topic = extractTopic(input);  // if it is an actual topic, this will return it; otherwise empty string
 						}
 						wrapPrintln(PayloadHelper.colorizeDestination(input));
 //						System.out.println(new AaAnsi().fg(Elem.DESTINATION).a(input).toString());
