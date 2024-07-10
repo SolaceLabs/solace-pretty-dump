@@ -1,13 +1,14 @@
-![PrettyDump Banner](https://github.com/SolaceLabs/pretty-dump/blob/main/src/prettydump3.png)
+![PrettyDump Banner](https://github.com/SolaceLabs/pretty-dump/blob/main/src/prettydump4.png)
 # PrettyDump: pretty-print for Solace messages
 
-A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON**, **XML**, **Protobuf**, and Solace **SDT** Maps and Streams.
-Also with a display option for a minimal one-line-per-message view.  Supports Direct topic subscriptions, Queues, browsing, and temporary Queue w/subs.
+A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON**, **XML**, **Protobuf**, and Solace **SDT** Maps and Streams. (and binary too)
+Also with a display option for a minimal one-line-per-message view.  Supports Direct topic subscriptions, Queue consume, Queue browsing, and temporary Queue w/subs.  Now with Selector support!
+
 
 - [Building](#building)
 - [Running](#running)
 - [Command-line parameters](#command-line-parameters)
-- Subscribing options: [Direct topic subscriptions](#direct-subscriptions), [Queue consume](#queue-consume), [Browsing a queue](#browsing-a-queue)
+- Subscribing options: [Direct topic subscriptions](#direct-subscriptions), [Queue consume](#queue-consume), [Browsing a queue](#browsing-a-queue), [TempQ with subs](#temporary-queue-with-subscriptions)
 - [Output Indent options](#output-indent-options---the-6th-argument) ([One-line Mode](#one-line-indent--0))
 - [One-line Mode: Runtime options](#one-line-mode-runtime-options)
 - [Charset Encoding](#charset-encoding)
@@ -30,7 +31,7 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 ./gradlew assemble
 cd build/distributions
 unzip prettydump.zip
-cd prettydump
+cd prettydump/bin
 ```
 
 Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-dump/releases) with everything already built.
@@ -42,7 +43,7 @@ For Docker container usage, read the comments in [the Dockerfile](Dockerfile).
 
 #### No args, default broker options
 ```
-$ bin/prettydump
+$ prettydump
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'default' on broker 'localhost'.
@@ -64,7 +65,7 @@ SDT TextMessage, UTF-8 charset, JSON Object:
 
 #### Consume from a Solace Cloud queue
 ```
-$ bin/prettydump demo.messaging.solace.cloud demo-vpn user pw q:q1
+$ prettydump demo.messaging.solace.cloud demo-vpn user pw q:q1
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'demo-vpn' on broker 'demo.messaging.solace.cloud'.
@@ -73,7 +74,7 @@ Attempting to bind to queue 'q1' on the broker... success!
 
 #### Shorcut mode: localhost broker, wildcard topics, and one-line output
 ```
-$ bin/prettydump "solace/>" -30
+$ prettydump "solace/>" -30
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'default' on broker 'localhost'.
@@ -88,9 +89,9 @@ solace/samples/testing       This is a text payload.
 ## Command-line parameters
 
 ```
-$ bin/prettydump -h   or  --help
+$ prettydump -h  or  --help
 
-Usage: prettydump [host:port] [vpn] [username] [password] [topics|q:queue|b:queue|f:queue] [indent]
+Usage: prettydump [host:port] [vpn] [username] [password] [topics|[qbf]:queue] [indent]
    or: prettydump <topics|q:queue|b:queue|f:queue> [indent]    for "shortcut" mode
 
  - If using TLS, remember "tcps://" before host
@@ -174,10 +175,10 @@ To find the ID of the messages on a queue, either use PubSub+ Manager, CLI, or S
 
 ![View Message IDs in PubSubPlus Manager](https://github.com/SolaceLabs/pretty-dump/blob/main/src/browse-msgs.png)
 
-**NOTE:** Use `f:<queueName>` to browse just the first/oldest message on the queue. Very useful for "poison pills" or "head-of-line blocking" messages.
+**NOTE:** Use `f:<queueName>` to browse just the _first/oldest_ message on the queue. Very useful for "poison pills" or "head-of-line blocking" messages.
 
 ```
-$ bin/prettydump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1
+$ prettydump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'aaron-demo-singapore' on broker 'aaron.messaging.solace.cloud'.
@@ -213,6 +214,21 @@ Browsing finished!
 Main thread exiting.
 Shutdown detected, quitting...
 ```
+
+
+### Temporary Queue with Subscriptions
+
+This mode allows you to choose the topics you wish to subscribe to, but do so in a Guaranteed fashion by provisioning a temporary / non-durable queue and then adding the topic subscriptions to that.
+```
+$ prettydump 'tq:#noexport/billing/>,#noexport/orders/>'
+
+Creating temporary Queue.
+Subscribed tempQ to topic: '#noexport/billing/>'
+Subscribed tempQ to topic: '#noexport/orders/>'
+```
+
+
+
 
 
 ## Output Indent options - the 6th argument
