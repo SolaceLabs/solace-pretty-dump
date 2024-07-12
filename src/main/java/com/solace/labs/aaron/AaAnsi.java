@@ -242,7 +242,17 @@ public class AaAnsi {
 		incChar(s.length());
 		return this;
 	}
-	
+
+	public AaAnsi warn(String s) {
+		if (isOn()) {
+			fg(Elem.FLOAT).a(s).reset();
+		} else {
+			jansi.a(s);
+		}
+		incChar(s.length());
+		return this;
+	}
+
 	public AaAnsi ex(Exception e) {
 		String exception = e.getClass().getSimpleName() + " - " + e.getMessage();
 		return invalid(exception);
@@ -328,8 +338,7 @@ public class AaAnsi {
 				insideEscape = true;
 				pos++;
 				continue;
-			}
-			if (insideEscape) {
+			} else if (insideEscape) {
 				if (ansiString.charAt(pos) == 'm') {
 					insideEscape = false;
 				}
@@ -341,11 +350,6 @@ public class AaAnsi {
 		}
 		return count;
 	}
-	
-//	String trim() {
-//		if (jansi.)
-//	}
-	
 	
 	String trim(int len) {
 		assert len > 0;
@@ -375,12 +379,10 @@ public class AaAnsi {
 
 	@Override
 	public String toString() {
-//		reset();
 		return jansi.toString();
 	}
 
 	/** Just jam is straight in, don't parse at all! */
-	@Deprecated
 	private AaAnsi aRaw(String s, int numChars) {
 		jansi.a(s);
 		return this;
@@ -388,8 +390,6 @@ public class AaAnsi {
 
 	/** Just copy the whole AaAnsi into this one. */
 	public AaAnsi a(AaAnsi ansi) {
-//		Ansi a = new Ansi().reset().bg(Elem.ERROR.getCurrentColor().value).fg(231).a('¿').bgDefault().fg(curElem.getCurrentColor().value);
-//		jansi.a(ansi.toString());
 		jansi.a(ansi.toString());
 		if (curElem != null) jansi.fg(curElem.getCurrentColor().value);  // put it back to whatever color it was before
 		charCount += ansi.charCount;
@@ -423,25 +423,22 @@ public class AaAnsi {
 	 */
 	private AaAnsi a(String s, boolean styled) {
 		if (s == null) return this;
-//		StringBuilder sb = new StringBuilder();
 		AaAnsi aa = new AaAnsi(false);
-//		if (styled) aa.fg(Elem.STRING);
 		boolean insideNumStyle = false;  // these two vars are for my "styled string" code below
 //		boolean insideWordStyle = false;
-		
 		for (int i=0; i<s.length(); i++) {
 			char c = s.charAt(i);
-//			incChar();
 			if (c < 0x20 || c == 0x7f) {  // special handling of control characters, make them visible
-				if (c == 0x09 || c == 0x0a || c == 0x0d || c == 0x1b) {  // tab, line feed, carriage return, escape... leave alone
-//					sb.append(c);
+				if (insideNumStyle) {
+					insideNumStyle = false;
+					aa.fg(Elem.STRING);
+				}
+				if (c == 0x09 || c == 0x0a || c == 0x0c || c == 0x0d || c == 0x1b) {  // tab, line feed, form feed, carriage return, escape... leave alone
 					aa.a(c);
 				} else if (c == 0) {
-//					sb.append('∅');  // make NULL more visible
 					aa.a('∅');
 					if (i != s.length()-1) controlChars++;  // if not at very end of string, then count it (shouldn't have null mid-string)
 				} else {
-//					sb.append("·");  // all other control chars
 					aa.a('·');  // all other control chars
 					controlChars++;
 				}
@@ -449,54 +446,39 @@ public class AaAnsi {
 				replacementChars++;
 				if (isOn()) {  // bright red background, upsidedown ?
 					Ansi a = new Ansi().reset().bg(Elem.ERROR.getCurrentColor().value).fg(231).a('¿').bgDefault().fg(curElem.getCurrentColor().value);
-//					sb.append(a.toString());
 					aa.aRaw(a.toString(), 1);
 				} else {
-//					sb.append('¿');
 					aa.a('¿');
 				}
 			} else {  // all good, normal char
 				if (styled && isOn()) {  // styled is for normal strings, we'll do some colour coding to make it look cooler
 					if (Character.isMirrored(c) || c == '\'' || c == '"') {  // things like () {} [] 
-//						AaAnsi a = new AaAnsi().fg(Elem.BRACE).a(c).fg(Elem.STRING);
-//						sb.append(a.toString());
-//						aa.a(a);
 						aa.fg(Elem.BRACE).a(c).fg(Elem.STRING);
 						insideNumStyle = false;
 					} else if ((c == ',' || c == ';' || c == '.' || c == ':' || c == '-') && i < s.length()-1) {  // punctuation, and not at the very last char
 						if (insideNumStyle && Character.isDigit(s.charAt(i+1))) {  // if we're in a number, and the next char is a number, keep the orange colour
-//							sb.append(c);
 							aa.a(c);
 						} else if (Character.isWhitespace(s.charAt(i+1)) || c == ',' || c == ';') {
 							// let's change , ; . : - to default colour as long as the next char is whitespace
-//							AaAnsi a = new AaAnsi().reset().a(c).fg(Elem.STRING);
-//							sb.append(a.toString());
-//							aa.a(a);
 							aa.reset().a(c).fg(Elem.STRING);
 							insideNumStyle = false;
 						} else {
-//							sb.append(c);
 							aa.a(c);
 						}
 					} else if (Character.isDigit(c)) {  // digits 0-9 in ASCII
 						if (!insideNumStyle) {  // if we're not inside a number, then change colour
-//							sb.append(new AaAnsi().fg(Elem.NUMBER));
 							aa.fg(Elem.NUMBER);
 							insideNumStyle = true;
 						}
-//						sb.append(c);
 						aa.a(c);
 					} else {
  						if (insideNumStyle) {
-//							sb.append(new AaAnsi().fg(Elem.STRING));
 							aa.fg(Elem.STRING);
 							insideNumStyle = false;
 						}
-//						sb.append(c);
 						aa.a(c);
 					}
 				} else {  // not styled text, just normal append
-//					sb.append(c);
 					aa.a(c);
 				}
 			}
@@ -509,6 +491,7 @@ public class AaAnsi {
 		if (isOn()) {
 			jansi.reset();
 			if (Elem.DEFAULT.getCurrentColor().value != -1) jansi.fg(Elem.DEFAULT.getCurrentColor().value);
+			curElem = null;
 		}
 		return this;
 	}

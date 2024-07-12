@@ -280,10 +280,12 @@ public class PayloadHelper {
         	} else {
         		type = "valid " + type;
         	}
-//        	System.out.println((formatted.controlChars + formatted.replacementChars) / formatted.getCharCount());
-        	if (malformed && ((1.0 * formatted.controlChars + formatted.replacementChars) / formatted.getCharCount() > 0.02)) {  // very very likely a binary file
+        	double ratio = (1.0 * formatted.controlChars + formatted.replacementChars) / formatted.getCharCount();
+//        	System.out.printf("Ratio for (controlChars %d + replaceChars %d) / charCount %d == %f%n",
+//        			formatted.controlChars, formatted.replacementChars, formatted.getCharCount(), ratio);
+        	if (malformed && ratio > 0.2) {  // 20%, very likely a binary file
 				formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, INDENT, currentScreenWidth);
-        	} else if (malformed || formatted.controlChars > 3) {  // 3 is arbitrary
+        	} else if (malformed || formatted.controlChars > 0) {  // any unusual control chars (not tab, LF, CR, FF, or Esc, or NUL at string end
 				if (INDENT > 0) {
 					formatted.a('\n').a(UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, INDENT, currentScreenWidth));
 				}
@@ -606,7 +608,7 @@ public class PayloadHelper {
                 }
         	} else {  // INDENT < 0, one-line mode!
         		if (ms.binary != null && ms.xml != null) {
-        			// that's not great for one-line printing!
+        			// that's not great for one-line printing!  but probably pretty rare!!!!
         			System.out.println("Message contains both binary and XML payloads:");
         			System.out.println(message.dump().trim());  // raw JCSMP full dump
         		} else if (ms.binary != null) {

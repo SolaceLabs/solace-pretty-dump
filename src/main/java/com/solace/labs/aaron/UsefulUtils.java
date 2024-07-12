@@ -159,6 +159,7 @@ public class UsefulUtils {
 			}
 		}
 	}
+	
 	public static String getByteRepresentation(byte b) {
 		if (b < 0) return BYTE_REPS[b + 256];
 		return BYTE_REPS[b];
@@ -188,6 +189,7 @@ public class UsefulUtils {
 	 * @param bytes
 	 * @return
 	 */
+	// now it's comma separated..!
 	public static String bytesToSpacedHexString(byte[] bytes) {
 		if (bytes.length == 0) return "[]";
 		StringBuilder sb = new StringBuilder("[");
@@ -199,10 +201,12 @@ public class UsefulUtils {
         	for (int i = 1; i < bytes.length; i++) {
 //        		int v = bytes[i] & 0xFF;
 //        		sb.append(' ').append(TEST[v >>> 4]).append(TEST[v & 0x0F]);
-                sb.append(' ').append(getByteRepresentation(bytes[i]));
+                sb.append(',').append(getByteRepresentation(bytes[i]));
         	}
         }
-        return sb.append(']').toString();
+        sb.append(']');
+        if (bytes.length > 8) sb.append(" (length=").append(bytes.length).append(')');
+        return sb.toString();
 //	    return new String(hexChars, StandardCharsets.US_ASCII);
 	}
 
@@ -231,6 +235,7 @@ public class UsefulUtils {
 	    return blah;
 	}
 
+	@SuppressWarnings("unused")
 	private static String printBinaryBytesSdkPerfStyle2(byte[] bytes) {
 		return printBinaryBytesSdkPerfStyle2(bytes, 0);
 	}
@@ -255,8 +260,12 @@ public class UsefulUtils {
 //	}
 	
 	static AaAnsi printBinaryBytesSdkPerfStyle(byte[] bytes, int indent, int terminalWidth) {
+		if (indent <= 0) {
+//			return new AaAnsi().reset().a("[").fg(Elem.BYTES_CHARS).a(getSimpleString(bytes)).reset().a("]").toString();  // just a long string of chars
+//			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset();  // byte values
+			return new AaAnsi().reset().fg(Elem.BYTES).a(bytesToSpacedHexString(bytes)).reset();  // byte values
+		}
 		if (terminalWidth > 149) return printBytes(bytes, indent, 32);  // widescreen
-//		if (terminalWidth > 147 + indent) return printBytes(bytes, indent, 32);
 		else return printBytes(bytes, indent, 16);
 	}
 	
@@ -273,10 +282,6 @@ public class UsefulUtils {
 	
 	/** this should only be called if we know it's not a UTF-8 (or whatever) string */
 	private static AaAnsi printBytes(byte[] bytes, int indent, int width) {
-		if (indent <= 0) {
-//			return new AaAnsi().reset().a("[").fg(Elem.BYTES_CHARS).a(getSimpleString(bytes)).reset().a("]").toString();  // just a long string of chars
-			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset();  // byte values
-		}
 		indent = 2;  // force override, 2 is what SdkPerf does too
 //		String[] hex = bytesToHexStringArray(bytes);
 		String hex2 = bytesToLongHexString(bytes);

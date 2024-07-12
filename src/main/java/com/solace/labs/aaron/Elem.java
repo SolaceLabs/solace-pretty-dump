@@ -20,6 +20,9 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.google.protobuf.ByteString;
 import com.solace.labs.aaron.AaAnsi.ColorMode;
 import com.solacesystems.common.util.ByteArray;
@@ -46,11 +49,13 @@ public enum Elem {
 	DESTINATION,
 	TOPIC_SEPARATOR,
 	MSG_BREAK,
+	WARN,
 	ERROR,
 	UNKNOWN,
 	DEFAULT,
 	;
 
+	private static final Logger logger = LogManager.getLogger(Elem.class);
 	static Map<AaAnsi.ColorMode, Map<Elem, Col>> colorMap = new HashMap<>();
 	static {
 		colorMap.put(AaAnsi.ColorMode.STANDARD, new HashMap<>());
@@ -70,7 +75,8 @@ public enum Elem {
 		map.put(DESTINATION, new Col(14));
 		map.put(TOPIC_SEPARATOR, new Col(-1));
 		map.put(MSG_BREAK, new Col(-1,true));
-		map.put(ERROR, new Col(196));
+		map.put(WARN, new Col(208));
+		map.put(ERROR, new Col(9));
 		map.put(UNKNOWN, new Col(198, false, true));
 		map.put(DEFAULT, new Col(-1));
 
@@ -91,8 +97,9 @@ public enum Elem {
 		map.put(DESTINATION, new Col(14));
 		map.put(TOPIC_SEPARATOR, new Col(6));
 		map.put(MSG_BREAK, new Col(-1));
-		map.put(ERROR, new Col(1));
-		map.put(UNKNOWN, new Col(1, false, true));
+		map.put(WARN, new Col(11));
+		map.put(ERROR, new Col(9));
+		map.put(UNKNOWN, new Col(13, false, true));
 		map.put(DEFAULT, new Col(-1));
 		
 		colorMap.put(AaAnsi.ColorMode.VIVID, new HashMap<>());
@@ -114,6 +121,7 @@ public enum Elem {
 		map.put(DESTINATION, new Col(49));
 		map.put(TOPIC_SEPARATOR, new Col(43));
 		map.put(MSG_BREAK, new Col(-1,true));
+		map.put(WARN, new Col(208));
 		map.put(ERROR, new Col(196));
 		map.put(UNKNOWN, new Col(196, false, true));
 //		defaults.put(DEFAULT, new Col(66));
@@ -143,7 +151,8 @@ public enum Elem {
 //		map.put(TOPIC_SEPARATOR, new Col(42));
 		map.put(TOPIC_SEPARATOR, new Col(30));
 		map.put(MSG_BREAK, new Col(247));
-		map.put(ERROR, new Col(196));
+		map.put(WARN, new Col(172));
+		map.put(ERROR, new Col(160));
 		map.put(UNKNOWN, new Col(196, false, true));
 		map.put(DEFAULT, new Col(241));
 	
@@ -165,6 +174,7 @@ public enum Elem {
 		map.put(DESTINATION, new Col(47));
 		map.put(TOPIC_SEPARATOR, new Col(34));
 		map.put(MSG_BREAK, new Col(35, true));
+		map.put(WARN, new Col(154));
 		map.put(ERROR, new Col(157));
 		map.put(UNKNOWN, new Col(157, false, true));
 		map.put(DEFAULT, new Col(28));
@@ -183,6 +193,7 @@ public enum Elem {
 		if (value instanceof ByteArray || value instanceof ByteString) return Elem.BYTES;
 		if (value instanceof Boolean) return Elem.BOOLEAN;
 		if (value instanceof Destination) return Elem.DESTINATION;
+		logger.warn("found a value that couldn't be guessed! " + value.toString() + ", " + value.getClass().getName());
 		return Elem.UNKNOWN;
 	}
 	

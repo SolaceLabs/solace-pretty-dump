@@ -1,5 +1,5 @@
 ![PrettyDump Banner](src/prettydump5.png)
-# PrettyDump: pretty-print for Solace messages
+# Pretty-print for dumped Solace messages
 
 A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON**, **XML**, **Protobuf**, and Solace **SDT** Maps and Streams. (and binary too)
 Also with a display option for a minimal one-line-per-message view.  Supports Direct topic subscriptions, Queue consume, Queue browsing, and temporary Queue w/subs.  Now with Selector support!

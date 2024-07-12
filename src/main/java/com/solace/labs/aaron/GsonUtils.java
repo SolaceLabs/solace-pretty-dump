@@ -22,11 +22,15 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigInteger;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 
 public class GsonUtils {
 	
+	private static final Logger logger = LogManager.getLogger(GsonUtils.class);
 	private static String lastKeyName = "";
 
 	static AaAnsi parseJsonObject(String json, int indentFactor) throws IOException {
@@ -212,6 +216,7 @@ public class GsonUtils {
 			reader.nextNull();
 		} else {
 			ansi.fg(Elem.UNKNOWN).a("<SKIPPING VALUE>").reset();
+			logger.warn("Discovered an \"unknown\" value:\n" + ansi.toString());
 			reader.skipValue();
 		}
 	}

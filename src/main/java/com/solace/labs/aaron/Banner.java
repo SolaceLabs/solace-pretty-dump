@@ -210,7 +210,7 @@ public class Banner {
     		maxLen = Math.max(maxLen, s.length());
     	}
     	int pieceLen = maxLen / 6;
-    	preprocessBanner(banner);
+    	preprocessBanner(banner);  // make the drop shadow
     	AaAnsi ansi = new AaAnsi();
     	for (int i=0; i<banner.length; i++) {
     		for (int j=0; j<banner[i].length(); j++) {

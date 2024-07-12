@@ -71,6 +71,7 @@ public class PrettyDump {
 
 	private static volatile boolean isShutdown = false;          // are we done yet?
 	private static volatile boolean isConnected = false;
+	private static volatile boolean isFlowActive = false;
 	private static String[] topics = new String[] { "#noexport/>" };  // default starting topic
 	private static Queue queue = null;  // might be temp/non-durable, or regular
 	private static Browser browser = null;  // in case we need it, can't do async, is a blocking/looping pull
@@ -88,7 +89,7 @@ public class PrettyDump {
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
 		for (String arg : args) {
 			if (arg.equals("-h") || arg.startsWith("--h") || arg.equals("-?") || arg.startsWith("--?") || args.length > 7) {
-				System.out.printf("Usage: %s [host:port] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [indent] [count]%n", APP_NAME.toLowerCase());
+				System.out.printf("Usage: %s [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [indent] [count]%n", APP_NAME.toLowerCase());
 				System.out.printf("   or: %s <topics|[qbf]:queueName|tq:topics> [indent] [count]  for \"shortcut\" mode%n%n", APP_NAME.toLowerCase());
 				//                System.out.println(" - If using TLS, remember \"tcps://\" before host; or \"ws://\" or \"wss://\" for WebSocket");
 				System.out.println(" - Default protocol \"tcp://\"; for TLS use \"tcps://\"; or \"ws://\" or \"wss://\" for WebSocket");
@@ -101,11 +102,12 @@ public class PrettyDump {
 				System.out.println("    - b:queueName to browse a queue (all messages, or range of messages by ID)");
 				//                System.out.println("       - Can browse all messages, or specific messages by ID");
 				System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
-				System.out.println("    - tq:topics to provision a tempQ with topics subscribed (can use NOT '!' topics");
+				System.out.println("    - tq:topics to provision a tempQ with topics subscribed (can use NOT '!' topics)");
 				System.out.println(" - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting");
 				System.out.println("    - One-line mode: use negative indent value (trim topic length) for topic & payload only");
 				System.out.println("       - Or use -1 for auto column width adjustment");
 				System.out.println("       - Use negative zero -0 for topic only, no payload");
+				System.out.println(" - Optional count: stop after receiving 'count' number of messages");
 				System.out.println(" - Shortcut mode: first argument contains '>', '*', or starts '[qbf]:', assume default broker");
 				System.out.println("    - e.g. prettydump \"logs/>\" -1  ~or~  prettydump q:q1  ~or~  prettydump b:dmq -0");
 				System.out.println("    - Or if first argument parses as integer, select as indent, rest default options");
@@ -124,7 +126,7 @@ public class PrettyDump {
 				System.out.println("    - Choose: \"standard\" (default), \"vivid\", \"light\", \"minimal\", \"matrix\", \"off\"");
 				System.out.println(" - Selector for Queue consume and browse: export PRETTY_SELECTOR=\"what like 'ever%'\"");
 				System.out.println("SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to \" | prettydump wrap\" to prettify");
-				System.out.println(" - Note: add the 'bin' directory to your path to make it easier");
+//				System.out.println(" - Note: add the 'bin' directory to your path to make it easier");
 				System.out.println();
 				//                System.out.println("v0.1.0, 2024/01/09");
 				//                System.out.println();
@@ -212,6 +214,7 @@ public class PrettyDump {
 		channelProps.setConnectRetries(0);
 		channelProps.setReconnectRetries(-1);
 		channelProps.setConnectRetriesPerHost(1);
+//		channelProps.setCompressionLevel(9);
 		properties.setProperty(JCSMPProperties.CLIENT_CHANNEL_PROPERTIES, channelProps);
 		properties.setProperty(JCSMPProperties.IGNORE_DUPLICATE_SUBSCRIPTION_ERROR, false);  // we need these exceptions to know if our tempQ is new or same
 		JCSMPGlobalProperties.setShouldDropInternalReplyMessages(false);  // neat trick to hear all other req/rep messages
@@ -224,7 +227,8 @@ public class PrettyDump {
 					if (isConnected) {  // first time
 						isConnected = false;
 //						System.out.print(AaAnsi.n().invalid("Connection lost!") + "\n > RECONNECTING...");
-						System.out.print("Connection lost!\n > RECONNECTING...");
+						System.out.println(AaAnsi.n().warn("TCP Connection lost!"));
+						System.out.print(" > SESSION RECONNECTING...");
 					} else {
 						System.out.print(".");
 						//            			System.out.print(". " + Thread.currentThread().getName() + " (" + Thread.currentThread().isDaemon() + ") ");
@@ -237,7 +241,7 @@ public class PrettyDump {
 						//            			}
 					}
 				} else if (event.getEvent() == SessionEvent.RECONNECTED) {
-					System.out.println("\n > RECONNECTED!");
+					System.out.println("\n > SESSION RECONNECTED!");
 					isConnected = true;
 				} else {
 					if (!isConnected) System.out.println();  // add a blank line
@@ -268,24 +272,42 @@ public class PrettyDump {
 			final ConsumerFlowProperties flowProps = new ConsumerFlowProperties();
 			flowProps.setEndpoint(queue);
 			flowProps.setAckMode(JCSMPProperties.SUPPORTED_MESSAGE_ACK_AUTO);  // not best practice, but good enough for this app
-			//            flow_prop.setActiveFlowIndication(true);
+			flowProps.setActiveFlowIndication(true);
 			if (selector != null) {
 				//            	flow_prop.setSelector("pasta = 'rotini' OR pasta = 'farfalle'");
 				flowProps.setSelector(selector);
 			}
 			System.out.printf("Attempting to bind to queue '%s' on the broker... ", queueName);
 			flowQueueReceiver = null;
+			final CountDownLatch latch = new CountDownLatch(1);
 			try {
 				//            	if ("1".equals("1")) throw new JCSMPException("blajsdflklskfjd");
 				// see bottom of file for QueueFlowListener class, which receives the messages from the queue
-				flowQueueReceiver = session.createFlow(new PrinterHelper(), flowProps);//, null, new FlowEventHandler() {
-				//                    @Override
-				//                    public void handleEvent(Object source, FlowEventArgs event) {
-				//                         // Flow events are usually: active, reconnecting (i.e. unbound), reconnected, active
-				//                        System.out.printf(" ### Received a Flow event: %s%n", event);  // hide this, don't really need to show in this app
-				//                    }
-				//                });
+				flowQueueReceiver = session.createFlow(new PrinterHelper(), flowProps, null, new FlowEventHandler() {
+					@Override
+					public void handleEvent(Object source, FlowEventArgs event) {
+						FlowEvent fe = event.getEvent();
+						// Flow events are usually: active, reconnecting (i.e. unbound), reconnected, active
+						if (fe == FlowEvent.FLOW_RECONNECTING && isConnected) {
+							System.out.println(AaAnsi.n().warn("'"+queueName+"' flow closed! Queue egress probably shutdown at the broker."));
+							System.out.println(" > FLOW RECONNECTING...");
+						} else if (fe == FlowEvent.FLOW_RECONNECTED) {
+							System.out.println(" > FLOW RECONNECTED!");
+						} else if (fe == FlowEvent.FLOW_ACTIVE) {
+							isFlowActive = true;
+							if (latch.getCount() == 1) {  // first time here, so skip this notification
+								
+							} else {
+								System.out.println(" > " + fe);
+							}
+						} else {
+							System.out.println(" > " + fe);
+						}
+//						System.out.printf(" ### Received a Flow event: %s%n", event);  // hide this, don't really need to show in this app
+					}
+				});
 				System.out.println("success!");
+				latch.countDown();
 				System.out.println();
 				// double-check
 				if (selector != null) {
@@ -332,7 +354,19 @@ public class PrettyDump {
 			}
 			System.out.printf("Attempting to browse queue '%s' on the broker... ", queueName);
 			try {
-				browser = session.createBrowser(bp);
+				browser = session.createBrowser(bp, new FlowEventHandler() {
+					@Override
+					public void handleEvent(Object source, FlowEventArgs event) {
+						// Flow events are usually: active, reconnecting (i.e. unbound), reconnected, active
+						if (event.getEvent() == FlowEvent.FLOW_RECONNECTING && isConnected) {
+							System.out.println(AaAnsi.n().warn("'"+queueName+"' flow closed! Queue egress probably shutdown at the broker."));
+							System.out.print(" > FLOW RECONNECTING...");
+						} else if (event.getEvent() == FlowEvent.FLOW_RECONNECTED) {
+							System.out.println("\n > FLOW RECONNECTED!");
+						} // else ignore!
+//						System.out.printf(" ### Received a Flow event: %s%n", event);  // hide this, don't really need to show in this app
+					}
+				});
 				System.out.println("success!");
 				System.out.println();
 				if (selector != null) {
@@ -446,6 +480,8 @@ public class PrettyDump {
 							if (isNewTempQueue) {
 								System.out.println(AaAnsi.n().invalid("!!! New temporary queue created: possible message loss during disconnect"));
 							}
+						} else {
+							System.out.println("OTHER FLOW THING: " + event);
 						}
 					}
 				});
