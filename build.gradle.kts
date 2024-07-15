@@ -41,8 +41,6 @@ buildscript {
     }
 }
 
-
-
 tasks.register<Copy>("copyReadme") {
     //from(layout.buildDirectory.file("reports/my-report.pdf"))
     from("README.md")
@@ -50,10 +48,9 @@ tasks.register<Copy>("copyReadme") {
     //into(layout.buildDirectory.dir)
 }
 
-//tasks.withType<Copy> {
-//  dependsOn("assemble")
-//}
-
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
+}
 
 dependencies {
 

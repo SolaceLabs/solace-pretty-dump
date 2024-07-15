@@ -253,6 +253,10 @@ public class PrettyDump {
 		isConnected = true;
 		session.setProperty(JCSMPProperties.CLIENT_NAME, "PrettyDump_" + session.getProperty(JCSMPProperties.CLIENT_NAME));
 		System.out.printf("%s connected to '%s' VPN on broker '%s'.%n%n", APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE), session.getProperty(JCSMPProperties.HOST));
+		
+//		for (CapabilityType cap : CapabilityType.values()) {
+//			System.out.println(cap + ": " + session.getCapability(cap));
+//		}
 
 		if (System.getenv("PRETTY_SELECTOR") != null && !System.getenv("PRETTY_SELECTOR").isEmpty()) {
 			selector = System.getenv("PRETTY_SELECTOR");
@@ -289,9 +293,11 @@ public class PrettyDump {
 						FlowEvent fe = event.getEvent();
 						// Flow events are usually: active, reconnecting (i.e. unbound), reconnected, active
 						if (fe == FlowEvent.FLOW_RECONNECTING && isConnected) {
+							// flow active here?
 							System.out.println(AaAnsi.n().warn("'"+queueName+"' flow closed! Queue egress probably shutdown at the broker."));
 							System.out.println(" > FLOW RECONNECTING...");
 						} else if (fe == FlowEvent.FLOW_RECONNECTED) {
+							// flow inactive here?
 							System.out.println(" > FLOW RECONNECTED!");
 						} else if (fe == FlowEvent.FLOW_ACTIVE) {
 							isFlowActive = true;
@@ -300,6 +306,8 @@ public class PrettyDump {
 							} else {
 								System.out.println(" > " + fe);
 							}
+						} else if (fe == FlowEvent.FLOW_INACTIVE) {
+							isFlowActive = false;
 						} else {
 							System.out.println(" > " + fe);
 						}
@@ -424,6 +432,7 @@ public class PrettyDump {
 				if (selector != null) {
 					flowProps.setSelector(selector);
 				}
+//				System.out.println("max msg queue: " + (Integer)session.getCapability(CapabilityType.MAX_GUARANTEED_MSG_SIZE));
 				EndpointProperties endpointProps = new EndpointProperties(EndpointProperties.ACCESSTYPE_NONEXCLUSIVE, (Integer)session.getCapability(CapabilityType.MAX_GUARANTEED_MSG_SIZE), EndpointProperties.PERMISSION_NONE, 100);
 				endpointProps.setMaxMsgRedelivery(15);
 				endpointProps.setDiscardBehavior(EndpointProperties.DISCARD_NOTIFY_SENDER_OFF);  // we don't want this temp queue filling up and forcing a NACK!

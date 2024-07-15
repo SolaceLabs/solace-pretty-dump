@@ -447,7 +447,7 @@ public class UsefulUtils {
 //	private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat(PATTERN);
 	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat(PATTERN);
 	
-	static String guessIfTimestamp(String keyName, long l) {
+	static String guessIfTimestampLong(String keyName, long l) {
 		keyName = keyName.toLowerCase();
 		if (l > LOWER_MS && l < UPPER_MS) {  // milliseconds
 			if (timeNameContains(TIME_MS_KEYWORDS, keyName) || (keyName.contains("ms") && PATTERN_MS.matcher(keyName).find())) {
@@ -467,7 +467,7 @@ public class UsefulUtils {
 		return null;
 	}
 	
-	static String guessIfTimestamp(String keyName, double d) {
+	static String guessIfTimestampDouble(String keyName, double d) {
 		keyName = keyName.toLowerCase();
 		if (d > LOWER_MS/1_000 && d < UPPER_MS/1_000 && timeNameContains(TIME_SEC_KEYWORDS, keyName)) {  // seconds
 			return DATE_FORMAT.format(new Date(Math.round(d * 1_000)));
@@ -487,16 +487,16 @@ public class UsefulUtils {
 		return null;
 	}
 
-	static String guessIfTimestamp(String keyName, String val) {
+	static String guessIfTimestampString(String keyName, String val) {
 		keyName = keyName.toLowerCase();
 		if (val.length() > 5 && Character.isDigit(val.charAt(0)) && Character.isDigit(val.charAt(4))) {  // 5th char is a digit, so doesn't match timestamps: 2024-01-23
 			try {
 				double d = Double.parseDouble(val);
 				try {
 					long l = Long.parseLong(val);
-					return guessIfTimestamp(keyName, l);
+					return guessIfTimestampLong(keyName, l);
 				} catch (NumberFormatException e) {  // a double, but not a long
-					return guessIfTimestamp(keyName, d);
+					return guessIfTimestampDouble(keyName, d);
 				}
 			} catch (NumberFormatException e) {  // not a number
 				return null;
@@ -542,10 +542,18 @@ public class UsefulUtils {
     		String[] keyValPair = it.next().split(whichSplit, -1);
 //    		aa.fg(Elem.KEY).a('\'').a(keyValPair[0]).a('\'').reset().a(separator);
     		aa.fg(Elem.KEY).a(keyValPair[0]).reset().a(separator);
-    		aa.a(SaxHandler.guessAndFormatChars(keyValPair[1], keyValPair[0]));
+    		aa.a(SaxHandler.guessAndFormatChars(keyValPair[1], keyValPair[0], 0));
     		if (it.hasNext()) aa.reset().a(',');
     	}
     	return aa.fg(Elem.BRACE).a('}').toString();
+    }
+    
+    public static String capitalizeFirst(String s) {
+    	if (s == null) return null;
+    	if (s.isEmpty()) return null;
+    	StringBuilder sb = new StringBuilder();
+    	sb.append(s.substring(0, 1).toUpperCase()).append(s.substring(1));
+    	return sb.toString();
     }
 
 }

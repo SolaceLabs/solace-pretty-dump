@@ -198,9 +198,11 @@ public class ProtoBufUtils {
 							while (listIt.hasNext()) {
 								Object o = listIt.next();
 								ansi.fg(Elem.NUMBER).a(o.toString());
-								String ts = UsefulUtils.guessIfTimestamp(fd.getName(), (long)val);
-								if (ts != null) {
-									ansi.makeFaint().a(ts);
+								if (indent > 0) {
+									String ts = UsefulUtils.guessIfTimestampLong(fd.getName(), (long)val);
+									if (ts != null) {
+										ansi.makeFaint().a(ts);
+									}
 								}
 								if (list.iterator().hasNext()) {
 									ansi.reset().a(',');
@@ -211,9 +213,11 @@ public class ProtoBufUtils {
 						}
 					} else {
 						ansi.fg(Elem.NUMBER).a(val.toString());
-						String ts = UsefulUtils.guessIfTimestamp(fd.getName(), (long)val);
-						if (ts != null) {
-							ansi.makeFaint().a(ts);
+						if (indent > 0) {
+							String ts = UsefulUtils.guessIfTimestampLong(fd.getName(), (long)val);
+							if (ts != null) {
+								ansi.makeFaint().a(ts);
+							}
 						}
 					}
 					break;

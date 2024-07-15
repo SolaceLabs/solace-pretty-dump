@@ -58,6 +58,7 @@ public class PayloadHelper {
 
 	
     int INDENT = 4;  // default starting value
+    boolean noPayload = false;
     private boolean autoResizeIndent = false;  // specify -1 as indent for this MODE
     boolean autoSpaceTopicLevels = false;  // specify +something to space out the levels
     boolean autoTrimPayload = false;
@@ -137,6 +138,9 @@ public class PayloadHelper {
 		} else if (INDENT == 0) {
 			if (indentStr.equals("-0")) {  // special case, print topic only
 				INDENT = Integer.MIN_VALUE;
+			} else if (indentStr.equals("00")) {
+				noPayload = true;
+				INDENT = 2;
 			}
 		}
     }
@@ -565,31 +569,69 @@ public class PayloadHelper {
 	            String[] headerLines = message.dump(XMLMessage.MSGDUMP_BRIEF).split("\n");
 	            headerLines[0] = colorizeDestination(message.getDestination());
                 for (String line : headerLines) {
+                	if (line.isEmpty() || line.matches("\\s*")) continue;  // testing 
 					if (line.startsWith("User Property Map:") && ms.userProps != null) {
                 		System.out.println(new AaAnsi().a(line));
                 		System.out.println(ms.userProps.formatted);
-                		if (INDENT > 0) System.out.println();
+                		if (INDENT > 0 && !noPayload) System.out.println();
                 	} else if (line.startsWith("User Data:") && ms.userData != null) {
                 		System.out.println(new AaAnsi().a(line));
                 		System.out.println(ms.userData.formatted);
-                		if (INDENT > 0) System.out.println();
+                		if (INDENT > 0 && !noPayload) System.out.println();
                 	} else if (line.startsWith("SDT Map:") || line.startsWith("SDT Stream:")) {
                 		// skip (handled as part of the binary attachment)
                 	} else if (line.startsWith("Binary Attachment:")) {
-                		System.out.println(new AaAnsi().a(line));
-                		String combined = ms.msgType + (ms.binary.type == null ? "" : ", " + ms.binary.type) + ":";
-                		if (combined.contains("Non ")) System.out.println(new AaAnsi().invalid(combined));
-						else System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(combined));
-                		System.out.println(ms.binary.formatted);
-                		if (INDENT > 0) System.out.println();
-                	} else if (line.startsWith("XML:")) {
-                		line = line.replace("XML:                                   ", "XML Payload section being used:        ");
-                		System.out.println(new AaAnsi().a(line));
-                		if (ms.xml.type != null) {
-	                		System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(ms.xml.type + ":"));
+//                		String combined = ms.msgType + (ms.binary.type == null ? "" : ", " + ms.binary.type) + ":";
+                		StringBuilder sb = new StringBuilder(ms.msgType).append((ms.binary.type == null ? "" : ", " + ms.binary.type)).append(':');
+//                		AaAnsi payloadType = AaAnsi.n();
+//                		if (combined.contains("Non ") || combined.contains("INVALID")) payloadType.invalid(combined);
+//						else payloadType.fg(Elem.PAYLOAD_TYPE).a(combined);
+                		if (noPayload) {
+//                			combined = "Binary Attachment: " + combined + " " + ms.orig.getAttachmentContentLength() + " bytes";
+                			sb.insert(0, "Binary Attachment: ").append(' ').append(ms.orig.getAttachmentContentLength()).append(" bytes");
+//                			payloadType.a(" " + ms.orig.getAttachmentContentLength() + " bytes");
+//                			System.out.println("Binary Attachment: " + payloadType);
+	                		if (sb.toString().contains("Non ") || sb.toString().contains("INVALID")) System.out.println(new AaAnsi().invalid(sb.toString()).reset());
+							else System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(sb.toString()).reset());
+                		} else {
+	                		System.out.println(new AaAnsi().a(line));
+//	                		String combined = ms.msgType + (ms.binary.type == null ? "" : ", " + ms.binary.type) + ":";
+//	                		if (combined.contains("Non ")) System.out.println(new AaAnsi().invalid(combined));
+//							else System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(combined));
+	                		if (sb.toString().contains("Non ") || sb.toString().contains("INVALID")) System.out.println(new AaAnsi().invalid(sb.toString()).reset());
+							else System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(sb.toString()).reset());
+	                		System.out.println(ms.binary.formatted);
+	                		if (INDENT > 0) System.out.println();
                 		}
-                		System.out.println(ms.xml.formatted);
-                		if (INDENT > 0) System.out.println();
+                	} else if (line.startsWith("XML:")) {
+//                		if (noPayload) {
+//                			
+//                		} else {
+//	                		line = line.replace("XML:                                   ", "XML Payload section being used:        ");
+//	                		System.out.println(new AaAnsi().a(line));
+//	                		if (ms.xml.type != null) {
+//		                		System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(ms.xml.type + ":"));
+//	                		}
+//	                		System.out.println(ms.xml.formatted);
+//	                		if (INDENT > 0) System.out.println();
+//                		}
+                		
+                		
+                		if (noPayload) {
+                			StringBuilder sb = new StringBuilder(ms.xml.type).append(':');
+                			sb.insert(0, "XML Payload section: ").append(' ').append(ms.orig.getContentLength()).append(" bytes");
+	                		if (sb.toString().contains("Non ") || sb.toString().contains("INVALID")) System.out.println(new AaAnsi().invalid(sb.toString()).reset());
+							else System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(sb.toString()).reset());
+                		} else {
+	                		line = line.replace("XML:                                   ", "XML Payload section:                   ");
+	                		System.out.println(new AaAnsi().a(line));
+                			StringBuilder sb = new StringBuilder(UsefulUtils.capitalizeFirst(ms.xml.type)).append(':');
+	                		if (sb.toString().contains("Non ") || sb.toString().contains("INVALID")) System.out.println(new AaAnsi().invalid(sb.toString()).reset());
+							else System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(sb.toString()).reset());
+	                		System.out.println(ms.xml.formatted);
+	                		if (INDENT > 0) System.out.println();
+                		}
+                		
                 	} else if (line.contains("Destination:           ")) {  // contains, not startsWith, due to ANSI codes
                 		System.out.println(line);  // just print out since it's already formatted
                 	} else if (line.startsWith("Message Id:") && message.getDeliveryMode() == DeliveryMode.DIRECT) {
@@ -603,7 +645,7 @@ public class PayloadHelper {
                 if (!message.hasContent() && !message.hasAttachment()) {
                 	System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(ms.msgType).a(", <EMPTY PAYLOAD>").reset().toString());
                 }
-                if (INDENT > 0) {  // don't print closing bookend if indent==0
+                if (INDENT > 0 && !noPayload) {  // don't print closing bookend if indent==0
                 	System.out.println(printMessageEnd());
                 }
         	} else {  // INDENT < 0, one-line mode!

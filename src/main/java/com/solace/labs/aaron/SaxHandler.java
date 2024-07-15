@@ -88,14 +88,14 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 	/**
 	 * Cheeky method to try to guess what a datatype is, and add some colour-coding.
 	 */
-	static AaAnsi guessAndFormatChars(String val, String key) {
+	static AaAnsi guessAndFormatChars(String val, String key, int indent) {
 		try {
 			Double.parseDouble(val);  // is it a number?
 			try {
 //				long l = Long.parseLong(val);  // is it specifically a long or int or something
 				BigInteger bi = new BigInteger(val);
-				
-				String ts = UsefulUtils.guessIfTimestamp(key, bi.longValue());
+				String ts = null;
+				if (indent > 0) ts = UsefulUtils.guessIfTimestampLong(key, bi.longValue());
 				if (ts != null) {
 //					ansi.fg(Elem.CHAR).a(ts);
 					return new AaAnsi().fg(Elem.NUMBER).a(val).makeFaint().a(ts);
@@ -121,7 +121,7 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 		if (previous == Tag.START) {
 			if (startTagForLater != null) {  // the previous tag is a start tag
 				if (chars.length() > 0) {
-					ansi.a(startTagForLater).reset().a('>').a(guessAndFormatChars(chars, qName)).reset();
+					ansi.a(startTagForLater).reset().a('>').a(guessAndFormatChars(chars, qName, indent)).reset();
 					ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');
 				} else {  // closing a startTagForLater tag right away, and no chars, so make it a singleton
 					ansi.a(startTagForLater).reset().a("/>");
@@ -129,7 +129,7 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 				startTagForLater = null;
 			} else {  // already been blanked (maybe by a comment?)
 				if (chars.length() > 0) {
-					ansi.a(guessAndFormatChars(chars, qName)).reset();
+					ansi.a(guessAndFormatChars(chars, qName, indent)).reset();
 				}
 				ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');
 			}
@@ -138,7 +138,7 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 			if (indent > 0 && level > 0) {
 				ansi.a(UsefulUtils.indent(indent * level));
 			}
-			if (chars.length() > 0) ansi.a(guessAndFormatChars(chars, qName)).reset();
+			if (chars.length() > 0) ansi.a(guessAndFormatChars(chars, qName, indent)).reset();
 			ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');
 		}
 //		if (indent > 0) ansi.a('\n');  // aaron debug june 25

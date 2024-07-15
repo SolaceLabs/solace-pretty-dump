@@ -113,13 +113,13 @@ public class SdtUtils {
 //				Elem guess = Elem.guessByType(value);
 				ansi./* fg(guess). */a(ansiValue).reset();
 				if (value instanceof Long) {
-					String ts = UsefulUtils.guessIfTimestamp(key, (long)value);
+					String ts = UsefulUtils.guessIfTimestampLong(key, (long)value);
 					if (ts != null) {
 //						ansi.fg(Elem.CHAR).a(ts);
 						ansi.fg(Elem.NUMBER).faintOn().a(ts).reset();
 					}
 				} else if (value instanceof String) {
-					String ts = UsefulUtils.guessIfTimestamp(key, (String)value);
+					String ts = UsefulUtils.guessIfTimestampString(key, (String)value);
 					if (ts != null) {
 						ansi.fg(Elem.STRING).faintOn().a(ts).reset();
 					}
