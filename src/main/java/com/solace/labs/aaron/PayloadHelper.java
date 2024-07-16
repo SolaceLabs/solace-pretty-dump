@@ -227,11 +227,11 @@ public class PayloadHelper {
 			return formatted.toString();
 		}
 		
-		void formatString(final String text) {
-			formatString(text, null);
+		void formatString(final String text, final byte[] bytes) {
+			formatString(text, bytes, null);
 		}
 		
-		void formatString(final String text, final String contentType) {
+		void formatString(final String text, final byte[] bytes, final String contentType) {
 			if (text == null || text.isEmpty()) {
 				formatted = AaAnsi.n();
 				return;
@@ -273,13 +273,29 @@ public class PayloadHelper {
         		formatted = new AaAnsi().aStyledString(trimmed).reset();
 //        		formatted = text;
         	}
+			boolean malformed = text.contains("\ufffd");
+//			System.out.println("MALFORMED: " + malformed);
+        	if (malformed) {
+				type = "Non " + type;
+        	}
+        	double ratio = (1.0 * formatted.controlChars + formatted.replacementChars) / formatted.getCharCount();
+        	if (malformed && ratio > 0.2) {  // 20%, very likely a binary file
+				formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, INDENT, currentScreenWidth);
+        	} else if (malformed || formatted.controlChars > 0) {  // any unusual control chars (not tab, LF, CR, FF, or Esc, or NUL at string end
+				if (INDENT > 0) {
+					formatted.a('\n').a(UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, INDENT, currentScreenWidth));
+				}
+        	}
 		}
 
 		void formatBytes(byte[] bytes, String contentType) {
 			String parsed = decodeToString(bytes);
-			boolean malformed = parsed.contains("\ufffd");
-			formatString(parsed, contentType);  // call the String version
-        	if (malformed) {
+//			boolean malformed = parsed.contains("\ufffd");
+			formatString(parsed, bytes, contentType);  // call the String version
+			if (!type.startsWith("Non")) {
+				type = "valid " + type;
+			}
+/*        	if (malformed) {
 				type = "Non " + type;
         	} else {
         		type = "valid " + type;
@@ -294,9 +310,10 @@ public class PayloadHelper {
 					formatted.a('\n').a(UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, INDENT, currentScreenWidth));
 				}
         	}
-		}	
+*/		}	
 
     	void formatByteBufferFromWrapMode(ByteBuffer buffer) {
+    		byte[] copy = null;
 			byte first = buffer.get();  // check out the first byte
 			if (first == 0x1c) {  // text message, one byte of size
 				int size = Byte.toUnsignedInt(buffer.get());
@@ -324,7 +341,7 @@ public class PayloadHelper {
 				int size = buffer.getInt();  // next 4 bytes
 //				System.out.println("size bytes ("+size+") and buffer limit ("+buffer.limit()+")!");
 				if (buffer.limit() == size) {  // looks correct!  otherwise maybe just a regular binary msg
-					byte[] copy = Arrays.copyOfRange(buffer.array(), 0, buffer.limit());
+					copy = Arrays.copyOfRange(buffer.array(), 0, buffer.limit());
 					MapTLVBuffer buf = new MapTLVBuffer(copy);  // sneaky hidden but public methods
 					MapImpl map = new MapImpl(buf);
 //					String test = SdtUtils.printMap(map, 3).toString();
@@ -339,7 +356,7 @@ public class PayloadHelper {
 				int size = buffer.getInt();  // next 4 bytes
 //				System.out.println("size bytes ("+size+") and buffer limit ("+buffer.limit()+")!");
 				if (buffer.limit() == size) {  // looks correct!  otherwise maybe just a regular binary msg
-					byte[] copy = Arrays.copyOfRange(buffer.array(), 0, buffer.limit());
+					copy = Arrays.copyOfRange(buffer.array(), 0, buffer.limit());
 					StreamTLVBuffer buf = new StreamTLVBuffer(copy);  // sneaky hidden but public methods
 					StreamImpl map = new StreamImpl(buf);
 //					String test = SdtUtils.printMap(map, 3).toString();
@@ -357,15 +374,16 @@ public class PayloadHelper {
 //			limit = buffer.limit();
 //			capacity = buffer.capacity();
 //			System.out.printf("pos: %d, lim: %d, cap: %d%n", pos, limit, capacity);
-			String parsed = decodeToString(buffer);
+			copy = Arrays.copyOfRange(buffer.array(), 0, buffer.limit());
+			String parsed = decodeToString(copy);
 			boolean malformed = parsed.contains("\ufffd");
-			formatString(parsed);  // call the String version
-        	if (malformed) {
-				type = "Non " + type;
-				if (INDENT > 0) {
-					formatted.a('\n').a(UsefulUtils.printBinaryBytesSdkPerfStyle(Arrays.copyOfRange(buffer.array(), 0, buffer.limit()), INDENT, currentScreenWidth));
-				}
-        	}
+			formatString(parsed, copy);  // call the String version
+//        	if (malformed) {
+//				type = "Non " + type;
+//				if (INDENT > 0) {
+//					formatted.a('\n').a(UsefulUtils.printBinaryBytesSdkPerfStyle(Arrays.copyOfRange(buffer.array(), 0, buffer.limit()), INDENT, currentScreenWidth));
+//				}
+//        	}
 		}	
 
 	}
@@ -429,7 +447,7 @@ public class PayloadHelper {
         String head = "^^^^^ Start Message #" + ++msgCount + " ^^^^^";
         String headPre = UsefulUtils.pad((int)Math.ceil((DIVIDER_LENGTH - head.length()) / 2.0) , '^');
         String headPost = UsefulUtils.pad((int)Math.floor((DIVIDER_LENGTH - head.length()) / 2.0) , '^');
-        return new AaAnsi().fg(Elem.MSG_BREAK).a(headPre).a(head).a(headPost).reset().toString();
+        return AaAnsi.n().fg(Elem.MSG_BREAK).a(headPre).a(head).a(headPost).reset().toString();
 	}
 	
 	public String printMessageEnd() {
@@ -503,8 +521,22 @@ public class PayloadHelper {
 	            	ms.binary.formatted = SdtUtils.printStream(((StreamMessage)message).getStream(), Math.max(INDENT, 0));
 	            } else {  // either text or binary, try/hope that the payload is a string, and then we can try to format it
 		            if (message instanceof TextMessage) {
-		            	ms.binary.formatString(((TextMessage)message).getText(), message.getHTTPContentType());
-		            	ms.msgType = ms.binary.formatted.getCharCount() == 0 ? "Empty SDT TextMessage" : "SDT TextMessage";
+		            	ms.binary.formatString(((TextMessage)message).getText(), message.getAttachmentByteBuffer().array(), message.getHTTPContentType());
+//		            	ms.msgType = ms.binary.formatted.getCharCount() == 0 ? "<EMPTY> SDT TextMessage" : "SDT TextMessage";
+		            	if (ms.binary.formatted.getCharCount() == 0) {  // looks like an empty text message, but could be malformed
+		            		byte[] bytes = message.getAttachmentByteBuffer().array();
+		            		int len = message.getAttachmentContentLength();
+		            		// let's validate it (knowing a bit about how SDT TextMessages are formatted on the wire)
+		            		if ((len == 3 && bytes[0] == 0x1c && bytes[1] == 0x03 && bytes[2] == 0x00) ||   // JCSMP empty String
+		            				(len == 6 && bytes[0] == 0x1f && bytes[1] == 0x00 && bytes[2] == 0x00 && bytes[3] == 0x00 && bytes[4] == 0x06 && bytes[5] == 0x00)) {  // CCSMP empty String
+		            			ms.msgType = "<EMPTY> SDT TextMessage";
+		            		} else {  // invalid!!
+		            			ms.msgType = "INVALID *malformed* SDT TextMessage";
+		            			ms.binary.formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, INDENT, currentScreenWidth);
+		            		}
+		            	} else {  // check if it's properly formatted, UTF-8
+		            		
+		            	}
 		            } else {  // bytes message
 //		            	ms.msgType = "Raw BytesMessage";
 		            	if (message.getAttachmentByteBuffer() != null) {  // should be impossible since content length > 0
@@ -600,7 +632,8 @@ public class PayloadHelper {
 //							else System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(combined));
 	                		if (sb.toString().contains("Non ") || sb.toString().contains("INVALID")) System.out.println(new AaAnsi().invalid(sb.toString()).reset());
 							else System.out.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(sb.toString()).reset());
-	                		System.out.println(ms.binary.formatted);
+	                		if (!ms.msgType.contains("EMPTY")) System.out.println(ms.binary.formatted);
+//	            			System.out.println(AaAnsi.n().a('\n').a(UsefulUtils.printBinaryBytesSdkPerfStyle(ms.orig.getAttachmentByteBuffer().array(), INDENT, currentScreenWidth)));
 	                		if (INDENT > 0) System.out.println();
                 		}
                 	} else if (line.startsWith("XML:")) {
@@ -677,7 +710,7 @@ public class PayloadHelper {
         	}
         } catch (RuntimeException e) {  // really shouldn't happen!!
         	System.out.println(printMessageStart());
-        	System.out.println(new AaAnsi().ex(e));
+        	System.out.println(AaAnsi.n().invalid("Exception occured, check ~/.pretty/pretty.log for details. ").ex(e));
         	logger.warn("Had issue parsing a message.  Message follows after exception.",e);
         	logger.warn(message.dump());
         	System.out.println(message.dump());

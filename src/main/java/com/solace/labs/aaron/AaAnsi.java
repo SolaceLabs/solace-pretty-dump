@@ -391,7 +391,7 @@ public class AaAnsi {
 	/** Just copy the whole AaAnsi into this one. */
 	public AaAnsi a(AaAnsi ansi) {
 		jansi.a(ansi.toString());
-		if (curElem != null) jansi.fg(curElem.getCurrentColor().value);  // put it back to whatever color it was before
+		if (curElem != null) fg(curElem.getCurrentColor().value);  // put it back to whatever color it was before
 		charCount += ansi.charCount;
 		controlChars += ansi.controlChars;
 		replacementChars += ansi.replacementChars;
@@ -429,7 +429,7 @@ public class AaAnsi {
 		for (int i=0; i<s.length(); i++) {
 			char c = s.charAt(i);
 			if (c < 0x20 || c == 0x7f) {  // special handling of control characters, make them visible
-				if (insideNumStyle) {
+				if (insideNumStyle) {  // this cannot be true if styled == false
 					insideNumStyle = false;
 					aa.fg(Elem.STRING);
 				}

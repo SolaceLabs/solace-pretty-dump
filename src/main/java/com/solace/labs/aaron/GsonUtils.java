@@ -89,7 +89,7 @@ public class GsonUtils {
 					if (indentFactor > 0) ansi.a('\n');
 				}
 			} else if (token.equals(JsonToken.END_OBJECT)) {  // shouldn't come here b/c we end it above after handling the object
-				System.out.println("*********************************");
+				System.out.println("********************************* JSON parser found END_OEJCT token, and it shouldn't!!!!!");
 				reader.endObject();
 				return;
 			} else if (token.equals(JsonToken.NAME)) {
@@ -198,7 +198,6 @@ public class GsonUtils {
 			try {
 				BigInteger bi = new BigInteger(num);
 				ansi.fg(Elem.NUMBER).a(num);
-				System.out.println(indentFactor);
 				if (indentFactor > 0) {
 					String ts = UsefulUtils.guessIfTimestampLong(lastKeyName, bi.longValue());
 					if (ts != null) {

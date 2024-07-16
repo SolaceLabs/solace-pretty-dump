@@ -3,6 +3,7 @@ package com.solace.labs.aaron;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -103,6 +104,24 @@ Destination:                            Topic 'q1/abc'
 //        protobufCallbacks = ProtoBufUtils.loadProtobufDefinitions();
     	PayloadHelper payloadHelper = new PayloadHelper(StandardCharsets.UTF_8);
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+		// test code
+		
+//		String binaryPayload = "^^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"
+//				+ "Destination:                            Topic 'a'\n"
+//				+ "Priority:                               4\n"
+//				+ "Class Of Service:                       COS_1\n"
+//				+ "DeliveryMode:                           DIRECT\n"
+//				+ "Binary Attachment:                      len=1029\n"
+////				+ "  1c 10 00 04 14 00 00 00  08 00 4d 19 57 58 e4 44      PK......   ..M.WX.D\n\n"
+//				+ "  2b 00 00 00 10 00 00 00  08 00 4d 19 57 58 e4 44      PK......   ..M.WX.D\n\n"
+//				+ "^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^";
+//		BufferedReader in2 = new BufferedReader(new StringReader(binaryPayload));
+		
+		
+		
+		
+		
+		
 		boolean insideMessage = false;
 		boolean insidePayloadSection = false;
 		boolean startingPayload = false;
@@ -190,7 +209,11 @@ Destination:                            Topic 'q1/abc'
 							insidePayloadSection = false;
 							bb.flip();  // ready to read!
 							com.solace.labs.aaron.PayloadHelper.PayloadSection payload = payloadHelper.buildPayloadSection(bb);
-							wrapPrintln(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(payload.getType()).toString());
+							if (payload.getType().contains("Non ") || payload.getType().contains("INVALID")) {
+								wrapPrintln(new AaAnsi().invalid(payload.getType()).toString());
+							} else {
+								wrapPrintln(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(payload.getType()).toString());
+							}
 							wrapPrintln(payload.getFormattedPayload());
 							if (!input.isEmpty()) wrapPrintln(input);
 						} else {  // just gathering payload data here
@@ -249,7 +272,8 @@ Destination:                            Topic 'q1/abc'
 									shutdown = true;
 								}
 							}, 500, TimeUnit.MILLISECONDS);
-							
+						} else if (input.startsWith("CLASSPATH: ")) {
+							// skip it... too long!
 						} else {  // outside message and not a rate, so like a log or something
 							wrapPrintln(input);
 //							wrapPrintln(AaAnsi.n().aStyledString(input).toString());

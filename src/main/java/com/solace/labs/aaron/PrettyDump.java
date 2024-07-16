@@ -104,6 +104,7 @@ public class PrettyDump {
 				System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
 				System.out.println("    - tq:topics to provision a tempQ with topics subscribed (can use NOT '!' topics)");
 				System.out.println(" - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting");
+				System.out.println("    - No payload mode: use indent '00' to only show header and properties");
 				System.out.println("    - One-line mode: use negative indent value (trim topic length) for topic & payload only");
 				System.out.println("       - Or use -1 for auto column width adjustment");
 				System.out.println("       - Use negative zero -0 for topic only, no payload");
@@ -120,8 +121,8 @@ public class PrettyDump {
 				System.out.println("    - Press \"+[ENTER]\" to enable topic level spacing/alignment (\"-[ENTER]\" to revert)");
 				System.out.println("    - Press \"[1-9][ENTER]\" to highlight a particular topic level (\"0[ENTER]\" to revert)");
 				System.out.println("Environment variable options:");
-				System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=whatever");
-				System.out.println("    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or \"set\" on Windows)");
+				System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=ISO-8859-1");
+//				System.out.println("    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or \"set\" on Windows)");
 				System.out.println(" - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever");
 				System.out.println("    - Choose: \"standard\" (default), \"vivid\", \"light\", \"minimal\", \"matrix\", \"off\"");
 				System.out.println(" - Selector for Queue consume and browse: export PRETTY_SELECTOR=\"what like 'ever%'\"");

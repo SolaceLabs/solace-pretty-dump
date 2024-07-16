@@ -15,7 +15,7 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 - [Error Checking](#error-checking)
 - [Protobuf Stuff](#protobuf-stuff) & Distributed Trace
 - [SdkPerf Wrap Mode](#sdkperf-wrap-mode)
-
+- [Tips and Tricks](#tips-and-tricks)
 
 
 ## Requirements
