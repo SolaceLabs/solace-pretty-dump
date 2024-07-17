@@ -6,7 +6,7 @@
     </Console>
     <File name="logfile" fileName="${sys:user.home}/.pretty/pretty.log">
       <PatternLayout>
-        <Pattern>%d %p %c{1.} [%t] %m%n</Pattern>
+        <Pattern>%d %p %c [%t] %m%n</Pattern>
         <!--Pattern>%d{HH:mm:ss.SSS} [%t] %-5level %logger{5.} - %msg%n</Pattern-->
         <!--JSONLayout/-->
       </PatternLayout>

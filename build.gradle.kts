@@ -52,6 +52,10 @@ tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
 }
 
+//tasks.withType<JavaExec> {
+//     enableAssertions = true
+//}
+
 dependencies {
 
     // versions after 10.22 have about 40 netty deps
@@ -112,6 +116,7 @@ application {
     //classpath += files("config/")
     //project.logger.lifecycle("my message visible by default")
     //project.logger.lifecycle($runtimeClasspath)
+    applicationDefaultJvmArgs = listOf("-ea")
 }
 
 fun createAdditionalScript(name: String, configureStartScripts: CreateStartScripts.() -> Unit) =
@@ -120,6 +125,9 @@ fun createAdditionalScript(name: String, configureStartScripts: CreateStartScrip
     applicationName = name
     outputDir = File(project.layout.buildDirectory.get().asFile, "scripts")
     classpath = tasks.getByName("jar").outputs.files + configurations.runtimeClasspath.get()
+    //defaultJvmOpts = [ "-ea" ]  // enable assertions
+    defaultJvmOpts = listOf("-ea")  // enable assertions
+    //defaultJvmOpts = listOf("-ea").iterator().asSequence().toList()  // enable assertions
   }.also {
     application.applicationDistribution.into("bin") {
       from(it)

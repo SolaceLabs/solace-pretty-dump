@@ -27,6 +27,10 @@ import com.google.protobuf.ByteString;
 import com.solace.labs.aaron.AaAnsi.ColorMode;
 import com.solacesystems.common.util.ByteArray;
 import com.solacesystems.jcsmp.Destination;
+import com.solacesystems.jcsmp.SDTMap;
+import com.solacesystems.jcsmp.SDTStream;
+import com.solacesystems.jcsmp.impl.sdt.MapImpl;
+import com.solacesystems.jcsmp.impl.sdt.StreamImpl;
 
 /**
  * Used by AaAnsi, my wrapper around the JAnsi library to give me better controls over colours.
@@ -193,7 +197,8 @@ public enum Elem {
 		if (value instanceof ByteArray || value instanceof ByteString) return Elem.BYTES;
 		if (value instanceof Boolean) return Elem.BOOLEAN;
 		if (value instanceof Destination) return Elem.DESTINATION;
-		logger.warn("found a value that couldn't be guessed! " + value.toString() + ", " + value.getClass().getName());
+		if (value instanceof SDTMap || value instanceof SDTStream) return Elem.UNKNOWN;  // doesn't matter, this will get formatted anyway
+		logger.warn("Found a value that couldn't be guessed! " + value.toString() + ", " + value.getClass().getName());
 		return Elem.UNKNOWN;
 	}
 	

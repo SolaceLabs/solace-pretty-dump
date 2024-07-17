@@ -18,6 +18,8 @@ package com.solace.labs.aaron;
 
 import java.io.PrintStream;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.fusesource.jansi.Ansi;
 import org.fusesource.jansi.Ansi.Attribute;
 import org.fusesource.jansi.AnsiConsole;
@@ -56,11 +58,14 @@ public class AaAnsi {
 		return MODE;
 	}
 	
+	private static final Logger logger = LogManager.getLogger(AaAnsi.class);
 	private Ansi jansi = new Ansi();
+	private StringBuilder rawSb = new StringBuilder();
+	private boolean insideEscapeCode = false;  // needed at the class level since we add chars in different methods
 	private int charCount = 0;
 	private Elem curElem = null;  // used to track which element type we're inside (useful for switching colours back in styleString append)
-	int controlChars = 0;  // we'll turn this to true if we get too many control chars
-	int replacementChars = 0;
+	private int controlChars = 0;  // we'll turn this to true if we get too many control chars
+	private int replacementChars = 0;
 	
 	private void incChar(int amount) {
 		charCount += amount;
@@ -82,8 +87,16 @@ public class AaAnsi {
 		if (reset) reset();
 	}
 
-	public int getCharCount() {
+	public int getTotalCharCount() {
 		return charCount;
+	}
+	
+	public int getControlCharsCount() {
+		return controlChars;
+	}
+	
+	public int getReplacementCharsCount() {
+		return replacementChars;
 	}
 	
 	/** Convenience static builder */
@@ -129,25 +142,31 @@ public class AaAnsi {
 				int firstDot = levels[i].indexOf('⋅');
 				if (firstDot == -1) {
 					jansi.a(levels[i]);
+					rawSb.append(levels[i]);
 					makeFaint();
 				} else {
 					jansi.a(levels[i].substring(0,firstDot));
+					rawSb.append(levels[i].substring(0,firstDot));
 					makeFaint();
 					jansi.a(levels[i].substring(firstDot));
+					rawSb.append(levels[i].substring(firstDot));
 				}
 			} else {
 				int firstDot = levels[i].indexOf('⋅');
 				if (firstDot == -1) {
 					jansi.a(levels[i]);
+					rawSb.append(levels[i]);
 				} else {
 					jansi.a(levels[i].substring(0,firstDot));
+					rawSb.append(levels[i].substring(0,firstDot));
 					makeFaint();
 					jansi.a(levels[i].substring(firstDot));
+					rawSb.append(levels[i].substring(firstDot));
 				}
 			}
 			if (i < levels.length-1) {
 				if (highlight == -1) reset();
-				fg(Elem.TOPIC_SEPARATOR).a('/');  // this does the charCount!
+				fg(Elem.TOPIC_SEPARATOR).a('/');  // this does the charCount!  and the rawSb
 			}
 		}
 		return reset();
@@ -238,18 +257,18 @@ public class AaAnsi {
 			fg(Elem.ERROR).a(s).reset();
 		} else {
 			jansi.a(s);
+			incChar(s.length());
 		}
-		incChar(s.length());
 		return this;
 	}
 
 	public AaAnsi warn(String s) {
 		if (isOn()) {
-			fg(Elem.FLOAT).a(s).reset();
+			fg(Elem.WARN).a(s).reset();
 		} else {
 			jansi.a(s);
+			incChar(s.length());
 		}
-		incChar(s.length());
 		return this;
 	}
 
@@ -257,7 +276,12 @@ public class AaAnsi {
 		String exception = e.getClass().getSimpleName() + " - " + e.getMessage();
 		return invalid(exception);
 	}
-	
+
+	public AaAnsi ex(String s, Exception e) {
+		String exception = e.getClass().getSimpleName() + " - " + e.getMessage();
+		return invalid(s + exception);
+	}
+
 	public AaAnsi fg(Elem elem) {
 		curElem = elem;
 		if (isOn()) {
@@ -354,7 +378,7 @@ public class AaAnsi {
 	String trim(int len) {
 		assert len > 0;
 		String s = toString();
-		if (getCharCount() <= len) return toString();
+		if (getTotalCharCount() <= len) return toString();
 //		if (s == null && s.isEmpty()) return s;  // so now we know there's at least one char
 		StringBuilder sb = new StringBuilder();
 		int count = 0;
@@ -373,18 +397,28 @@ public class AaAnsi {
 			}
 			pos++;
 		} while (pos < s.length() && (count < len-1 || insideEscape));
-		if (pos < s.length()) return sb.append("…").append(AaAnsi.n()).toString();
-		else return sb.toString();  // the whole thing   ... this should be impossible now due to implementing charCount
+		if (pos < s.length()) return sb.append("…").append(AaAnsi.n()).toString();  // append a reset() to my sb
+		else {
+			logger.warn("FYI, AaAnsi just ended up in the final else block, and shouldn't have.  Len == "+len+" and this is "+this.toString());
+			return sb.toString();  // the whole thing   ... this should be impossible now due to implementing charCount
+		}
 	}
 
 	@Override
 	public String toString() {
+		if (rawSb.length() != charCount) {
+			logger.warn(String.format("Had a mismatched charCount rawSb.length=%d, charCount=%d, ansi=%s", rawSb.length(), charCount, jansi));
+			assert rawSb.length() == charCount;
+		}
+//		return rawSb.toString();
 		return jansi.toString();
 	}
 
 	/** Just jam is straight in, don't parse at all! */
-	private AaAnsi aRaw(String s, int numChars) {
+	private AaAnsi aRaw(String s, String raw) {
 		jansi.a(s);
+		rawSb.append(raw);
+		charCount += raw.length();
 		return this;
 	}
 
@@ -395,11 +429,14 @@ public class AaAnsi {
 		charCount += ansi.charCount;
 		controlChars += ansi.controlChars;
 		replacementChars += ansi.replacementChars;
+		rawSb.append(ansi.rawSb);
+		insideEscapeCode = ansi.insideEscapeCode;  // possibly inside an escape code, but I doubt it!
 		return this;
 	}
 	
 	public AaAnsi a(char c) {
 		jansi.a(c);
+		rawSb.append(c);
 		incChar();
 		return this;
 	}
@@ -407,6 +444,7 @@ public class AaAnsi {
 	public AaAnsi a(boolean b) {
 		String bs = Boolean.toString(b);
 		jansi.a(bs);
+		rawSb.append(bs);
 		incChar(bs.length());
 		return this;
 	}
@@ -446,7 +484,7 @@ public class AaAnsi {
 				replacementChars++;
 				if (isOn()) {  // bright red background, upsidedown ?
 					Ansi a = new Ansi().reset().bg(Elem.ERROR.getCurrentColor().value).fg(231).a('¿').bgDefault().fg(curElem.getCurrentColor().value);
-					aa.aRaw(a.toString(), 1);
+					aa.aRaw(a.toString(), "¿");
 				} else {
 					aa.a('¿');
 				}
@@ -455,11 +493,11 @@ public class AaAnsi {
 					if (Character.isMirrored(c) || c == '\'' || c == '"') {  // things like () {} [] 
 						aa.fg(Elem.BRACE).a(c).fg(Elem.STRING);
 						insideNumStyle = false;
-					} else if ((c == ',' || c == ';' || c == '.' || c == ':' || c == '-') && i < s.length()-1) {  // punctuation, and not at the very last char
-						if (insideNumStyle && Character.isDigit(s.charAt(i+1))) {  // if we're in a number, and the next char is a number, keep the orange colour
+					} else if (c == ',' || c == ';' || c == '.' || c == ':' || c == '-' || c == '?' || c == '!') {  // punctuation, and not at the very last char
+						if (insideNumStyle && i < s.length()-1 && Character.isDigit(s.charAt(i+1))) {  // if we're in a number, and the next char is a number, keep the orange colour
 							aa.a(c);
-						} else if (Character.isWhitespace(s.charAt(i+1)) || c == ',' || c == ';') {
-							// let's change , ; . : - to default colour as long as the next char is whitespace
+						} else if ((i < s.length()-1 && Character.isWhitespace(s.charAt(i+1))) || i == s.length()-1) { // || c == ',' || c == ';') {
+							// let's change , ; . : - to default colour as long as the next char is whitespace or end
 							aa.reset().a(c).fg(Elem.STRING);
 							insideNumStyle = false;
 						} else {
@@ -501,6 +539,8 @@ public class AaAnsi {
 		out.print(new Ansi().reset().toString());
 	}
 	
+	
+	// used to be main
 	static void test() {
 		
 		System.out.println("width: " + AnsiConsole.out().getTerminalWidth());

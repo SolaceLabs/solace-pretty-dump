@@ -83,7 +83,7 @@ public class PrettyDump {
 	private static long browseTo = Long.MAX_VALUE;
 
 	private static FlowReceiver flowQueueReceiver = null;  // for queues and tempQueue
-	//    private static XMLMessageConsumer consumer= null;  // for Direct
+    private static XMLMessageConsumer directConsumer = null;  // for Direct
 
 	@SuppressWarnings("deprecation")  // this is for our use of Message ID for the browser
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
@@ -276,7 +276,7 @@ public class PrettyDump {
 			// Create a Flow be able to bind to and consume messages from the Queue.
 			final ConsumerFlowProperties flowProps = new ConsumerFlowProperties();
 			flowProps.setEndpoint(queue);
-			flowProps.setAckMode(JCSMPProperties.SUPPORTED_MESSAGE_ACK_AUTO);  // not best practice, but good enough for this app
+			flowProps.setAckMode(JCSMPProperties.SUPPORTED_MESSAGE_ACK_CLIENT);  // not best practice, but good enough for this app
 			flowProps.setActiveFlowIndication(true);
 			if (selector != null) {
 				//            	flow_prop.setSelector("pasta = 'rotini' OR pasta = 'farfalle'");
@@ -382,7 +382,7 @@ public class PrettyDump {
 					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Selector detected: \"%s\"", selector)));
 				}
 				if (topics[0].startsWith("b:")) {  // regular browse, prompt for msg IDs
-					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or enter specific Message ID,%n or range of IDs (e.g. \"25909-26183\" or \"9517-\"): ", msgCount == Long.MAX_VALUE ? "all" : msgCount)));
+					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or enter specific Message ID,%n or range of IDs (e.g. \"259-261\" or \"9517-\" or \"-345\"): ", msgCount == Long.MAX_VALUE ? "all" : msgCount)));
 					String answer = reader.readLine().trim().toLowerCase();
 					System.out.print(AaAnsi.n());  // to reset() the ANSI
 					if (answer.isEmpty()) {
@@ -408,8 +408,7 @@ public class PrettyDump {
 					}
 				} else {  // f:queueName, only dump first message on queue
 					msgCount = 1;
-					//                	browseFrom = 0;
-					//                	browseTo = 0;
+					origMsgCount = 1;
 				}
 				//	        } catch (JCSMPErrorResponseException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
 				//            	System.out.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getResponsePhrase(), e.toString())));
@@ -504,7 +503,7 @@ public class PrettyDump {
 				flowQueueReceiver.start();
 			} else {
 				// Regular Direct topic consumer, using async / callback to receive
-				final XMLMessageConsumer consumer = session.getMessageConsumer((JCSMPReconnectEventHandler)null, new PrinterHelper());
+				directConsumer = session.getMessageConsumer((JCSMPReconnectEventHandler)null, new PrinterHelper());
 				for (String topic : topics) {
 					TopicProperties tp = new TopicProperties();
 					tp.setName(topic);
@@ -513,7 +512,7 @@ public class PrettyDump {
 					session.addSubscription(t, true);  // true == wait for confirm
 					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed to Direct topic: '%s'", topic)).reset());
 				}
-				consumer.start();
+				directConsumer.start();
 			}
 		}
 		// DONE!!!!   READY TO ROCK!
@@ -526,7 +525,7 @@ public class PrettyDump {
 				isShutdown = true;
 				if (isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
 					if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
-					//            		if (consumer != null) consumer.close();
+					if (directConsumer != null) directConsumer.close();
 				}
 				try {
 					Thread.sleep(200);
@@ -576,6 +575,14 @@ public class PrettyDump {
 								break;  // done!
 							} else {
 								payloadHelper.msgCount++;
+								char[] loops = new char[] { '|', '/', '-', '\\' };
+								if (!payloadHelper.filteringOn) {
+									payloadHelper.filteringOn = true;
+									System.out.print(loops[(int)Math.floor(Math.random()*4)]);
+								} else {
+									System.out.print((char)8);
+									System.out.print(loops[(int)Math.floor(Math.random()*4)]);
+								}
 								//		        				msgCount++;  // else we're just skipping this message, but still count it anyway
 							}
 						} catch (Exception e) {
@@ -593,32 +600,31 @@ public class PrettyDump {
 					System.exit(1);
 				}
 			} finally {
-				System.out.println("Browsing finished!");
+				System.out.println("\nBrowsing finished!");
 				browser.close();
 			}
 		} else {  // async receive, either Direct sub or from a queue, so just wait here until Ctrl+C pressed
 			//        	BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
 			while (!isShutdown) {
 				Thread.sleep(50);
-				String blah = null;
+				String userInput = null;
 				if (System.in.available() > 0) {
-					blah = reader.readLine();
+					userInput = reader.readLine();
 				}
-				//        		String blah = reader.readLine();
-				if (blah != null) {
+				if (userInput != null) {
 					try {
-						int highlight = Integer.parseInt(blah);
+						int highlight = Integer.parseInt(userInput);
 						if (highlight >= 0 && highlight < 125) {
 							PayloadHelper.highlightTopicLevel = highlight - 1;  // so 0 -> -1 (highlight off), 1 -> 0 (level 1), etc.
 						}
 					} catch (NumberFormatException e) {
-						if ("+".equals(blah)) {
+						if ("+".equals(userInput)) {
 							payloadHelper.autoSpaceTopicLevels = true;
-						} else if ("-".equals(blah)) {
+						} else if ("-".equals(userInput)) {
 							payloadHelper.autoSpaceTopicLevels = false;
-						} else if ("t".equals(blah)) {
+						} else if ("t".equals(userInput)) {
 							payloadHelper.autoTrimPayload = !payloadHelper.autoTrimPayload;
-						} else if ("q".equals(blah)) {
+						} else if ("q".equals(userInput)) {
 							isShutdown = true;  // quit
 						}
 					}
@@ -662,19 +668,20 @@ public class PrettyDump {
 			payloadHelper.dealWithMessage(message);
 			// if we're not browsing, and it's not a Direct message (doesn't matter if we ACK a Direct message anyhow)
 			//            if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
+			message.ackMessage();
 			if (msgCount == 0) {
+				System.out.println("\n" + AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(origMsgCount + " messages received. Quitting.").reset());
 				isShutdown = true;
-				System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(origMsgCount + " messages received. Quitting.").reset());
-				//        		if (flowQueueReceiver != null) flowQueueReceiver.close();
-				//        		if (consumer != null) consumer.close();
-				System.exit(0);  // do we really need to call this/
+				if (flowQueueReceiver != null) flowQueueReceiver.close();
+				if (directConsumer != null) directConsumer.close();
 			}
 		}
 
 		@Override
 		public void onException(JCSMPException e) {  // uh oh!
-			System.out.printf(" ### MessageListener's onException(): %s%n",e);
-			if (e instanceof JCSMPTransportException) {  // all reconnect attempts failed
+			System.out.println(AaAnsi.n().ex(" ### MessageListener's onException(): ", e));
+			logger.error("Caught in my onExecption() callback", e);
+			if (e instanceof JCSMPTransportException) {  // all reconnect attempts failed (impossible now since we're at -1)
 				isShutdown = true;  // let's quit
 			}
 		}

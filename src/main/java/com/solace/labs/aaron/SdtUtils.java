@@ -30,7 +30,7 @@ public class SdtUtils {
 
 	static AaAnsi printMap(SDTMap map, final int indentFactor) {
 		try {
-			return privPrintMap(map, indentFactor, indentFactor == 4 ? 2 : indentFactor);
+			return privPrintMap(map, indentFactor, indentFactor == 4 ? 2 : indentFactor).reset();
 		} catch (SDTException e) {
 			throw new IllegalArgumentException("Could not parse SDT", e);
 		}
@@ -137,7 +137,7 @@ public class SdtUtils {
 	
 	static AaAnsi printStream(SDTStream stream, final int indentFactor) {
 		try {
-			return privPrintStream(stream, indentFactor, indentFactor == 4 ? 2 : indentFactor);
+			return privPrintStream(stream, indentFactor, indentFactor == 4 ? 2 : indentFactor).reset();
 		} catch (SDTException e) {
 			throw new IllegalArgumentException("Could not parse SDT", e);
 		}

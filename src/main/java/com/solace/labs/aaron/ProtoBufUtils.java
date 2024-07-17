@@ -59,7 +59,7 @@ public class ProtoBufUtils {
 		URL url = Thread.currentThread().getContextClassLoader().getResource(appConfigPath);
 		if (url == null) {
 			System.out.println(new AaAnsi().invalid("WARN: could not locate " + appConfigPath + " on classpath").toString());
-			logger.warn("Could not find " + appConfigPath + " on classpath.  Normally inside ./lib/protobufs/");
+			logger.warn("Could not find " + appConfigPath + " on classpath.  Normally inside ./lib/classes/");
 		} else {
 	    	try {
 //				System.out.println("Loading topic subscriptions and protobuf mappings");

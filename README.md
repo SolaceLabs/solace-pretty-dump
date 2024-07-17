@@ -242,7 +242,6 @@ Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
-Message Id:                             4728274
 Binary Attachment:                      len=100
 Raw BytesMessage, valid UTF-8 charset, XML document:
 <apps>
@@ -252,13 +251,13 @@ Raw BytesMessage, valid UTF-8 charset, XML document:
         <level>deeper</level>
     </nested>
 </apps>
+
 ^^^^^^^^^^^^^^^^^^ End Message #7 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 ^^^^^^^^^^^^^^^^^ Start Message #8 ^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
-Message Id:                             4728275
 Binary Attachment:                      len=159
 SDT TextMessage, UTF-8 charset, JSON Object:
 {
@@ -267,6 +266,7 @@ SDT TextMessage, UTF-8 charset, JSON Object:
     "zipCode": "12345",
     "streetAddress": "Singapore",
     "customerId": "12345" }
+
 ^^^^^^^^^^^^^^^^^^ End Message #8 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
@@ -484,3 +484,16 @@ PUB MR(5s)=10009↑, SUB MR(5s)= 9970↓, CPU=0
 PUB MR(5s)= 9993↑, SUB MR(5s)= 9989↓, CPU=0
 PUB MR(5s)=10004↑, SUB MR(5s)=10023↓, CPU=0
 ```
+
+
+
+## Tips and Tricks
+
+
+
+
+
+
+
+
+
