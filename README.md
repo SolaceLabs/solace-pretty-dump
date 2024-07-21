@@ -235,7 +235,7 @@ Subscribed tempQ to topic: '#noexport/orders/>'
 
 ### Regular: indent > 0
 
-Valid vales are between 1 and 20.  Indent is default 4 in these examples:
+Valid vales are between 1 and 8.  Indent is default 4 in these examples:
 ```
 ^^^^^^^^^^^^^^^^^ Start Message #7 ^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
@@ -301,7 +301,7 @@ SDT TextMessage, UTF-8 charset, JSON Object:
 ### One-Line: indent < 0
 
 Removes the majority of SdkPerf-like message metadata printing, only showing the topic and payload per-line.
-Valid values are between -1 and -250, and specify how far right to indent the payload.  indent = -36 in this example.
+Valid values are between -1 and -250, and specify how many chars of the topic are displayed.  indent = -36 in this example.
 
 ```
 pq-demo/stats/pq/sub-pq_3-c222      {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0,"ackd":0,"gaps":0,"flow":"FLOW_ACTIVE"}

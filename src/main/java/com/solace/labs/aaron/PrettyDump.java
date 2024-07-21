@@ -23,7 +23,11 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -36,6 +40,7 @@ import com.solacesystems.jcsmp.BrowserProperties;
 import com.solacesystems.jcsmp.BytesXMLMessage;
 import com.solacesystems.jcsmp.CapabilityType;
 import com.solacesystems.jcsmp.ConsumerFlowProperties;
+import com.solacesystems.jcsmp.DeliveryMode;
 import com.solacesystems.jcsmp.EndpointProperties;
 import com.solacesystems.jcsmp.FlowEvent;
 import com.solacesystems.jcsmp.FlowEventArgs;
@@ -76,8 +81,9 @@ public class PrettyDump {
 	private static Queue queue = null;  // might be temp/non-durable, or regular
 	private static Browser browser = null;  // in case we need it, can't do async, is a blocking/looping pull
 	private static long origMsgCount = Long.MAX_VALUE;
-	private static long msgCount = Long.MAX_VALUE;
+	private static long msgCountRemaining = Long.MAX_VALUE;
 	private static String selector = null;
+	private static String contentFilter = null;
 	//    private static Queue tempQueue = null;
 	private static long browseFrom = -1;
 	private static long browseTo = Long.MAX_VALUE;
@@ -88,12 +94,12 @@ public class PrettyDump {
 	@SuppressWarnings("deprecation")  // this is for our use of Message ID for the browser
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
 		for (String arg : args) {
-			if (arg.equals("-h") || arg.startsWith("--h") || arg.equals("-?") || arg.startsWith("--?") || arg.contains("-help") || args.length > 7) {
+			if (arg.equals("-h") || arg.startsWith("--h") || arg.equals("-?") || arg.startsWith("--?") || arg.contains("-help")) {
 				System.out.printf("Usage: %s [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [indent] [count]%n", APP_NAME.toLowerCase());
 				System.out.printf("   or: %s <topics|[qbf]:queueName|tq:topics> [indent] [count]  for \"shortcut\" mode%n%n", APP_NAME.toLowerCase());
 				//                System.out.println(" - If using TLS, remember \"tcps://\" before host; or \"ws://\" or \"wss://\" for WebSocket");
 				System.out.println(" - Default protocol \"tcp://\"; for TLS use \"tcps://\"; or \"ws://\" or \"wss://\" for WebSocket");
-				System.out.println(" - Default parameters will be: localhost:55555 default foo bar \"#noexport/>\" 4");
+				System.out.println(" - Default parameters will be: localhost:55555 default foo bar \"#noexport/>\" 2");
 				//                System.out.println("     (FYI: if client-username 'default' is enabled in VPN, you can use any username)");
 				System.out.println(" - Subscribing options (param 5, or shortcut mode param 1), one of:");
 				System.out.println("    - Comma-separated list of Direct topic subscriptions");
@@ -103,8 +109,8 @@ public class PrettyDump {
 				//                System.out.println("       - Can browse all messages, or specific messages by ID");
 				System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
 				System.out.println("    - tq:topics to provision a tempQ with topics subscribed (can use NOT '!' topics)");
-				System.out.println(" - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting");
-				System.out.println("    - No payload mode: use indent '00' to only show header and properties");
+				System.out.println(" - Optional indent: integer, default==2 spaces; specifying 0 compresses payload formatting");
+				System.out.println("    - No payload mode: use indent '00' to only show headers and props, or '000' for compressed");
 				System.out.println("    - One-line mode: use negative indent value (trim topic length) for topic & payload only");
 				System.out.println("       - Or use -1 for auto column width adjustment");
 				System.out.println("       - Use negative zero -0 for topic only, no payload");
@@ -126,6 +132,7 @@ public class PrettyDump {
 				System.out.println(" - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever");
 				System.out.println("    - Choose: \"standard\" (default), \"vivid\", \"light\", \"minimal\", \"matrix\", \"off\"");
 				System.out.println(" - Selector for Queue consume and browse: export PRETTY_SELECTOR=\"what like 'ever%'\"");
+				System.out.println(" - Client-side filtering on any received message: export PRETTY_FILTER=\"what like 'ever%'\"");
 				System.out.println("SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to \" | prettydump wrap\" to prettify");
 //				System.out.println(" - Note: add the 'bin' directory to your path to make it easier");
 				System.out.println();
@@ -140,6 +147,41 @@ public class PrettyDump {
 		}
 		logger.info("### Starting PrettyDump!");
 		payloadHelper = new PayloadHelper(CHARSET);
+		if (System.getenv("PRETTY_SELECTOR") != null && !System.getenv("PRETTY_SELECTOR").isEmpty()) {
+			selector = System.getenv("PRETTY_SELECTOR");
+		}
+		if (System.getenv("PRETTY_FILTER") != null && !System.getenv("PRETTY_FILTER").isEmpty()) {
+			contentFilter = System.getenv("PRETTY_FILTER");
+		}
+
+		// special command-line argument handling
+		List<String> args2 = new ArrayList<>();
+		for (String arg : args) {
+			if (arg.startsWith("--selector=")) {
+				selector = arg.substring("--selector=".length());
+			} else if (arg.startsWith("--filter=")) {
+				contentFilter = arg.substring("--filter=".length());
+			} else {
+				args2.add(arg);  // add argument normally
+			}
+		}
+		args = args2.toArray(new String[0]);
+		if (selector != null && !selector.isEmpty()) {
+			if (selector.length() > 2000) {
+				System.out.println(AaAnsi.n().invalid("Selector length greater than 2000 character limit!"));
+				System.out.println("Quitting! 💀");
+				System.exit(1);
+			}
+		}
+		if (contentFilter != null && !contentFilter.isEmpty()) {
+			// compiling might throw an exception
+			Pattern p = Pattern.compile(contentFilter, Pattern.MULTILINE | Pattern.DOTALL);//| Pattern.CASE_INSENSITIVE);
+			payloadHelper.filterRegexPattern = p;
+		}
+//		System.out.println(Arrays.toString(args));
+//		System.out.printf("selector='%s'%n", selector);
+//		System.out.printf("filter='%s'%n", contentFilter);
+		
 		String host = "localhost";
 		boolean shortcut = false;
 		// new shortcut MODE... if first arg looks like topics, assume topic wildcard, and assume localhost default connectivity for rest
@@ -188,7 +230,7 @@ public class PrettyDump {
 			try {
 				long count = Long.parseLong(args[shortcut ? 2 : 6]);
 				if (count > 0) {
-					msgCount = count;
+					msgCountRemaining = count;
 					origMsgCount = count;
 				}
 			} catch (NumberFormatException e) {
@@ -259,15 +301,6 @@ public class PrettyDump {
 //			System.out.println(cap + ": " + session.getCapability(cap));
 //		}
 
-		if (System.getenv("PRETTY_SELECTOR") != null && !System.getenv("PRETTY_SELECTOR").isEmpty()) {
-			selector = System.getenv("PRETTY_SELECTOR");
-			if (selector.length() > 2000) {
-				System.out.println(AaAnsi.n().invalid("Selector length greater than 2000 character limit!"));
-				System.out.println("Quitting! 💀");
-				System.exit(1);
-			}
-		}
-
 		// is it a queue?
 		if (topics.length == 1 && topics[0].startsWith("q:") && topics[0].length() > 2) {  // QUEUE CONSUME!
 			// configure the queue API object locally
@@ -321,9 +354,9 @@ public class PrettyDump {
 				// double-check
 				if (selector != null) {
 					System.out.println(AaAnsi.n().a("🔎 Selector detected: ").aStyledString(selector));
-					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s' that match Selector. Use browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCount == Long.MAX_VALUE ? "all" : msgCount, queueName)));
+					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s' that match Selector. Use browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
 				} else {  // no selectors, consume all
-					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s'. Use browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCount == Long.MAX_VALUE ? "all" : msgCount, queueName)));
+					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s'. Use browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
 				}
 				String answer = reader.readLine().trim().toLowerCase();
 				System.out.print(AaAnsi.n());  // to reset() the ANSI
@@ -347,6 +380,7 @@ public class PrettyDump {
 				//                	System.out.println(AaAnsi.n().invalid(((JCSMPErrorResponseException)e.getCause()).getMessage()));
 				//            	}
 				System.out.println("Quitting! 💀");
+				logger.error("Caught this connecting to a queue",e);
 				if (flowQueueReceiver != null) flowQueueReceiver.close();
 				session.closeSession();
 				System.exit(1);
@@ -382,7 +416,11 @@ public class PrettyDump {
 					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Selector detected: \"%s\"", selector)));
 				}
 				if (topics[0].startsWith("b:")) {  // regular browse, prompt for msg IDs
-					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or enter specific Message ID,%n or range of IDs (e.g. \"259-261\" or \"9517-\" or \"-345\"): ", msgCount == Long.MAX_VALUE ? "all" : msgCount)));
+					if (contentFilter == null) {
+						System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or enter specific Message ID, or to/from range of IDs%n (e.g. \"259-261\" or \"9517-\" or \"-345\"): ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
+					} else {  // don't allow single MsgID
+						System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or range of IDs (e.g. \"259-261\" or \"9517-\" or \"-345\"): ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
+					}
 					String answer = reader.readLine().trim().toLowerCase();
 					System.out.print(AaAnsi.n());  // to reset() the ANSI
 					if (answer.isEmpty()) {
@@ -394,6 +432,8 @@ public class PrettyDump {
 							if (browseFrom < 0) {  // negative, means range: everything up to
 								browseFrom = 0;
 								browseTo = Math.abs(browseTo);
+							} else if (contentFilter != null) {  // assume a single value is "browse until"
+								browseFrom = 0;
 							}
 						} catch (NumberFormatException e) {
 							if (answer.matches("\\d+-\\d*")) {  // either 1234-5678  or  1234-
@@ -407,7 +447,7 @@ public class PrettyDump {
 						}
 					}
 				} else {  // f:queueName, only dump first message on queue
-					msgCount = 1;
+					msgCountRemaining = 1;
 					origMsgCount = 1;
 				}
 				//	        } catch (JCSMPErrorResponseException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
@@ -415,6 +455,7 @@ public class PrettyDump {
 				////            	System.err.printf("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getResponsePhrase(), e.toString());
 				//    			System.exit(1);
 			} catch (JCSMPException | AccessDeniedException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
+				logger.error("Caught this connecting to a queue",e);
 				System.out.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s: %s", e.getClass().getSimpleName(), e.getMessage())));
 				System.out.println("Quitting! 💀");
 				System.exit(1);
@@ -494,6 +535,7 @@ public class PrettyDump {
 						}
 					}
 				});
+				System.out.println(AaAnsi.n().a("Queue name: ").fg(Elem.KEY).a(flowQueueReceiver.getDestination().getName()));
 				latch.await();  // block here until the subs are added
 //				for (String topic : topics) {
 //					Topic t = f.createTopic(topic);
@@ -521,7 +563,8 @@ public class PrettyDump {
 
 		final Thread shutdownThread = new Thread(new Runnable() {
 			public void run() {
-				System.out.println("Shutdown hook triggered, quitting...");
+				System.out.print(AaAnsi.n());
+				System.out.println("\nShutdown hook triggered, quitting...");
 				isShutdown = true;
 				if (isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
 					if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
@@ -549,7 +592,7 @@ public class PrettyDump {
 			BytesXMLMessage nextMsg;
 			try {
 				//	        	while (!isShutdown && (nextMsg = browser.getNext()) != null) {
-				while (!isShutdown && msgCount > 0) {  // change in behaviour... continue browsing until told to quit
+				while (!isShutdown && msgCountRemaining > 0) {  // change in behaviour... continue browsing until told to quit
 					nextMsg = browser.getNext(-1);  // don't wait, return immediately
 					if (nextMsg == null) {
 						Thread.sleep(50);
@@ -573,17 +616,9 @@ public class PrettyDump {
 								if (browseFrom == browseTo) printer.onReceive(nextMsg);  // just looking for one specific message, so print this one to show the last
 								System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Message with ID '%d' received, greater than than browse range '%d'. Done.", msgId, browseTo)).reset());
 								break;  // done!
-							} else {
+							} else {  // else we're just skipping this message, but still count it anyway
 								payloadHelper.msgCount++;
-								char[] loops = new char[] { '|', '/', '-', '\\' };
-								if (!payloadHelper.filteringOn) {
-									payloadHelper.filteringOn = true;
-									System.out.print(loops[(int)Math.floor(Math.random()*4)]);
-								} else {
-									System.out.print((char)8);
-									System.out.print(loops[(int)Math.floor(Math.random()*4)]);
-								}
-								//		        				msgCount++;  // else we're just skipping this message, but still count it anyway
+								payloadHelper.thinking.tick();
 							}
 						} catch (Exception e) {
 							System.out.println(AaAnsi.n().invalid("Exception on message trying to get Message ID!").reset());
@@ -600,7 +635,8 @@ public class PrettyDump {
 					System.exit(1);
 				}
 			} finally {
-				System.out.println("\nBrowsing finished!");
+				System.out.print(AaAnsi.n());
+				System.out.println("Browsing finished!");
 				browser.close();
 			}
 		} else {  // async receive, either Direct sub or from a queue, so just wait here until Ctrl+C pressed
@@ -632,6 +668,7 @@ public class PrettyDump {
 			}
 		}
 		isShutdown = true;
+		System.out.print(AaAnsi.n());
 		System.out.println("Main thread exiting.");
 	}  // end of main()
 
@@ -664,12 +701,12 @@ public class PrettyDump {
 
 		@Override
 		public void onReceive(BytesXMLMessage message) {
-			msgCount--;
 			payloadHelper.dealWithMessage(message);
+			if (!payloadHelper.isFilteringOn()) msgCountRemaining--;
 			// if we're not browsing, and it's not a Direct message (doesn't matter if we ACK a Direct message anyhow)
-			//            if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
-			message.ackMessage();
-			if (msgCount == 0) {
+            if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
+//			message.ackMessage();
+			if (msgCountRemaining == 0) {
 				System.out.println("\n" + AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(origMsgCount + " messages received. Quitting.").reset());
 				isShutdown = true;
 				if (flowQueueReceiver != null) flowQueueReceiver.close();

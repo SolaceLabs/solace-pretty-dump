@@ -28,7 +28,7 @@ import org.fusesource.jansi.AnsiConsole;
  * Kind of a wrapper around the JAnsi library.  Modified for my own uses.
  * @author Aaron Lee
  */
-public class AaAnsi {
+public class AaAnsi /* implements CharSequence */ {
 
 	enum ColorMode {
 		OFF,
@@ -61,24 +61,29 @@ public class AaAnsi {
 	private static final Logger logger = LogManager.getLogger(AaAnsi.class);
 	private Ansi jansi = new Ansi();
 	private StringBuilder rawSb = new StringBuilder();
+	private StringBuilder rawCompressedSb = new StringBuilder();
+	private char lastRawCompressedChar = '-';  // used to strip multiple spaces
 	private boolean insideEscapeCode = false;  // needed at the class level since we add chars in different methods
-	private int charCount = 0;
+//	private int charCount = 0;
 	private Elem curElem = null;  // used to track which element type we're inside (useful for switching colours back in styleString append)
 	private int controlChars = 0;  // we'll turn this to true if we get too many control chars
 	private int replacementChars = 0;
+
 	
-	private void incChar(int amount) {
-		charCount += amount;
-	}
-	
-	private void incChar() {
-		charCount ++;
-	}
-	
-	private boolean isOn() {
-		return (MODE != ColorMode.OFF);
+	// needed for CharSequence apparently..?  Dunno if I ever need these
+/*	@Override
+	public char charAt(int index) {
+//		assert false;
+		return rawSb.charAt(index);
 	}
 
+	@Override
+	public CharSequence subSequence(int start, int end) {
+		assert false;
+		return rawSb.subSequence(start, end);
+	}
+	///////////////////
+	*/
 	public AaAnsi() {
 		reset();
 	}
@@ -87,8 +92,21 @@ public class AaAnsi {
 		if (reset) reset();
 	}
 
+	private void incChar(int amount) {
+//		charCount += amount;
+	}
+	
+	private void incChar() {
+//		charCount ++;
+	}
+	
+	private boolean isOn() {
+		return (MODE != ColorMode.OFF);
+	}
+
 	public int getTotalCharCount() {
-		return charCount;
+//		return charCount;
+		return rawSb.length();
 	}
 	
 	public int getControlCharsCount() {
@@ -143,29 +161,35 @@ public class AaAnsi {
 				if (firstDot == -1) {
 					jansi.a(levels[i]);
 					rawSb.append(levels[i]);
+					rawCompressedSb.append(levels[i]);
 					makeFaint();
 				} else {
 					jansi.a(levels[i].substring(0,firstDot));
 					rawSb.append(levels[i].substring(0,firstDot));
+					rawCompressedSb.append(levels[i].substring(0,firstDot));
 					makeFaint();
 					jansi.a(levels[i].substring(firstDot));
 					rawSb.append(levels[i].substring(firstDot));
+					rawCompressedSb.append(levels[i].substring(firstDot));
 				}
 			} else {
 				int firstDot = levels[i].indexOf('⋅');
 				if (firstDot == -1) {
 					jansi.a(levels[i]);
 					rawSb.append(levels[i]);
+					rawCompressedSb.append(levels[i]);
 				} else {
 					jansi.a(levels[i].substring(0,firstDot));
 					rawSb.append(levels[i].substring(0,firstDot));
+					rawCompressedSb.append(levels[i].substring(0,firstDot));
 					makeFaint();
 					jansi.a(levels[i].substring(firstDot));
 					rawSb.append(levels[i].substring(firstDot));
+					rawCompressedSb.append(levels[i].substring(firstDot));
 				}
 			}
 			if (i < levels.length-1) {
-				if (highlight == -1) reset();
+				if (highlight == -1) faintOff();// reset();
 				fg(Elem.TOPIC_SEPARATOR).a('/');  // this does the charCount!  and the rawSb
 			}
 		}
@@ -198,7 +222,8 @@ public class AaAnsi {
 			// https://github.com/topics/256-colors
 			int startingColIndex = 5;  // cyan 86
 	//		int startingColIndex = 7;  // temp 75
-			double step = Math.max(1, Math.min(3, topicColorTable.length * 1.0 / Math.max(1, maxLengthTopicLevels.getMax())));
+//			double step = Math.max(1, Math.min(3, topicColorTable.length * 1.0 / Math.max(1, maxLengthTopicLevels.getMax())));
+			double step = Math.max(1, Math.min(4, topicColorTable.length * 1.0 / Math.max(1, maxLengthTopicLevels.getMax())));
 			if (i == highlight) {
 				return 49;  // solace green ish
 			} else return topicColorTable[(startingColIndex + (int)(step * i)) % topicColorTable.length];
@@ -252,7 +277,7 @@ public class AaAnsi {
 		return reset();
 	}*/
 	
-	public AaAnsi invalid(String s) {
+	public AaAnsi invalid(CharSequence s) {
 		if (isOn()) {
 			fg(Elem.ERROR).a(s).reset();
 		} else {
@@ -377,7 +402,7 @@ public class AaAnsi {
 	
 	String trim(int len) {
 		assert len > 0;
-		String s = toString();
+		final String s = toString();
 		if (getTotalCharCount() <= len) return toString();
 //		if (s == null && s.isEmpty()) return s;  // so now we know there's at least one char
 		StringBuilder sb = new StringBuilder();
@@ -400,25 +425,36 @@ public class AaAnsi {
 		if (pos < s.length()) return sb.append("…").append(AaAnsi.n()).toString();  // append a reset() to my sb
 		else {
 			logger.warn("FYI, AaAnsi just ended up in the final else block, and shouldn't have.  Len == "+len+" and this is "+this.toString());
-			return sb.toString();  // the whole thing   ... this should be impossible now due to implementing charCount
+			return sb.append(AaAnsi.n()).toString();  // the whole thing   ... this should be impossible now due to implementing charCount
 		}
 	}
 
 	@Override
 	public String toString() {
-		if (rawSb.length() != charCount) {
-			logger.warn(String.format("Had a mismatched charCount rawSb.length=%d, charCount=%d, ansi=%s", rawSb.length(), charCount, jansi));
-			assert rawSb.length() == charCount;
-		}
-//		return rawSb.toString();
+//		if (rawSb.length() != charCount) {
+//			logger.warn(String.format("Had a mismatched charCount rawSb.length=%d, charCount=%d, ansi=%s", rawSb.length(), charCount, jansi));
+//			assert rawSb.length() == charCount;
+//		}
+//		return rawSb.toString();  // plain mode
+//		return rawCompressedSb.toString();  // plain mode
 		return jansi.toString();
+	}
+	
+	public String toRawString() {
+		return rawSb.toString();
+	}
+
+	public String toCompressedRawString() {
+		return rawCompressedSb.toString();
 	}
 
 	/** Just jam is straight in, don't parse at all! */
 	private AaAnsi aRaw(String s, String raw) {
 		jansi.a(s);
 		rawSb.append(raw);
-		charCount += raw.length();
+		rawCompressedSb.append(raw);
+		lastRawCompressedChar = raw.equals("") ? lastRawCompressedChar : raw.charAt(raw.length()-1);
+//		charCount += raw.length();
 		return this;
 	}
 
@@ -426,10 +462,16 @@ public class AaAnsi {
 	public AaAnsi a(AaAnsi ansi) {
 		jansi.a(ansi.toString());
 		if (curElem != null) fg(curElem.getCurrentColor().value);  // put it back to whatever color it was before
-		charCount += ansi.charCount;
+//		charCount += ansi.charCount;
 		controlChars += ansi.controlChars;
 		replacementChars += ansi.replacementChars;
 		rawSb.append(ansi.rawSb);
+		if (ansi.rawCompressedSb.length() > 0 && ansi.rawCompressedSb.charAt(0) == ' ' && lastRawCompressedChar == ' ') {
+			rawCompressedSb.append(ansi.rawCompressedSb.substring(1));
+		} else {
+			rawCompressedSb.append(ansi.rawCompressedSb);
+		}
+		lastRawCompressedChar = ansi.lastRawCompressedChar;
 		insideEscapeCode = ansi.insideEscapeCode;  // possibly inside an escape code, but I doubt it!
 		return this;
 	}
@@ -437,6 +479,15 @@ public class AaAnsi {
 	public AaAnsi a(char c) {
 		jansi.a(c);
 		rawSb.append(c);
+		if (!(c == 0x09 || c == 0x0a || c == 0x0c || c == 0x0d || c == 0x1b || c == '·')) {
+			if (c == ' ') {
+				if (lastRawCompressedChar == ' ') { // do nothing
+				} else rawCompressedSb.append(c);
+			} else {
+				rawCompressedSb.append(c);
+			}
+			lastRawCompressedChar = c;
+		}
 		incChar();
 		return this;
 	}
@@ -445,11 +496,13 @@ public class AaAnsi {
 		String bs = Boolean.toString(b);
 		jansi.a(bs);
 		rawSb.append(bs);
+		rawCompressedSb.append(bs);
+		lastRawCompressedChar = 'e';  // doesn't matter, as long as not space
 		incChar(bs.length());
 		return this;
 	}
 
-	public AaAnsi a(String s) {
+	public AaAnsi a(CharSequence s) {
 		return a(s, false);
 	}
 	
@@ -459,7 +512,7 @@ public class AaAnsi {
 
 	/** Consider each char individually, and if replacement \ufffd char then add some red colour.
 	 */
-	private AaAnsi a(String s, boolean styled) {
+	private AaAnsi a(CharSequence s, boolean styled) {
 		if (s == null) return this;
 		AaAnsi aa = new AaAnsi(false);
 		boolean insideNumStyle = false;  // these two vars are for my "styled string" code below
@@ -471,8 +524,11 @@ public class AaAnsi {
 					insideNumStyle = false;
 					aa.fg(Elem.STRING);
 				}
-				if (c == 0x09 || c == 0x0a || c == 0x0c || c == 0x0d || c == 0x1b) {  // tab, line feed, form feed, carriage return, escape... leave alone
+				if (c == 0x09 || c == 0x0a || c == 0x0c || c == 0x0d /* || c == 0x1b */) {  // tab, line feed, form feed, carriage return, escape... leave alone
+//					assert c != 0x1b;  // could be binary!?
 					aa.a(c);
+				} else if (c == 0x1b) {
+					aa.a("^[");
 				} else if (c == 0) {
 					aa.a('∅');
 					if (i != s.length()-1) controlChars++;  // if not at very end of string, then count it (shouldn't have null mid-string)
@@ -483,7 +539,16 @@ public class AaAnsi {
 			} else if (c == '\ufffd') {  // the replacement char introduced when trying to parse the bytes with the specified charset
 				replacementChars++;
 				if (isOn()) {  // bright red background, upsidedown ?
-					Ansi a = new Ansi().reset().bg(Elem.ERROR.getCurrentColor().value).fg(231).a('¿').bgDefault().fg(curElem.getCurrentColor().value);
+					if (curElem == null) {
+//						System.out.println("curElem is null.  This is what I have so far:");
+//						System.out.println(jansi.toString());
+					}
+					Ansi a = new Ansi().reset().bg(Elem.ERROR.getCurrentColor().value).fg(231).a('¿').bgDefault();
+					if (curElem != null) {
+						a.fg(curElem.getCurrentColor().value);
+					} else {
+						a.fg(Elem.DEFAULT.getCurrentColor().value);
+					}
 					aa.aRaw(a.toString(), "¿");
 				} else {
 					aa.a('¿');
@@ -577,5 +642,6 @@ public class AaAnsi {
 //		System.out.println(new AaAnsi().setSolaceGreen().a("AARONSOLACEMANUAL").reset());
 		
 	}
+
 
 }

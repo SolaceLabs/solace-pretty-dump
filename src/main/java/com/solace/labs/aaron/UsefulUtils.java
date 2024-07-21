@@ -185,7 +185,7 @@ public class UsefulUtils {
 	}
 
 	/**
-	 * Returns a nicer-looking String: "[51 7f 0c 20 b3 52 4d]"
+	 * Returns a nicer-looking String: "[51,7f,0c,20,b3,52,4d] (len=7)"
 	 * @param bytes
 	 * @return
 	 */
@@ -205,7 +205,7 @@ public class UsefulUtils {
         	}
         }
         sb.append(']');
-        if (bytes.length > 8) sb.append(" (length=").append(bytes.length).append(')');
+        if (bytes.length > 8) sb.append(" (len=").append(bytes.length).append(')');
         return sb.toString();
 //	    return new String(hexChars, StandardCharsets.US_ASCII);
 	}
@@ -265,8 +265,8 @@ public class UsefulUtils {
 //			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset();  // byte values
 			return new AaAnsi().reset().fg(Elem.BYTES).a(bytesToSpacedHexString(bytes)).reset();  // byte values
 		}
-		if (terminalWidth > 149) return printBytes(bytes, indent, 32);  // widescreen
-		else return printBytes(bytes, indent, 16);
+		if (terminalWidth > 149) return printBytes2(bytes, indent, 32);  // widescreen
+		else return printBytes2(bytes, indent, 16);
 	}
 	
 //	static final int WIDTH = 32;
@@ -329,13 +329,69 @@ public class UsefulUtils {
 		}
 		return aa;
 	}
-	
+
+	/** this should only be called if we know it's not a UTF-8 (or whatever) string */
+	private static AaAnsi printBytes2(byte[] bytes, int indent, int width) {
+		// width must be either 16 or 32 for wide-screen
+		indent = 2;  // force override, 2 is what SdkPerf does too
+//		String[] hex = bytesToHexStringArray(bytes);
+		String hex2 = bytesToLongHexString(bytes);
+		AaAnsi aa = new AaAnsi();
+		for (int i=0; i < bytes.length; i++) {
+			if (i % width == 0) {
+//				aa.a(indent(indent)).fg(Elem.BYTES);
+//				Strin
+				aa.fg(Elem.DATA_TYPE).a(String.format("%04x",(i / 16) % (4096))).a("0   ").fg(Elem.BYTES);
+			}
+//			ansi.a(hex[i]).a(" ");
+			aa.a(hex2.substring(i*2, (i*2)+2)).a(" ");
+			if (i % COLS == COLS-1) {
+				aa.a("  ");
+			}
+			if (i % width == width-1) {
+				aa.a(' ').fg(Elem.BYTES_CHARS);
+				for (int j=i-(width-1); j<=i; j++) {
+					aa.a(getSimpleChar2(bytes[j]));
+					if (j % 8 == 7) aa.a("  ");
+//					if (j % 16 == 15) ansi.a(" ");
+				}
+				aa.reset().a('\n');
+//				if (i < bytes.length-1 || indent > 0) ansi.a('\n');
+			}
+		}
+		// last trailing bit, if not evenly divisible by WIDTH
+		// works for everthing except 24
+		if (bytes.length % width != 0) {
+			aa.reset();
+			int leftover = bytes.length % width;
+			for (int i=0; i < width - leftover; i++) {
+				aa.a("   ");
+			}
+			int extraGaps = (width - leftover - 1) / COLS;
+			for (int i=0; i <= extraGaps; i++) {
+				aa.a("   ");
+			}
+			aa.fg(Elem.BYTES_CHARS);
+			for (int i= bytes.length - leftover; i<bytes.length; i++) {
+				aa.a(getSimpleChar2(bytes[i]));
+				if (i % 8 == 7) aa.a("  ");
+//				if (i % 16 == 15) ansi.a(" ");
+			}
+			aa.reset();
+//			if (indent > 0) ansi.a('\n');
+		}
+		return aa;
+	}
+
 	
 	static String indent(int amount) {
 		return pad(amount, ' ');
 	}
 
 	static String pad(int amount, char c) {
+		if (Math.abs(amount) > 500) {
+			return "  <CODING PROBLEM! Tell Aaron>  ";
+		}
 		StringBuilder sb = new StringBuilder();
 		for (int i=0; i<amount; i++) {
 			sb.append(c);

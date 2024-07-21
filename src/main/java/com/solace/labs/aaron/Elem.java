@@ -229,6 +229,10 @@ public enum Elem {
 	}
 
 	Col getCurrentColor() {
+		if (AaAnsi.getColorMode() == ColorMode.MATRIX) {
+			
+		}
+		// else...
 		return lookup.get(this);
 	}
 	

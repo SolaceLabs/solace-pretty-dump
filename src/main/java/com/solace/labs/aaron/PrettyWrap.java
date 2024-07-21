@@ -62,6 +62,10 @@ public class PrettyWrap {
     private static long lineIndentCount = 0;
 //    private static final int[] bgCols = new int[] { 17, 53, 52, 58, 22, 23 };
     
+    private static void wrapPrintln(AaAnsi aa) {
+    	wrapPrintln(aa.toString());
+    }
+    
     private static void wrapPrintln(String s) {
     	if ("indent".equals("indent") && (AaAnsi.getColorMode() == AaAnsi.ColorMode.VIVID || AaAnsi.getColorMode() == AaAnsi.ColorMode.LIGHT)) {
 	    	String[] lines = s.split("\n");
