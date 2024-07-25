@@ -66,7 +66,7 @@ public enum Elem {
 		Map<Elem, Col> map = colorMap.get(AaAnsi.ColorMode.STANDARD);
 		map.put(KEY, new Col(12));
 		map.put(DATA_TYPE, new Col(4));
-		map.put(PAYLOAD_TYPE, new Col(-1));
+		map.put(PAYLOAD_TYPE, new Col(15));
 		map.put(NULL, new Col(1, false, true));
 		map.put(STRING, new Col(2));
 		map.put(CHAR, new Col(10));

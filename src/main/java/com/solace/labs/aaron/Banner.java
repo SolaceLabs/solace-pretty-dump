@@ -216,7 +216,7 @@ public class Banner {
     		for (int j=0; j<banner[i].length(); j++) {
     			ansi.reset();
     			if (banner[i].charAt(j) == '*') {
-    				ansi.makeFaint().fg(getCol(i-1, pieceLen, j-2)).a(banner[i-1].charAt(j-2));
+    				ansi.faintOn().fg(getCol(i-1, pieceLen, j-2)).a(banner[i-1].charAt(j-2));
     			} else {
     				ansi.fg(getCol(i, pieceLen, j)).a(banner[i].charAt(j));
     			}

@@ -254,14 +254,14 @@ Destination:                            Topic 'q1/abc'
 								String[] sub = pieces[2].split(",");
 								// [PUB MR(5s)][    0][ SUB MR(5s)][    0][ CPU][0]
 								AaAnsi aa = new AaAnsi().a(pieces[0]).a('=').fg(Elem.KEY);
-								if (pub[0].endsWith(" 0")) aa.makeFaint();
+								if (pub[0].endsWith(" 0")) aa.faintOn();
 								aa.fg(Elem.KEY).a(pub[0]).a('↑').reset().a(',').a(pub[1]).a('=').fg(Elem.STRING);
-								if (sub[0].endsWith(" 0")) aa.makeFaint();
+								if (sub[0].endsWith(" 0")) aa.faintOn();
 								aa.fg(Elem.STRING).a(sub[0]).a('↓').reset().a(',').a(sub[1]).a('=');
 								if (pieces[3].equals("0")) aa.fg(Elem.MSG_BREAK).a(pieces[3]);
 								else {
 									aa.fg(Elem.FLOAT);
-									if (pieces[3].length() == 1) aa.makeFaint();
+									if (pieces[3].length() == 1) aa.faintOn();
 									aa.a(pieces[0]);
 								}
 								wrapPrintln(aa.reset().toString());

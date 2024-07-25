@@ -339,20 +339,19 @@ public class UsefulUtils {
 		AaAnsi aa = new AaAnsi();
 		for (int i=0; i < bytes.length; i++) {
 			if (i % width == 0) {
-//				aa.a(indent(indent)).fg(Elem.BYTES);
-//				Strin
-				aa.fg(Elem.DATA_TYPE).a(String.format("%04x",(i / 16) % (4096))).a("0   ").fg(Elem.BYTES);
+				// some extra row values to show the complete hex code here
+				aa.fg(Elem.DATA_TYPE).a(String.format("%04x",(i / 16) % (4096))).a('0').a(' ').a(' ').a(' ').fg(Elem.BYTES);
 			}
 //			ansi.a(hex[i]).a(" ");
-			aa.a(hex2.substring(i*2, (i*2)+2)).a(" ");
+			aa.a(hex2.substring(i*2, (i*2)+2)).a(' ');
 			if (i % COLS == COLS-1) {
-				aa.a("  ");
+				aa.a(' ').a(' ');
 			}
 			if (i % width == width-1) {
 				aa.a(' ').fg(Elem.BYTES_CHARS);
 				for (int j=i-(width-1); j<=i; j++) {
 					aa.a(getSimpleChar2(bytes[j]));
-					if (j % 8 == 7) aa.a("  ");
+					if (j % 8 == 7) aa.a(' ').a(' ');
 //					if (j % 16 == 15) ansi.a(" ");
 				}
 				aa.reset().a('\n');
@@ -365,16 +364,17 @@ public class UsefulUtils {
 			aa.reset();
 			int leftover = bytes.length % width;
 			for (int i=0; i < width - leftover; i++) {
-				aa.a("   ");
+				aa.a(' ').a(' ').a(' ');
 			}
 			int extraGaps = (width - leftover - 1) / COLS;
 			for (int i=0; i <= extraGaps; i++) {
-				aa.a("   ");
+				aa.a(' ').a(' ');
 			}
+			aa.a(' ');
 			aa.fg(Elem.BYTES_CHARS);
 			for (int i= bytes.length - leftover; i<bytes.length; i++) {
 				aa.a(getSimpleChar2(bytes[i]));
-				if (i % 8 == 7) aa.a("  ");
+				if (i % 8 == 7) aa.a(' ').a(' ');
 //				if (i % 16 == 15) ansi.a(" ");
 			}
 			aa.reset();
@@ -576,7 +576,7 @@ public class UsefulUtils {
     private static String formatMapLookingThing(String s) {
     	s = s.trim();
     	assert s.startsWith("{");
-    	assert s.startsWith("}");
+    	assert s.endsWith("}");
     	s = s.substring(1, s.length()-1);
     	AaAnsi aa = AaAnsi.n().fg(Elem.BRACE).a('{');
     	String[] tokens = s.split(SPLIT_ON_COMMAS);  //,-1);

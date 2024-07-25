@@ -201,7 +201,7 @@ public class GsonUtils {
 				if (indentFactor > 0) {
 					String ts = UsefulUtils.guessIfTimestampLong(lastKeyName, bi.longValue());
 					if (ts != null) {
-						ansi.makeFaint().a(ts);
+						ansi.faintOn().a(ts);
 					}
 				}
 				ansi.reset();

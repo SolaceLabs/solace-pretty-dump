@@ -147,9 +147,9 @@ public class AaAnsi /* implements CharSequence */ {
 	}
 	
 	private AaAnsi colorizeTopicPlain(String topic, int highlight) {
-		String[] levels = topic.split("/");
+		String[] levels = topic.split("/", -1);
 		maxLengthTopicLevels.insert(levels.length);
-		if (highlight >= 0) makeFaint();
+		if (highlight >= 0) faintOn();
 		for (int i=0; i<levels.length; i++) {
 			incChar(levels[i].length());   // need to update manually since adjusting the jansi directly
 			if (i == highlight) {
@@ -162,12 +162,12 @@ public class AaAnsi /* implements CharSequence */ {
 					jansi.a(levels[i]);
 					rawSb.append(levels[i]);
 					rawCompressedSb.append(levels[i]);
-					makeFaint();
+					faintOn();
 				} else {
 					jansi.a(levels[i].substring(0,firstDot));
 					rawSb.append(levels[i].substring(0,firstDot));
 					rawCompressedSb.append(levels[i].substring(0,firstDot));
-					makeFaint();
+					faintOn();
 					jansi.a(levels[i].substring(firstDot));
 					rawSb.append(levels[i].substring(firstDot));
 					rawCompressedSb.append(levels[i].substring(firstDot));
@@ -182,7 +182,7 @@ public class AaAnsi /* implements CharSequence */ {
 					jansi.a(levels[i].substring(0,firstDot));
 					rawSb.append(levels[i].substring(0,firstDot));
 					rawCompressedSb.append(levels[i].substring(0,firstDot));
-					makeFaint();
+					faintOn();
 					jansi.a(levels[i].substring(firstDot));
 					rawSb.append(levels[i].substring(firstDot));
 					rawCompressedSb.append(levels[i].substring(firstDot));
@@ -277,7 +277,7 @@ public class AaAnsi /* implements CharSequence */ {
 		return reset();
 	}*/
 	
-	public AaAnsi invalid(CharSequence s) {
+	public AaAnsi invalid(String s) {
 		if (isOn()) {
 			fg(Elem.ERROR).a(s).reset();
 		} else {
@@ -312,7 +312,7 @@ public class AaAnsi /* implements CharSequence */ {
 		if (isOn()) {
 			Col c = elem.getCurrentColor();
 			if (c.faint) {
-				makeFaint().fg(c.value);
+				faintOn().fg(c.value);
 			} else if (c.italics) {
 				makeItalics().fg(c.value);
 			} else {
@@ -330,13 +330,13 @@ public class AaAnsi /* implements CharSequence */ {
 		return this;
 	}
 	
-	AaAnsi makeFaint() {
-		if (isOn()) {
-			/* if (faint)*/ jansi.a(Attribute.INTENSITY_FAINT);
-//			else jansi.a(Attribute.INTENSITY_BOLD_OFF);  // doesn't work.  For some reason there is no "faint off" ..!?
-		}
-		return this;
-	}
+//	AaAnsi makeFaint() {
+//		if (isOn()) {
+//			/* if (faint)*/ jansi.a(Attribute.INTENSITY_FAINT);
+////			else jansi.a(Attribute.INTENSITY_BOLD_OFF);  // doesn't work.  For some reason there is no "faint off" ..!?
+//		}
+//		return this;
+//	}
 
 	public AaAnsi makeItalics() {
 		if (isOn()) {
@@ -401,7 +401,8 @@ public class AaAnsi /* implements CharSequence */ {
 	}
 	
 	String trim(int len) {
-		assert len > 0;
+		if (len <= 0 ) return "…";
+//		assert len > 0;
 		final String s = toString();
 		if (getTotalCharCount() <= len) return toString();
 //		if (s == null && s.isEmpty()) return s;  // so now we know there's at least one char
@@ -435,9 +436,9 @@ public class AaAnsi /* implements CharSequence */ {
 //			logger.warn(String.format("Had a mismatched charCount rawSb.length=%d, charCount=%d, ansi=%s", rawSb.length(), charCount, jansi));
 //			assert rawSb.length() == charCount;
 //		}
-//		return rawSb.toString();  // plain mode
+		return rawSb.toString();  // plain mode
 //		return rawCompressedSb.toString();  // plain mode
-		return jansi.toString();
+//		return jansi.toString();
 	}
 	
 	public String toRawString() {
@@ -502,7 +503,7 @@ public class AaAnsi /* implements CharSequence */ {
 		return this;
 	}
 
-	public AaAnsi a(CharSequence s) {
+	public AaAnsi a(String s) {
 		return a(s, false);
 	}
 	
@@ -512,7 +513,7 @@ public class AaAnsi /* implements CharSequence */ {
 
 	/** Consider each char individually, and if replacement \ufffd char then add some red colour.
 	 */
-	private AaAnsi a(CharSequence s, boolean styled) {
+	private AaAnsi a(String s, boolean styled) {
 		if (s == null) return this;
 		AaAnsi aa = new AaAnsi(false);
 		boolean insideNumStyle = false;  // these two vars are for my "styled string" code below

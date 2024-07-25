@@ -98,7 +98,7 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 				if (indent > 0) ts = UsefulUtils.guessIfTimestampLong(key, bi.longValue());
 				if (ts != null) {
 //					ansi.fg(Elem.CHAR).a(ts);
-					return new AaAnsi().fg(Elem.NUMBER).a(val).makeFaint().a(ts);
+					return new AaAnsi().fg(Elem.NUMBER).a(val).faintOn().a(ts);
 				} else {
 					return new AaAnsi().fg(Elem.NUMBER).a(val);  // yup!
 				}

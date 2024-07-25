@@ -108,7 +108,7 @@ public class PrettyDump {
 				System.out.println("    - b:queueName to browse a queue (all messages, or range of messages by ID)");
 				//                System.out.println("       - Can browse all messages, or specific messages by ID");
 				System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
-				System.out.println("    - tq:topics to provision a tempQ with topics subscribed (can use NOT '!' topics)");
+				System.out.println("    - tq:topics   to provision a tempQ with topics subscribed (can use NOT '!' topics)");
 				System.out.println(" - Optional indent: integer, default==2 spaces; specifying 0 compresses payload formatting");
 				System.out.println("    - No payload mode: use indent '00' to only show headers and props, or '000' for compressed");
 				System.out.println("    - One-line mode: use negative indent value (trim topic length) for topic & payload only");
@@ -132,7 +132,7 @@ public class PrettyDump {
 				System.out.println(" - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever");
 				System.out.println("    - Choose: \"standard\" (default), \"vivid\", \"light\", \"minimal\", \"matrix\", \"off\"");
 				System.out.println(" - Selector for Queue consume and browse: export PRETTY_SELECTOR=\"what like 'ever%'\"");
-				System.out.println(" - Client-side filtering on any received message: export PRETTY_FILTER=\"what like 'ever%'\"");
+				System.out.println(" - Client-side filtering on any received message: export PRETTY_FILTER=\"ID:123abc\"");
 				System.out.println("SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to \" | prettydump wrap\" to prettify");
 //				System.out.println(" - Note: add the 'bin' directory to your path to make it easier");
 				System.out.println();
@@ -223,7 +223,7 @@ public class PrettyDump {
 			try {
 				payloadHelper.dealWithIndentParam(indentStr);
 			} catch (NumberFormatException e) {
-				System.out.println(AaAnsi.n().invalid(String.format("Invalid value for indent: '%s', using default %d instead.%n", indentStr, payloadHelper.INDENT)));
+				System.out.println(AaAnsi.n().invalid(String.format("Invalid value for indent: '%s', using default %d instead.%n", indentStr, payloadHelper.getCurrentIndent())));
 			}
 		}
 		if ((args.length > 6 && !shortcut) || (shortcut && args.length > 2)) {
@@ -460,7 +460,7 @@ public class PrettyDump {
 				System.out.println("Quitting! 💀");
 				System.exit(1);
 			}
-		} else {
+		} else {  // either direct or temporaryQ with subs
 			// now 
 			if (topics[0].startsWith("tq:")) {  // gonna use a temporary queue for Guaranteed delivery
 				topics[0] = topics[0].substring(3);
@@ -643,6 +643,11 @@ public class PrettyDump {
 			//        	BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
 			while (!isShutdown) {
 				Thread.sleep(50);
+				// blocking receive mode
+//				BytesXMLMessage msg;
+//				if ((msg = directConsumer.receive(0)) != null) {
+//					payloadHelper.dealWithMessage(msg);
+//				}
 				String userInput = null;
 				if (System.in.available() > 0) {
 					userInput = reader.readLine();
@@ -716,7 +721,7 @@ public class PrettyDump {
 
 		@Override
 		public void onException(JCSMPException e) {  // uh oh!
-			System.out.println(AaAnsi.n().ex(" ### MessageListener's onException(): ", e));
+			System.out.println(AaAnsi.n().ex(" ### MessageListener's onException(): ", e).a(" - check ~/.pretty/pretty.log for details. "));
 			logger.error("Caught in my onExecption() callback", e);
 			if (e instanceof JCSMPTransportException) {  // all reconnect attempts failed (impossible now since we're at -1)
 				isShutdown = true;  // let's quit

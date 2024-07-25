@@ -201,7 +201,7 @@ public class ProtoBufUtils {
 								if (indent > 0) {
 									String ts = UsefulUtils.guessIfTimestampLong(fd.getName(), (long)val);
 									if (ts != null) {
-										ansi.makeFaint().a(ts);
+										ansi.faintOn().a(ts);
 									}
 								}
 								if (list.iterator().hasNext()) {
@@ -216,7 +216,7 @@ public class ProtoBufUtils {
 						if (indent > 0) {
 							String ts = UsefulUtils.guessIfTimestampLong(fd.getName(), (long)val);
 							if (ts != null) {
-								ansi.makeFaint().a(ts);
+								ansi.faintOn().a(ts);
 							}
 						}
 					}
@@ -350,7 +350,7 @@ public class ProtoBufUtils {
 	private static void addByteString(ByteString bs, AaAnsi ansi, FieldDescriptor fd) {
 		if (bs.size() == 4 && fd.getName().toLowerCase().contains("ip")) {  // assume IP address
 			ansi.fg(Elem.BYTES).a(UsefulUtils.bytesToSpacedHexString(bs.toByteArray()));
-			ansi.makeFaint().a(UsefulUtils.ipAddressBytesToIpV4String(bs.toByteArray()));
+			ansi.faintOn().a(UsefulUtils.ipAddressBytesToIpV4String(bs.toByteArray()));
 		} else {
 			ansi.fg(Elem.BYTES).a(UsefulUtils.bytesToSpacedHexString(bs.toByteArray()));
 		}
