@@ -11,11 +11,13 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 - Subscribing options: [Direct topic subscriptions](#direct-subscriptions), [Queue consume](#queue-consume), [Browsing a queue](#browsing-a-queue), [TempQ with subs](#temporary-queue-with-subscriptions)
 - [Output Indent options](#output-indent-options---the-6th-argument) ([One-line Mode](#one-line-indent--0))
 - [One-line Mode: Runtime options](#one-line-mode-runtime-options)
+- [Selectors and Filtering](#selectors-and-filtering)
 - [Charset Encoding](#charset-encoding)
 - [Error Checking](#error-checking)
 - [Protobuf Stuff](#protobuf-stuff) & Distributed Trace
 - [SdkPerf Wrap Mode](#sdkperf-wrap-mode)
 - [Tips and Tricks](#tips-and-tricks)
+
 
 
 ## Requirements
@@ -41,6 +43,15 @@ For Docker container usage, read the comments in [the Dockerfile](Dockerfile).
 
 ## Running
 
+**N.B.** for those using Windows PowerShell or Command Prompt, do this first:
+```
+C:\> chcp 65001
+C:\> set PRETTYDUMP_OPTS=-Dsun.stdout.encoding=utf-8
+ ~or~
+PS C:\> chcp 65001
+PS C:\> $Env:PRETTYDUMP_OPTS='-Dsun.stdout.encoding=utf-8'
+```
+
 #### No args, default broker options
 ```
 $ prettydump
@@ -55,8 +66,9 @@ Destination:                            Topic 'hello/world'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
-Binary Attachment:                      len=26
-SDT TextMessage, UTF-8 charset, JSON Object:
+Message Type:                           SDT TextMessage
+Binary Attachment:                      len=26 bytes
+UTF-8 charset, JSON Object:
 {
     "hello": "world" }
 
@@ -91,35 +103,39 @@ solace/samples/testing       This is a text payload.
 ```
 $ prettydump -h  or  --help
 
-Usage: prettydump [host:port] [vpn] [username] [password] [topics|[qbf]:queue] [indent]
-   or: prettydump <topics|q:queue|b:queue|f:queue> [indent]    for "shortcut" mode
+Usage: prettydump [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [indent] [count]
+   or: prettydump <topics|[qbf]:queueName|tq:topics> [indent] [count]  for "shortcut" mode
 
- - If using TLS, remember "tcps://" before host
- - Default parameters will be: localhost default foo bar "#noexport/>" 4
+ - Default protocol "tcp://"; for TLS use "tcps://"; or "ws://" or "wss://" for WebSocket
+ - Default parameters will be: localhost:55555 default foo bar "#noexport/>" 2
  - Subscribing options (param 5, or shortcut mode param 1), one of:
     - Comma-separated list of Direct topic subscriptions
        - Strongly consider prefixing with '#noexport/' if using DMR or MNR
     - q:queueName to consume from queue
     - b:queueName to browse a queue (all messages, or range of messages by ID)
     - f:queueName to browse/dump only first oldest message on a queue
- - Optional indent: integer, default = 4 spaces; specifying 0 compresses payload formatting
+    - tq:topics   to provision a tempQ with topics subscribed (can use NOT '!' topics)
+ - Optional indent: integer, default==2 spaces; specifying 0 compresses payload formatting
+    - No payload mode: use indent '00' to only show headers and props, or '000' for compressed
     - One-line mode: use negative indent value (trim topic length) for topic & payload only
-       - Or use -1 for auto column width adjustment
+       - Or use -1 for auto column width adjustment, or -2 for two-line mode
        - Use negative zero -0 for topic only, no payload
+ - Optional count: stop after receiving 'count' number of messages
  - Shortcut mode: first argument contains '>', '*', or starts '[qbf]:', assume default broker
-    - e.g. prettydump "logs/>" -1  ~or~  prettydump q:q1  ~or~  prettydump b:dmq -0
+    - e.g. prettydump 'logs/>' -1  ~or~  prettydump q:q1  ~or~  prettydump b:dmq -0
     - Or if first argument parses as integer, select as indent, rest default options
- - One-line mode (negative indent) runtime options:
-    - Press "t[ENTER]" to toggle payload trim to terminal width
+ - Runtime options:
+    - Press "t[ENTER]" to toggle payload trim to terminal width in one-line mode
     - Press "+[ENTER]" to enable topic level spacing/alignment ("-[ENTER]" to revert)
     - Press "[1-9][ENTER]" to highlight a particular topic level ("0[ENTER]" to revert)
 Environment variable options:
+ - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=ISO-8859-1
  - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever
     - Choose: "standard" (default), "vivid", "light", "minimal", "matrix", "off"
- - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=whatever
-    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or "set" on Windows)
+ - Selector for Queue consume and browse: export PRETTY_SELECTOR="what like 'ever%'"
+ - Client-side filtering on any received message: export PRETTY_FILTER="ID:123abc"
+    - Or use --selector="what like 'ever%'" and --filter="ID:123abc" in command line args
 SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to " | prettydump wrap" to prettify
- - Note: add the 'bin' directory to your path to make it easier
 ```
 
 
@@ -220,11 +236,13 @@ Shutdown detected, quitting...
 
 This mode allows you to choose the topics you wish to subscribe to, but do so in a Guaranteed fashion by provisioning a temporary / non-durable queue and then adding the topic subscriptions to that.
 ```
-$ prettydump 'tq:#noexport/billing/>,#noexport/orders/>'
+$ prettydump 'tq:#noexport/billing/>, #noexport/orders/>, !#noexport/orders/cancelled/>'
 
 Creating temporary Queue.
+Queue name: #P2P/QTMP/v:solace1081/2ed38d19-ae36-4e0e-ba90-06eea306bb9a
 Subscribed tempQ to topic: '#noexport/billing/>'
 Subscribed tempQ to topic: '#noexport/orders/>'
+Subscribed tempQ to *NOT* topic: '!#noexport/orders/cancelled/>'
 ```
 
 
@@ -235,21 +253,22 @@ Subscribed tempQ to topic: '#noexport/orders/>'
 
 ### Regular: indent > 0
 
-Valid vales are between 1 and 8.  Indent is default 4 in these examples:
+Valid vales are between 1 and 8.  Indent is default 2 in these examples:
 ```
 ^^^^^^^^^^^^^^^^^ Start Message #7 ^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
+Message Type:                           Raw BytesMessage
 Binary Attachment:                      len=100
-Raw BytesMessage, valid UTF-8 charset, XML document:
+Valid UTF-8 charset, XML document:
 <apps>
-    <version>23</version>
-    <stick>this</stick>
-    <nested>
-        <level>deeper</level>
-    </nested>
+  <version>23</version>
+  <stick>this</stick>
+  <nested>
+    <level>deeper</level>
+  </nested>
 </apps>
 
 ^^^^^^^^^^^^^^^^^^ End Message #7 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -258,14 +277,15 @@ Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
+Message Type:                           SDT TextMessage
 Binary Attachment:                      len=159
-SDT TextMessage, UTF-8 charset, JSON Object:
+UTF-8 charset, JSON Object:
 {
-    "firstName": "Aaron",
-    "lastName": "Lee",
-    "zipCode": "12345",
-    "streetAddress": "Singapore",
-    "customerId": "12345" }
+  "firstName": "Aaron",
+  "lastName": "Lee",
+  "zipCode": "12345",
+  "streetAddress": "Singapore",
+  "customerId": "12345" }
 
 ^^^^^^^^^^^^^^^^^^ End Message #8 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
@@ -281,42 +301,48 @@ Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
-Message Id:                             4729017
-Binary Attachment:                      len=58
-Raw BytesMessage, valid UTF-8 charset, XML document:
+Message Type:                           Raw BytesMessage
+Binary Attachment:                      len=58 bytes, valid UTF-8 charset, XML document
 <apps><another>hello</another><that>this</that></apps>
 ^^^^^^^^^^^^^^^^^^^^^ Start Message #5 ^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
-Message Id:                             4729156
-Binary Attachment:                      len=159
-SDT TextMessage, UTF-8 charset, JSON Object:
+Message Type:                           SDT TextMessage
+Binary Attachment:                      len=159, UTF-8 charset, JSON Object
 {"firstName":"Aaron","lastName":"Lee","zipCode":"12345","streetAddress":"Singapore","customerId":"12345"}
 ```
 
 
+### No Payload: indent = '00' or '000'
 
-### One-Line: indent < 0
+These two modes will still parse the payloads (for validation and possible filtering) but not display them.
+ - `00` will still pretty-print the User Properties
+ - `000` will compact the User Properties onto the same line
+
+
+
+### One-Line Mode: indent < 0
 
 Removes the majority of SdkPerf-like message metadata printing, only showing the topic and payload per-line.
 Valid values are between -1 and -250, and specify how many chars of the topic are displayed.  indent = -36 in this example.
 
 ```
-pq-demo/stats/pq/sub-pq_3-c222      {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0,"ackd":0,"gaps":0,"flow":"FLOW_ACTIVE"}
-pq/3/pub-44e7/e7-7/0/_
-pq-demo/stats/pq/pub-44e7           {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2,"resendQ":0,"keys":8,"activeFlow":true}
-pq/3/pub-44e7/e7-5/0/_
-pq-demo/stats/pq/sub-pq_3-c222      {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0,"ackd":0,"gaps":0,"flow":"FLOW_ACTIVE"}
-solace/samples/jcsmp/hello/aaron    +...4..probability...>���..from...aaron...age.......
-pq/3/pub-44e7/e7-3/0/_
-pq-demo/stats/pq/pub-44e7           {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2,"resendQ":0,"keys":8,"activeFlow":true}
-pq/3/pub-44e7/e7-0/0/_
+pq-demo/stats/pq/sub-pq_3-c222      {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0}
+pq/3/pub-44e7/e7-7/0/_              <EMPTY> Raw BytesMessage
+pq-demo/stats/pq/pub-44e7           {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2}
+pq/3/pub-44e7/e7-5/0/_              <EMPTY> Raw BytesMessage
+pq-demo/stats/pq/sub-pq_3-c222      {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0}
+solace/samples/jcsmp/hello/aaron    {probability(Float)0.4,from(String)"aaron",where(Topic)a/b/c}
+pq/3/pub-44e7/e7-3/0/_              <EMPTY> Raw BytesMessage
+pq-demo/stats/pq/pub-44e7           {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2}
+pq/3/pub-44e7/e7-0/0/_              <EMPTY> Raw BytesMessage
 ```
 
 Use `-1` for "auto-indenting", where the amount of indent will vary dynamically with topic length.
-
+Use `-2` for two-line mode, topic on one line, payload on another.
+`-3` .. `-250` will trim the topic length to that amount.
 
 
 ### One-Line, Topic only: indent = "-0"
@@ -326,14 +352,11 @@ this does essentially the same thing.
 
 ```
 bus_trak/gps/v2/013B/01058/001.37463/0103.93459/13/STOPPED
-bus_trak/gps/v2/036M/01154/001.37578/0103.93151/31/OK
 bus_trak/gps/v2/002A/01151/001.32270/0103.75160/30/OK
 bus_trak/door/v1/033M/01434/open
-bus_trak/gps/v2/033M/01434/001.42483/0103.71193/31/STOPPED
 bus_trak/gps/v2/011X/01390/001.39620/0103.84082/11/OK
 bus_trak/gps/v2/035B/01286/001.40101/0103.88913/12/OK
-bus_trak/door/v1/005B/01464/open
-bus_trak/gps/v2/006A/01291/001.29687/0103.78305/21/STOPPED
+bus_trak/door/v1/005B/01464/close
 ```
 
 
@@ -343,23 +366,53 @@ When using one-line mode, you can do some extra stuff:
 
  - press 't' [ENTER] to enable trim for message payloads... will cause the payload to get truncated at the terminal width
 ```
-bus_trak/gps/v2/022A/01228/001.32266/0103.69693/21/OK       {"psgrCap":0.75,"heading":176,"busNum"…
-bus_trak/gps/v2/036X/01431/001.37858/0103.92294/32/STOPPED  {"psgrCap":0.5,"heading":288,"busNum":…
-bus_trak/gps/v2/012A/01271/001.38968/0103.76101/31/STOPPED  {"psgrCap":0,"heading":254,"busNum":12…
-bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK       {"psgrCap":0.75,"heading":272,"busNum"…
+bus_trak/gps/v2/022A/01228/001.32266/0103.69693/21/OK      {"psgrCap":0.75,"heading":176,"busNum"…
+bus_trak/gps/v2/036X/01431/001.37858/0103.92294/32/STOPPED {"psgrCap":0.5,"heading":288,"busNum":…
+bus_trak/gps/v2/012A/01271/001.38968/0103.76101/31/STOPPED {"psgrCap":0,"heading":254,"busNum":12…
+bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK      {"psgrCap":0.75,"heading":272,"busNum"…
 ```
+
  - press '+' [ENTER] to add spacing to the topic hierarchy display, more of a "column" view of the topic levels
     - press '-' [ENTER] to go back to regular (compressed) topic display
 ```
-#STATS./VPN..../sgdemo1./aaron.............../vpn_stats
-#STATS./SYSTEM./sgdemo1./stats_client_detail
-#STATS./SYSTEM./sgdemo1./MSG-SPOOL
-#STATS./VPN..../sgdemo1./singtelbusdemo....../vpn_msg-spool
-#STATS./SYSTEM./sgdemo1./REDUNDANCY
+#STATS...../VPN..../sgdemo1.../aaron.............../vpn_stats
+#STATS...../SYSTEM./sgdemo1.../stats_client_detail
+#STATS...../SYSTEM./sg3501vmr./MSG-SPOOL
+#STATS...../VPN..../sgdemo1.../singtelbusdemo....../vpn_msg-spool
+#STATS...../SYSTEM./sgdemo1.../REDUNDANCY
+#STATSPUMP./STATS../sg3501vmr./poller-stats......../show-msg-spool
 ```
+
  - press '[1-9]' [ENTER] to highlight a specific level of the topic hierarchy
     - press '0' [ENTER] to go back to regular full-topic highlighting
 
+
+
+## Selectors and Filtering
+
+PrettyDump now supports Selectors (broker-side) when consuming or browsing a queue, and also client-side Filtering which you specify as a regex against the entire message contents.
+
+### Selectors
+
+Selectors can be very useful if you wish to filter the messages at the broker based on certain header metadata or user properties.  Selectors are specified using an SQL-92 like syntax.  Solace doesn't recommend them for general runtime usage due to performance considerations and the fact our topic routing capability is far superior to other JMS brokers.  However, they can certainly come in handy when browsing queues for certain messages.
+
+A Selector is specified either by the environment variable `PRETTY_SELECTOR="blah"` or using the command line argument `--selector="blah"` when runnning PrettyDump.  Note that Selectors don't work with Direct topic subscriptions, but does with queue consume, queue browsing, and temporary queues with subscriptions.  However!  Selectors are performed on the egress Flow, which means that any messages not matching the Selector will be left on the queue.  For example, a tempQ subscribed to `>` but with a very narrow Selector fill up quickly.
+
+Use "first message" browse mode `f:queueName` to stop after the first message that matches the Selector.  Or browse with count option `b:queueName 2 10` to dump the first 10 messages that match the Selector, with an indent of 2.
+
+
+### Client-side Filtering
+
+As requested by a user, PrettyDump supports the ability to search/filter for specific words or patterns occuring within the entire message output, and only display messages that match this Filter.  This is far less performant than using a Selector (broker-side) as it has to pull down the message first and parse it before it can apply the Filter (client-side).  However, Filters can be used with Direct messages, and can be used in conjunction with Selectors.
+
+Currently, the Filter is treated as a regular expression / regex, and the entire message contents (headers, properties, payload(s)) are evaluated against it.  So a filter of `Aaron` will search each message looking for the case-sensitive word "Aaron".  A filter of `(?i)Aaron.*Singapore` will look for the case-insensitive word "aaron" followed somewhere by "singapore".
+
+A Filter is specified either by the environment variable `PRETTY_FILTER="blah"` or using the command line argument `--filter="blah"` when runnning PrettyDump.
+
+```
+^^^^^^^^^^^^^^^^^^^^^^ End Message #16 ^^^^^^^^^^^^^^^^^^^^^
+🔎Skipping filtered msg #17
+```
 
 
 
@@ -374,8 +427,9 @@ If PrettyDump detects an invalid encoding, it will replace the invalid character
 
 ```
 ⋮
-Binary Attachment:                      len=36
-Raw BytesMessage, Non UTF-8 encoded string:
+Message Type:                           Raw BytesMessage
+Binary Attachment:                      len=36 bytes
+Non UTF-8 encoded string:
 The currency is in ¿ Pound Sterling.
     54 68 65 20 63 75 72 72    65 6e 63 79 20 69 73 20    The curr  ency is
     69 6e 20 a3 20 50 6f 75    6e 64 20 53 74 65 72 6c    in · Pou  nd Sterl
@@ -398,11 +452,12 @@ Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 HTTP Content Type:                      application/xml
-Binary Attachment:                      len=43
-Raw BytesMessage, UTF-8 charset, INVALID XML payload:
+Message Type:                           Raw BytesMessage
+Binary Attachment:                      len=43 bytes
+Valid UTF-8 charset, INVALID XML payload:
 SaxParserException - org.xml.sax.SAXParseException; lineNumber: 1; columnNumber: 23;
  The markup in the document following the root element must be well-formed.
-<bad>not having</bad><a>closing bracket</a
+<bad>not having<a>closing bracket</a</bad>
 
 ^^^^^^^^^^^^^^^^^^^^^^ End Message #2 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -416,7 +471,7 @@ PrettyDump comes preloaded with Protobuf decoders for:
 - Solace Distributed Trace messages
 - Sparkplug B
 
-Check the `protobuf.properties` file for topic-to-class mapping.  PrettyDump uses topic dispatch to
+Check the `protobuf.properties` file for topic-to-class mapping.  PrettyDump uses [topic dispatch](https://github.com/aaron-613/jcsmp-topic-dispatch) to
 selectively choose which Protobuf decoder to use based on the incoming messages' topics.
 
 Check the README file in the `schemas` directory for more information on how to compile and include
@@ -489,6 +544,50 @@ PUB MR(5s)=10004↑, SUB MR(5s)=10023↓, CPU=0
 
 ## Tips and Tricks
 
+
+### Negative Subscriptions
+
+Solace has the concept of negative subscriptions, but only for Guaranteed consumers (that is, subscriptions on endpoints)... it doesn't work for Direct consumers.  If you want to see all the traffic on your broker _except_ for some specified topics, then use a temporary queue `tq:` and add subscriptions such as:
+```
+$ prettydump 'tq:>, !bus/> !stats/>'
+```
+This will configure a temporary queue to use, subscribed to everything, but if the topic matches one of the NOT topics, it won't match.  So in this example, you would receive everything that's not a `bus` topic or a `stats` topic.
+
+See: https://docs.solace.com/Messaging/Guaranteed-Msg/System-Level-Subscription-Exception-Config.htm
+
+
+### One-Line Dump w/dynamically spaced topics
+
+One of the most common ways I run this when developing an app and just want to sniff the broker is to use one-line mode, auto indent `+1` with spacing, and hit `t [ENTER]` (for trim) as soon as it starts running.  You can always press `+` or `-` `[ENTER]` during runtime to toggle between spacing modes.
+```
+pq-demo/proc..../pq12/sub-pq12-4049/8f-7/0/_ <EMPTY> Raw BytesMessage
+pq-demo/stats.../pq../sub-pq12-4049          {"red":0,"oos":0,"queueName":"pq12","slow":0,"r…
+pq12.../pub-dc8f/8f-4/0............/_        <EMPTY> Raw BytesMessage
+pq-demo/proc..../pq12/sub-pq12-4049/8f-4/0/_ <EMPTY> Raw BytesMessage
+pq-demo/stats.../pq../pub-dc8f               {"prob":0,"paused":false,"delay":0,"nacks":0,"r…
+```
+
+And use "vivid" colour mode `export PRETTY_COLORS=vivid` for nice rainbow topic level colouring.
+
+
+
+
+### Windows
+
+If running on Windows PowerShell or Command Prompt, make sure you enable UTF-8 charset / code point encoding to see all the emojis!  Windows _still_ uses its default (and ancient) `Windows-1252` encoding.
+```
+C:\> chcp 65001
+C:\> set PRETTYDUMP_OPTS=-Dsun.stdout.encoding=utf-8
+C>\> prettydump
+
+ ~or~
+
+PS C:\> chcp 65001
+PS C:\> $Env:PRETTYDUMP_OPTS='-Dsun.stdout.encoding=utf-8'
+PS C:\> prettydump
+```
+
+See: https://en.wikipedia.org/wiki/Windows-1252
 
 
 
