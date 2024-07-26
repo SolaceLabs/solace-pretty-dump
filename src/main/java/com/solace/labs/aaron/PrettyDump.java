@@ -24,7 +24,6 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.regex.Pattern;
@@ -86,6 +85,7 @@ public class PrettyDump {
 	private static String contentFilter = null;
 	//    private static Queue tempQueue = null;
 	private static long browseFrom = -1;
+	private static String browseFromRGMID = null;
 	private static long browseTo = Long.MAX_VALUE;
 
 	private static FlowReceiver flowQueueReceiver = null;  // for queues and tempQueue
@@ -304,7 +304,8 @@ public class PrettyDump {
 //		}
 		
 		if (contentFilter != null) {
-			System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Client-side Filter detected: \"%s\"", contentFilter)));
+//			System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Client-side Filter detected: \"%s\"", contentFilter)).reset());
+			System.out.println(AaAnsi.n().a("🔎 Client-side Filter detected: ").aStyledString(contentFilter).reset());
 		}
 
 		// is it a queue?
@@ -344,10 +345,13 @@ public class PrettyDump {
 							if (latch.getCount() == 1) {  // first time here, so skip this notification
 								
 							} else {
+								if (!isConnected) System.out.println();  // connection coming back up
 								System.out.println(" > " + fe);
 							}
 						} else if (fe == FlowEvent.FLOW_INACTIVE) {
 							isFlowActive = false;
+						} else if (!isConnected) {
+							// ignore
 						} else {
 							System.out.println(" > " + fe);
 						}
@@ -359,7 +363,7 @@ public class PrettyDump {
 				System.out.println();
 				// double-check
 				if (selector != null) {
-					System.out.println(AaAnsi.n().a("🔎 Selector detected: ").aStyledString(selector));
+					System.out.println(AaAnsi.n().a("🔎 Selector detected: ").aStyledString(selector).reset());
 					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s' that match Selector. Use browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
 				} else {  // no selectors, consume all
 					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s'. Use browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
@@ -419,20 +423,27 @@ public class PrettyDump {
 				System.out.println("success!");
 				System.out.println();
 				if (selector != null) {
-					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Selector detected: \"%s\"", selector)));
+//					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Selector detected: \"%s\"", selector)).reset());
+					System.out.println(AaAnsi.n().a("🔎 Selector detected: ").aStyledString(selector).reset());
 				}
 				if (topics[0].startsWith("b:")) {  // regular browse, prompt for msg IDs
 					if (contentFilter == null) {
-						System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or enter specific Message ID, or to/from range of IDs%n (e.g. \"259-261\" or \"9517-\" or \"-345\"): ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
+						System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or enter specific Message Spool ID, or to/from range of IDs%n (e.g. \"106259-110261\" or \"98517-\" or \"-103345\"),%n or start at RGMID (e.g. \"rmid1:3477f-a5ce52...\"): ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
 					} else {  // don't allow single MsgID
-						System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or range of IDs (e.g. \"259-261\" or \"9517-\" or \"-345\"): ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
+						System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or range of Spool IDs (e.g. \"259-261\" or \"9517-\" or \"-345\"),%n or start at RGMID (e.g. \"rmid1:3477f-a5ce52...\": ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
 					}
 					String answer = reader.readLine().trim().toLowerCase();
 					System.out.print(AaAnsi.n());  // to reset() the ANSI
 					if (answer.isEmpty()) {
 						// all messages
 					} else {
-						try {  // assume only one integer (message ID) inputed
+						if (answer.startsWith("rmid")) {
+							// let's look for this particular RGMID and then start browsing after that
+//							JCSMPFactory.onlyInstance().createReplicationGroupMessageId(answer);
+							browseFromRGMID = answer;
+//							browseTo =  // leave alone, maximum browse
+						} else try {
+							// assume only one integer (message ID) inputed
 							browseFrom = Long.parseLong(answer);
 							browseTo = Long.parseLong(answer);
 							if (browseFrom < 0) {  // negative, means range: everything up to
@@ -489,7 +500,7 @@ public class PrettyDump {
 				}
 				System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Creating temporary Queue.")).reset());
 				if (selector != null) {
-					System.out.println(AaAnsi.n().a(" 🔎 Selector detected: ").aStyledString(selector));
+					System.out.println(AaAnsi.n().a(" 🔎 Selector detected: ").aStyledString(selector).reset());
 				} else {
 					System.out.println();
 				}
@@ -606,7 +617,15 @@ public class PrettyDump {
 					}
 					//	        		msgCount--;  // decrement 1 from total number of messages to browse
 					if (browseFrom == -1) {
-						printer.onReceive(nextMsg);  // print all messages
+						if (browseFromRGMID != null && nextMsg.getReplicationGroupMessageId().toString().equals(browseFromRGMID)) {
+							// match!
+							browseFromRGMID = null;  // turn off "filtering"
+						}
+						if (browseFromRGMID == null) printer.onReceive(nextMsg);  // print all messages
+						else {  // else we're just skipping this message, but still count it anyway
+							PayloadHelper.msgCount++;
+							payloadHelper.thinking.tick();
+						}
 					} else {
 						try {
 							long msgId = nextMsg.getMessageIdLong();  // deprecated, shouldn't be using this, but oh well!
@@ -623,7 +642,7 @@ public class PrettyDump {
 								System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Message with ID '%d' received, greater than than browse range '%d'. Done.", msgId, browseTo)).reset());
 								break;  // done!
 							} else {  // else we're just skipping this message, but still count it anyway
-								payloadHelper.msgCount++;
+								PayloadHelper.msgCount++;
 								payloadHelper.thinking.tick();
 							}
 						} catch (Exception e) {

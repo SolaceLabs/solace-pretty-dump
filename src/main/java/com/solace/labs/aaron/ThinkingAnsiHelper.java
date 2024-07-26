@@ -1,9 +1,5 @@
 package com.solace.labs.aaron;
 
-import java.util.Arrays;
-
-import org.fusesource.jansi.Ansi;
-
 public class ThinkingAnsiHelper {
 
 	private boolean isFilteringOn = false;
@@ -15,13 +11,13 @@ public class ThinkingAnsiHelper {
 	private int rainbowIndex = 0;
 	private static final String[] BACKSPACES = new String[64];
 	static {
-		Ansi ansi = new Ansi();
+//		Ansi ansi = new Ansi();
 		for (int i=0; i<BACKSPACES.length; i++) {
 //			BACKSPACES[i] = UsefulUtils.pad(i, (char)8);
 			BACKSPACES[i] = (char)27 + "[30D"; 
 //			BACKSPACES[i] = ansi.cursorLeft(30).toString();
 		}
-		System.out.println(Arrays.toString(BACKSPACES[1].getBytes()));
+//		System.out.println(Arrays.toString(BACKSPACES[1].getBytes()));
 	}
 	
 	private void clearReset() {
@@ -65,7 +61,7 @@ public class ThinkingAnsiHelper {
 //			System.out.print(new AaAnsi(false).fg(AaAnsi.rainbowTable[(rainbowIndex++) % AaAnsi.rainbowTable.length]));
 		}
 		clearReset();
-		String m = new StringBuilder("🔎Skipping filtered msg #").append(PayloadHelper.msgCount).toString();
+		String m = new StringBuilder("🔎 Skipping filtered msg #").append(PayloadHelper.msgCount).toString();
 		screenPosX = m.length();
 //		System.out.print(new AaAnsi(false).fg(AaAnsi.rainbowTable[rainbowIndex]).a(m));
 		System.out.print(m);

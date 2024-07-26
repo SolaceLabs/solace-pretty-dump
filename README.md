@@ -2,7 +2,7 @@
 # Pretty-print for dumped Solace messages
 
 A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON**, **XML**, **Protobuf**, and Solace **SDT** Maps and Streams. (And binary too).
-Also with a display option for a minimal one-line-per-message view.  Supports Direct topic subscriptions, Queue consume, Queue browsing, and temporary Queue w/subs.  Now with Selector support!
+Also with a display option for a minimal one-line-per-message view.  Supports Direct topic subscriptions, Queue consume, Queue browsing, and temporary Queue w/subs.  Now with Selector and client-side Filtering support!
 
 
 - [Building](#building)
@@ -201,8 +201,8 @@ PrettyDump connected to VPN 'aaron-demo-singapore' on broker 'aaron.messaging.so
 Attempting to browse queue 'q1' on the broker... success!
 
 Browse all messages -> press [ENTER],
- or enter specific Message ID,
- or range of IDs (e.g. "25909-26183" or "9517-"): 31737085
+ or enter specific Message ID, or to/from range of IDs
+ (e.g. "259-261" or "9517-" or "-345"): 31737085
 
 Starting. Press Ctrl-C to quit.
 ^^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -212,8 +212,9 @@ Class Of Service:                       USER_COS_1
 DeliveryMode:                           NON_PERSISTENT
 Message Id:                             31737085
 Replication Group Message ID:           rmid1:102ee-0b5760c9706-00000000-01e444fd
+Message Type:                           SDT TextMessage
 Binary Attachment:                      len=173
-TextMessage, UTF-8 charset, JSON Object:
+UTF-8 charset, JSON Object:
 {
     "psgrCap": 1,
     "heading": 228,
@@ -547,13 +548,53 @@ PUB MR(5s)=10004↑, SUB MR(5s)=10023↓, CPU=0
 
 ### Negative Subscriptions
 
-Solace has the concept of negative subscriptions, but only for Guaranteed consumers (that is, subscriptions on endpoints)... it doesn't work for Direct consumers.  If you want to see all the traffic on your broker _except_ for some specified topics, then use a temporary queue `tq:` and add subscriptions such as:
+Solace has the concept of negative subscriptions or subscription exceptions, but only for Guaranteed consumers (that is, subscriptions on Endpoints)... it doesn't work for Direct consumers.  If you want to see all the traffic on your broker _except_ for some specified topics, then use a temporary queue `tq:` and add subscriptions such as:
 ```
 $ prettydump 'tq:>, !bus/> !stats/>'
 ```
 This will configure a temporary queue to use, subscribed to everything, but if the topic matches one of the NOT topics, it won't match.  So in this example, you would receive everything that's not a `bus` topic or a `stats` topic.
 
 See: https://docs.solace.com/Messaging/Guaranteed-Msg/System-Level-Subscription-Exception-Config.htm
+
+
+
+### Browse the end of a Queue
+
+Using SEMP, you can query the broker for details of the last _n_ messages sitting on a queue, and use those values to tell PrettyDump to skip all the messages before that (note: the app still needs to pull all the messages off the queue to evaluate them).
+```
+curl -u admin:admin http://localhost:8080/SEMP -d '<rpc><show><queue><name>q1</name><vpn-name>default</vpn-name><messages/><newest/><count/><num-elements>10</num-elements></queue></show></rpc>'
+
+<rpc-reply semp-version="soltr/10_8_1VMR">
+  <rpc>
+    <show>
+      <queue>
+        <queues>
+          <queue>
+            <name>q1</name>
+            <message-vpn>default</message-vpn>
+            <spooled-messages>
+              <spooled-message>
+                <message-id>1047544</message-id>
+                <message-sent>no</message-sent>
+              </spooled-message>
+              <spooled-message>
+                <message-id>1047543</message-id>
+                <message-sent>no</message-sent>
+              </spooled-message>
+SNIP
+```
+I think there may also be a SEMPv2 equivalent command for this?
+
+This will dump out the Message Spool IDs of the last 10 messages on the queue.  Change `<num-elements>` to 100 if want more.  Then use one of these numbers when you browse `b:` to skip all messages until you get here, e.g.
+```
+$ prettydump b:q1 
+
+Browse all messages -> press [ENTER],
+ or enter specific Message Spool ID, or to/from range of IDs
+ (e.g. "106259-110261" or "98517-" or "-103345"),
+ or start at RGMID (e.g. "rmid1:3477f-a5ce52..."): 1047543-
+```
+
 
 
 ### One-Line Dump w/dynamically spaced topics
