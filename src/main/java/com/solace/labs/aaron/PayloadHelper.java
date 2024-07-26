@@ -26,6 +26,7 @@ import org.fusesource.jansi.AnsiConsole;
 
 import com.google.protobuf.MessageOrBuilder;
 import com.solace.labs.topic.Sub;
+import com.solacesystems.common.util.expression.NotOperator;
 import com.solacesystems.jcsmp.BytesMessage;
 import com.solacesystems.jcsmp.BytesXMLMessage;
 import com.solacesystems.jcsmp.DeliveryMode;
@@ -316,10 +317,10 @@ public class PayloadHelper {
 			boolean malformed = text.contains("\ufffd");
 //			System.out.println("MALFORMED: " + malformed);
         	if (malformed) {
-				type = "Non " + type;
+				type = "non " + type;
         	}
         	double ratio = (1.0 * formatted.getControlCharsCount() + formatted.getReplacementCharsCount()) / formatted.getTotalCharCount();
-        	if (malformed && ratio > 0.3) {  // 30%, very likely a binary file
+			if (malformed && ratio > 0.3 /* && !oneLineMode */) {  // 30%, very likely a binary file
 				formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, getEffectiveIndent(), currentScreenWidth);
         	} else if (malformed || formatted.getControlCharsCount() > 0) {  // any unusual control chars (not tab, LF, CR, FF, or Esc, or NUL at string end
 				if (!oneLineMode && getEffectiveIndent() > 0) {  // only if not in one-line mode!
@@ -332,8 +333,8 @@ public class PayloadHelper {
 			String parsed = decodeToString(bytes);
 //			boolean malformed = parsed.contains("\ufffd");
 			formatString(parsed, bytes, contentType);  // call the String version
-			if (!type.startsWith("Non")) {
-				type = "Valid " + type;
+			if (!type.startsWith("non")) {
+				type = "valid " + type;
 			}
 /*        	if (malformed) {
 				type = "Non " + type;
@@ -478,7 +479,11 @@ public class PayloadHelper {
             		msgDestName = msgDestName.substring(0, getCurrentIndent()-2) + "…";
             		// huh we actually trim it here?  Ok
     			}
-        		aaDest.colorizeTopic(msgDestName, highlightTopicLevel);
+            	if (!oneLineMode) {
+            		aaDest.a("Topic '").colorizeTopic(msgDestName, highlightTopicLevel).fg(Elem.DESTINATION).a('\'').reset();
+            	} else {
+            		aaDest.colorizeTopic(msgDestName, highlightTopicLevel);
+            	}
         	}
         	msgDestNameFormatted = aaDest.toString();
 //        	if (autoResizeIndent) updateTopicIndentValue(msgDestName.length());
@@ -501,7 +506,7 @@ public class PayloadHelper {
 	private static final int DIVIDER_LENGTH = 60;  // same as SdkPerf JCSMP
 
 	public AaAnsi printMessageStart() {
-        String head = "^^^^^ Start Message #" + msgCount + " ^^^^^";
+        String head = " Start Message #" + msgCount + " ";
         String headPre = UsefulUtils.pad((int)Math.ceil((DIVIDER_LENGTH - head.length()) / 2.0) , '^');
         String headPost = UsefulUtils.pad((int)Math.floor((DIVIDER_LENGTH - head.length()) / 2.0) , '^');
         return AaAnsi.n().fg(Elem.MSG_BREAK).a(headPre).a(head).a(headPost).reset();
@@ -560,20 +565,20 @@ public class PayloadHelper {
 
 	
 	private void handlePayloadSection(String line, PayloadSection ps, AaAnsi aa) {
-		boolean invalid = ps.type != null && (ps.type.contains("Non") || ps.type.contains("INVALID"));
+		boolean invalid = ps.type != null && (ps.type.contains("non") || ps.type.contains("INVALID"));
 		if (getEffectiveIndent() == 0 || noPayload) {  // so compressed and/or no payload
     		if (ps.type != null) {
     			aa.a(',').a(' ');
     			if (invalid) aa.invalid(ps.type);
     			else aa.fg(Elem.PAYLOAD_TYPE).a(ps.type).reset();
     		}
-    		if (!noPayload) aa.a(": ").a(ps.formatted);
-//    		if (!noPayload) aa.a('\n').a(ps.formatted);
+//    		if (!noPayload) aa.a(": ").a(ps.formatted);
+    		if (!noPayload) aa.a('\n').a(ps.formatted);
 		} else {
 			aa.a('\n');
     		if (ps.type != null) {
-    			if (invalid) aa.invalid(ps.type);
-    			else aa.fg(Elem.PAYLOAD_TYPE).a(ps.type);//.reset();
+    			if (invalid) aa.invalid(UsefulUtils.capitalizeFirst(ps.type));
+    			else aa.fg(Elem.PAYLOAD_TYPE).a(UsefulUtils.capitalizeFirst(ps.type));//.reset();
         		if (!ps.type.contains("EMPTY")) aa.a(':');
         		aa.a('\n');
     		}

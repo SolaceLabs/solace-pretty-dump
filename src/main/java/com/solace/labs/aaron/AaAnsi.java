@@ -436,9 +436,9 @@ public class AaAnsi /* implements CharSequence */ {
 //			logger.warn(String.format("Had a mismatched charCount rawSb.length=%d, charCount=%d, ansi=%s", rawSb.length(), charCount, jansi));
 //			assert rawSb.length() == charCount;
 //		}
-		return rawSb.toString();  // plain mode
+//		return rawSb.toString();  // plain mode
 //		return rawCompressedSb.toString();  // plain mode
-//		return jansi.toString();
+		return jansi.toString();
 	}
 	
 	public String toRawString() {

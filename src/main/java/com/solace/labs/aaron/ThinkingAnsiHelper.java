@@ -65,7 +65,7 @@ public class ThinkingAnsiHelper {
 //			System.out.print(new AaAnsi(false).fg(AaAnsi.rainbowTable[(rainbowIndex++) % AaAnsi.rainbowTable.length]));
 		}
 		clearReset();
-		String m = new StringBuilder("Skipping filtered msg #").append(PayloadHelper.msgCount).toString();
+		String m = new StringBuilder("🔎Skipping filtered msg #").append(PayloadHelper.msgCount).toString();
 		screenPosX = m.length();
 //		System.out.print(new AaAnsi(false).fg(AaAnsi.rainbowTable[rainbowIndex]).a(m));
 		System.out.print(m);

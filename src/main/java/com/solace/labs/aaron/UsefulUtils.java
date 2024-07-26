@@ -265,7 +265,7 @@ public class UsefulUtils {
 //			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset();  // byte values
 			return new AaAnsi().reset().fg(Elem.BYTES).a(bytesToSpacedHexString(bytes)).reset();  // byte values
 		}
-		if (terminalWidth > 149) return printBytes2(bytes, indent, 32);  // widescreen
+		if (terminalWidth > 151) return printBytes2(bytes, indent, 32);  // widescreen
 		else return printBytes2(bytes, indent, 16);
 	}
 	
@@ -299,7 +299,7 @@ public class UsefulUtils {
 				aa.fg(Elem.BYTES_CHARS);
 				for (int j=i-(width-1); j<=i; j++) {
 					aa.a(getSimpleChar2(bytes[j]));
-					if (j % 8 == 7) aa.a("  ");
+					if (j % 8 == 7 && j != i) aa.a("--");
 //					if (j % 16 == 15) ansi.a(" ");
 				}
 				aa.reset().a('\n');
@@ -337,27 +337,33 @@ public class UsefulUtils {
 //		String[] hex = bytesToHexStringArray(bytes);
 		String hex2 = bytesToLongHexString(bytes);
 		AaAnsi aa = new AaAnsi();
-		for (int i=0; i < bytes.length; i++) {
+		int roundedLenghth = (int)(Math.ceil(bytes.length * 1.0 / width) * width);  
+		for (int i=0; i < roundedLenghth; i++) {
 			if (i % width == 0) {
 				// some extra row values to show the complete hex code here
 				aa.fg(Elem.DATA_TYPE).a(String.format("%04x",(i / 16) % (4096))).a('0').a(' ').a(' ').a(' ').fg(Elem.BYTES);
 			}
 //			ansi.a(hex[i]).a(" ");
-			aa.a(hex2.substring(i*2, (i*2)+2)).a(' ');
+			if (i < bytes.length) aa.a(hex2.substring(i*2, (i*2)+2)).a(' ');
+			else aa.a('⋅').a('⋅').a(' ');
 			if (i % COLS == COLS-1) {
 				aa.a(' ').a(' ');
 			}
 			if (i % width == width-1) {
 				aa.a(' ').fg(Elem.BYTES_CHARS);
 				for (int j=i-(width-1); j<=i; j++) {
-					aa.a(getSimpleChar2(bytes[j]));
-					if (j % 8 == 7) aa.a(' ').a(' ');
+					if (j < bytes.length) {
+						aa.a(getSimpleChar2(bytes[j]));
+						if (j % 8 == 7 && j != i) aa.a(' ').a(' ');
+					}
 //					if (j % 16 == 15) ansi.a(" ");
 				}
-				aa.reset().a('\n');
+				aa.reset();
+				if (i < bytes.length-1) aa.a('\n');
 //				if (i < bytes.length-1 || indent > 0) ansi.a('\n');
 			}
 		}
+		if ("1".equals("1")) return aa;
 		// last trailing bit, if not evenly divisible by WIDTH
 		// works for everthing except 24
 		if (bytes.length % width != 0) {

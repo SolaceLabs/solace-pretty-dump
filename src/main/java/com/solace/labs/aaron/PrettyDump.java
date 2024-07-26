@@ -112,18 +112,18 @@ public class PrettyDump {
 				System.out.println(" - Optional indent: integer, default==2 spaces; specifying 0 compresses payload formatting");
 				System.out.println("    - No payload mode: use indent '00' to only show headers and props, or '000' for compressed");
 				System.out.println("    - One-line mode: use negative indent value (trim topic length) for topic & payload only");
-				System.out.println("       - Or use -1 for auto column width adjustment");
+				System.out.println("       - Or use -1 for auto column width adjustment, or -2 for two-line mode");
 				System.out.println("       - Use negative zero -0 for topic only, no payload");
 				System.out.println(" - Optional count: stop after receiving 'count' number of messages");
 				System.out.println(" - Shortcut mode: first argument contains '>', '*', or starts '[qbf]:', assume default broker");
-				System.out.println("    - e.g. prettydump \"logs/>\" -1  ~or~  prettydump q:q1  ~or~  prettydump b:dmq -0");
+				System.out.println("    - e.g. prettydump 'logs/>' -1  ~or~  prettydump q:q1  ~or~  prettydump b:dmq -0");
 				System.out.println("    - Or if first argument parses as integer, select as indent, rest default options");
 
 				//                System.out.println("    - e.g. bin/prettydump \"logs/>\" -1   ~or~   bin/prettydump q:q1");
 				//                System.out.println("    - Or queues as well: e.g. ./bin/prettydump q:q1   ~or~   ./bin/prettydump b:dmq -1");
 				//                System.out.println("    - If zero parameters, assume localhost default broker and subscribe to \"#noexport/>\"");
-				System.out.println(" - One-line mode (negative indent) runtime options:");
-				System.out.println("    - Press \"t[ENTER]\" to toggle payload trim to terminal width");
+				System.out.println(" - Runtime options:");
+				System.out.println("    - Press \"t[ENTER]\" to toggle payload trim to terminal width in one-line mode");
 				System.out.println("    - Press \"+[ENTER]\" to enable topic level spacing/alignment (\"-[ENTER]\" to revert)");
 				System.out.println("    - Press \"[1-9][ENTER]\" to highlight a particular topic level (\"0[ENTER]\" to revert)");
 				System.out.println("Environment variable options:");
@@ -133,6 +133,7 @@ public class PrettyDump {
 				System.out.println("    - Choose: \"standard\" (default), \"vivid\", \"light\", \"minimal\", \"matrix\", \"off\"");
 				System.out.println(" - Selector for Queue consume and browse: export PRETTY_SELECTOR=\"what like 'ever%'\"");
 				System.out.println(" - Client-side filtering on any received message: export PRETTY_FILTER=\"ID:123abc\"");
+				System.out.println("    - Or use --selector=\"what like 'ever%'\" and --filter=\"ID:123abc\" in command line args");
 				System.out.println("SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to \" | prettydump wrap\" to prettify");
 //				System.out.println(" - Note: add the 'bin' directory to your path to make it easier");
 				System.out.println();
@@ -177,6 +178,7 @@ public class PrettyDump {
 			// compiling might throw an exception
 			Pattern p = Pattern.compile(contentFilter, Pattern.MULTILINE | Pattern.DOTALL);//| Pattern.CASE_INSENSITIVE);
 			payloadHelper.filterRegexPattern = p;
+//			System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Filter detected: \"%s\"", contentFilter)));
 		}
 //		System.out.println(Arrays.toString(args));
 //		System.out.printf("selector='%s'%n", selector);
@@ -300,6 +302,10 @@ public class PrettyDump {
 //		for (CapabilityType cap : CapabilityType.values()) {
 //			System.out.println(cap + ": " + session.getCapability(cap));
 //		}
+		
+		if (contentFilter != null) {
+			System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Client-side Filter detected: \"%s\"", contentFilter)));
+		}
 
 		// is it a queue?
 		if (topics.length == 1 && topics[0].startsWith("q:") && topics[0].length() > 2) {  // QUEUE CONSUME!
