@@ -61,8 +61,8 @@ public class AaAnsi /* implements CharSequence */ {
 	private static final Logger logger = LogManager.getLogger(AaAnsi.class);
 	private Ansi jansi = new Ansi();
 	private StringBuilder rawSb = new StringBuilder();
-	private StringBuilder rawCompressedSb = new StringBuilder();
-	private char lastRawCompressedChar = '-';  // used to strip multiple spaces
+//	private StringBuilder rawCompressedSb = new StringBuilder();
+//	private char lastRawCompressedChar = '-';  // used to strip multiple spaces
 	private boolean insideEscapeCode = false;  // needed at the class level since we add chars in different methods
 //	private int charCount = 0;
 	private Elem curElem = null;  // used to track which element type we're inside (useful for switching colours back in styleString append)
@@ -161,31 +161,31 @@ public class AaAnsi /* implements CharSequence */ {
 				if (firstDot == -1) {
 					jansi.a(levels[i]);
 					rawSb.append(levels[i]);
-					rawCompressedSb.append(levels[i]);
+//					rawCompressedSb.append(levels[i]);
 					faintOn();
 				} else {
 					jansi.a(levels[i].substring(0,firstDot));
 					rawSb.append(levels[i].substring(0,firstDot));
-					rawCompressedSb.append(levels[i].substring(0,firstDot));
+//					rawCompressedSb.append(levels[i].substring(0,firstDot));
 					faintOn();
 					jansi.a(levels[i].substring(firstDot));
 					rawSb.append(levels[i].substring(firstDot));
-					rawCompressedSb.append(levels[i].substring(firstDot));
+//					rawCompressedSb.append(levels[i].substring(firstDot));
 				}
 			} else {
 				int firstDot = levels[i].indexOf('⋅');
 				if (firstDot == -1) {
 					jansi.a(levels[i]);
 					rawSb.append(levels[i]);
-					rawCompressedSb.append(levels[i]);
+//					rawCompressedSb.append(levels[i]);
 				} else {
 					jansi.a(levels[i].substring(0,firstDot));
 					rawSb.append(levels[i].substring(0,firstDot));
-					rawCompressedSb.append(levels[i].substring(0,firstDot));
+//					rawCompressedSb.append(levels[i].substring(0,firstDot));
 					faintOn();
 					jansi.a(levels[i].substring(firstDot));
 					rawSb.append(levels[i].substring(firstDot));
-					rawCompressedSb.append(levels[i].substring(firstDot));
+//					rawCompressedSb.append(levels[i].substring(firstDot));
 				}
 			}
 			if (i < levels.length-1) {
@@ -196,13 +196,17 @@ public class AaAnsi /* implements CharSequence */ {
 		return reset();
 	}
 	
+	// https://en.wikipedia.org/wiki/ANSI_escape_code
 	final static int[] topicColorTable = new int[] {
 			82, 83, 84, 85, 86,
-			87, 81, 75, 69, 63, /*57,*/
-            93, 129, 165, 201,
-            200, 199, 198, 197,
-            203, 209, 215, 221,
-            227, 191, 155, 119
+//			87, 81, 75, 69, 63, /*57,*/
+			87, 81, 75, 69, 63, 99, 135, 171, 207, 206, 205, 204,
+//			/* 93, */ 129, 165, 201,
+			
+//            200, 199, 198, 197,
+			203, 202, 208, 214, 220, 226,
+//            203, 209, 215, 221,
+			/* 227, */ 191, 155, 119
 	};
 
 	// this is for the scrolling rainbow line during Wrap mode
@@ -445,16 +449,16 @@ public class AaAnsi /* implements CharSequence */ {
 		return rawSb.toString();
 	}
 
-	public String toCompressedRawString() {
-		return rawCompressedSb.toString();
-	}
+//	public String toCompressedRawString() {
+//		return rawCompressedSb.toString();
+//	}
 
 	/** Just jam is straight in, don't parse at all! */
 	private AaAnsi aRaw(String s, String raw) {
 		jansi.a(s);
 		rawSb.append(raw);
-		rawCompressedSb.append(raw);
-		lastRawCompressedChar = raw.equals("") ? lastRawCompressedChar : raw.charAt(raw.length()-1);
+//		rawCompressedSb.append(raw);
+//		lastRawCompressedChar = raw.equals("") ? lastRawCompressedChar : raw.charAt(raw.length()-1);
 //		charCount += raw.length();
 		return this;
 	}
@@ -467,12 +471,12 @@ public class AaAnsi /* implements CharSequence */ {
 		controlChars += ansi.controlChars;
 		replacementChars += ansi.replacementChars;
 		rawSb.append(ansi.rawSb);
-		if (ansi.rawCompressedSb.length() > 0 && ansi.rawCompressedSb.charAt(0) == ' ' && lastRawCompressedChar == ' ') {
-			rawCompressedSb.append(ansi.rawCompressedSb.substring(1));
-		} else {
-			rawCompressedSb.append(ansi.rawCompressedSb);
-		}
-		lastRawCompressedChar = ansi.lastRawCompressedChar;
+//		if (ansi.rawCompressedSb.length() > 0 && ansi.rawCompressedSb.charAt(0) == ' ' && lastRawCompressedChar == ' ') {
+//			rawCompressedSb.append(ansi.rawCompressedSb.substring(1));
+//		} else {
+//			rawCompressedSb.append(ansi.rawCompressedSb);
+//		}
+//		lastRawCompressedChar = ansi.lastRawCompressedChar;
 		insideEscapeCode = ansi.insideEscapeCode;  // possibly inside an escape code, but I doubt it!
 		return this;
 	}
@@ -480,15 +484,15 @@ public class AaAnsi /* implements CharSequence */ {
 	public AaAnsi a(char c) {
 		jansi.a(c);
 		rawSb.append(c);
-		if (!(c == 0x09 || c == 0x0a || c == 0x0c || c == 0x0d || c == 0x1b || c == '·')) {
-			if (c == ' ') {
-				if (lastRawCompressedChar == ' ') { // do nothing
-				} else rawCompressedSb.append(c);
-			} else {
-				rawCompressedSb.append(c);
-			}
-			lastRawCompressedChar = c;
-		}
+//		if (!(c == 0x09 || c == 0x0a || c == 0x0c || c == 0x0d || c == 0x1b || c == '·')) {
+//			if (c == ' ') {
+//				if (lastRawCompressedChar == ' ') { // do nothing
+//				} else rawCompressedSb.append(c);
+//			} else {
+//				rawCompressedSb.append(c);
+//			}
+//			lastRawCompressedChar = c;
+//		}
 		incChar();
 		return this;
 	}
@@ -497,8 +501,8 @@ public class AaAnsi /* implements CharSequence */ {
 		String bs = Boolean.toString(b);
 		jansi.a(bs);
 		rawSb.append(bs);
-		rawCompressedSb.append(bs);
-		lastRawCompressedChar = 'e';  // doesn't matter, as long as not space
+//		rawCompressedSb.append(bs);
+//		lastRawCompressedChar = 'e';  // doesn't matter, as long as not space
 		incChar(bs.length());
 		return this;
 	}
@@ -517,12 +521,14 @@ public class AaAnsi /* implements CharSequence */ {
 		if (s == null) return this;
 		AaAnsi aa = new AaAnsi(false);
 		boolean insideNumStyle = false;  // these two vars are for my "styled string" code below
+		boolean insideSymbolStyle = false;
 //		boolean insideWordStyle = false;
 		for (int i=0; i<s.length(); i++) {
 			char c = s.charAt(i);
 			if (c < 0x20 || c == 0x7f) {  // special handling of control characters, make them visible
-				if (insideNumStyle) {  // this cannot be true if styled == false
+				if (insideNumStyle || insideSymbolStyle) {  // this cannot be true if styled == false
 					insideNumStyle = false;
+					insideSymbolStyle = false;
 					aa.fg(Elem.STRING);
 				}
 				if (c == 0x09 || c == 0x0a || c == 0x0c || c == 0x0d /* || c == 0x1b */) {  // tab, line feed, form feed, carriage return, escape... leave alone
@@ -559,6 +565,7 @@ public class AaAnsi /* implements CharSequence */ {
 					if (Character.isMirrored(c) || c == '\'' || c == '"') {  // things like () {} [] 
 						aa.fg(Elem.BRACE).a(c).fg(Elem.STRING);
 						insideNumStyle = false;
+						insideSymbolStyle = false;
 					} else if (c == ',' || c == ';' || c == '.' || c == ':' || c == '-' || c == '?' || c == '!') {  // punctuation, and not at the very last char
 						if (insideNumStyle && i < s.length()-1 && Character.isDigit(s.charAt(i+1))) {  // if we're in a number, and the next char is a number, keep the orange colour
 							aa.a(c);
@@ -566,6 +573,7 @@ public class AaAnsi /* implements CharSequence */ {
 							// let's change , ; . : - to default colour as long as the next char is whitespace or end
 							aa.reset().a(c).fg(Elem.STRING);
 							insideNumStyle = false;
+							insideSymbolStyle = false;
 						} else {
 							aa.a(c);
 						}
@@ -573,12 +581,21 @@ public class AaAnsi /* implements CharSequence */ {
 						if (!insideNumStyle) {  // if we're not inside a number, then change colour
 							aa.fg(Elem.NUMBER);
 							insideNumStyle = true;
+							insideSymbolStyle = false;
+						}
+						aa.a(c);
+					} else if (c == '/' || c == '*' || c == '+') {
+						if (!insideSymbolStyle) {  // if we're not inside a symbol, then change colour
+							aa.fg(Elem.KEY);
+							insideNumStyle = false;
+							insideSymbolStyle = true;
 						}
 						aa.a(c);
 					} else {
- 						if (insideNumStyle) {
+ 						if (insideNumStyle || insideSymbolStyle) {
 							aa.fg(Elem.STRING);
 							insideNumStyle = false;
+							insideSymbolStyle = false;
 						}
 						aa.a(c);
 					}

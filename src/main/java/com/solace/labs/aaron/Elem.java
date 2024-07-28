@@ -95,7 +95,7 @@ public enum Elem {
 		map.put(NUMBER, new Col(-1));
 		map.put(FLOAT, new Col(-1));
 		map.put(BOOLEAN, new Col(2));
-		map.put(BYTES, new Col(2));
+		map.put(BYTES, new Col(5));
 		map.put(BYTES_CHARS, new Col(2));
 		map.put(BRACE, new Col(-1));
 		map.put(DESTINATION, new Col(14));
@@ -228,11 +228,11 @@ public enum Elem {
 		lookup.put(this, newColor);
 	}
 
-	private static final int[] MATRIX_COLORS = new int[] { 22, 28, 34, 40, 46, 83, 120, 157 }; 
+	static final int[] MATRIX_COLORS = new int[] { 22, 28, 34, 40, 46, 83, 120, 157 }; 
 
 	Col getCurrentColor() {
 		if (AaAnsi.getColorMode() == ColorMode.MATRIX) {
-//			return new Col(MATRIX_COLORS[(int)(Math.random() * MATRIX_COLORS.length)]);
+			return new Col(MATRIX_COLORS[(int)(Math.random() * MATRIX_COLORS.length)]);
 		}
 		// else...
 		return lookup.get(this);

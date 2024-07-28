@@ -303,10 +303,10 @@ public class PrettyDump {
 //			System.out.println(cap + ": " + session.getCapability(cap));
 //		}
 		
-		if (contentFilter != null) {
-//			System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Client-side Filter detected: \"%s\"", contentFilter)).reset());
-			System.out.println(AaAnsi.n().a("🔎 Client-side Filter detected: ").aStyledString(contentFilter).reset());
-		}
+//		if (contentFilter != null) {
+////			System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Client-side Filter detected: \"%s\"", contentFilter)).reset());
+//			System.out.println(AaAnsi.n().a("🔎 Client-side Filter detected: ").aStyledString(contentFilter).reset());
+//		}
 
 		// is it a queue?
 		if (topics.length == 1 && topics[0].startsWith("q:") && topics[0].length() > 2) {  // QUEUE CONSUME!
@@ -362,11 +362,15 @@ public class PrettyDump {
 				latch.countDown();
 				System.out.println();
 				// double-check
+				if (contentFilter != null) {
+					System.out.println(AaAnsi.n().a("🔎 Client-side Filter detected: ").aStyledString(contentFilter).reset());
+					System.out.println(AaAnsi.n().warn("Filtered messages that are not displayed will still be ACKed!"));
+				}
 				if (selector != null) {
 					System.out.println(AaAnsi.n().a("🔎 Selector detected: ").aStyledString(selector).reset());
-					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s' that match Selector. Use browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
+					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s' that match Selector.%nUse browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
 				} else {  // no selectors, consume all
-					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s'. Use browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
+					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s'.%nUse browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
 				}
 				String answer = reader.readLine().trim().toLowerCase();
 				System.out.print(AaAnsi.n());  // to reset() the ANSI
@@ -426,11 +430,14 @@ public class PrettyDump {
 //					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Selector detected: \"%s\"", selector)).reset());
 					System.out.println(AaAnsi.n().a("🔎 Selector detected: ").aStyledString(selector).reset());
 				}
+				if (contentFilter != null) {
+					System.out.println(AaAnsi.n().a("🔎 Client-side Filter detected: ").aStyledString(contentFilter).reset());
+				}
 				if (topics[0].startsWith("b:")) {  // regular browse, prompt for msg IDs
 					if (contentFilter == null) {
 						System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or enter specific Message Spool ID, or to/from range of IDs%n (e.g. \"106259-110261\" or \"98517-\" or \"-103345\"),%n or start at RGMID (e.g. \"rmid1:3477f-a5ce52...\"): ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
 					} else {  // don't allow single MsgID
-						System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or range of Spool IDs (e.g. \"259-261\" or \"9517-\" or \"-345\"),%n or start at RGMID (e.g. \"rmid1:3477f-a5ce52...\": ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
+						System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or range of Message Spool IDs (e.g. \"259-261\" or \"9517-\" or \"-345\"),%n or start at RGMID (e.g. \"rmid1:3477f-a5ce52...\": ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
 					}
 					String answer = reader.readLine().trim().toLowerCase();
 					System.out.print(AaAnsi.n());  // to reset() the ANSI
@@ -478,9 +485,13 @@ public class PrettyDump {
 				System.exit(1);
 			}
 		} else {  // either direct or temporaryQ with subs
+			if (contentFilter != null) {
+				System.out.println(AaAnsi.n().a("🔎 Client-side Filter detected: ").aStyledString(contentFilter).reset());
+			}
 			// now 
 			if (topics[0].startsWith("tq:")) {  // gonna use a temporary queue for Guaranteed delivery
 				topics[0] = topics[0].substring(3);
+				if (topics.length == 1 && topics[0].equals("")) topics = new String[0];
 				queue = session.createTemporaryQueue();
 				// Provision the temporary Queue and create a receiver
 				ConsumerFlowProperties flowProps = new ConsumerFlowProperties();
@@ -552,7 +563,8 @@ public class PrettyDump {
 						}
 					}
 				});
-				System.out.println(AaAnsi.n().a("Queue name: ").fg(Elem.KEY).a(flowQueueReceiver.getDestination().getName()));
+				System.out.println(AaAnsi.n().a("Queue name: ").fg(Elem.KEY).a(flowQueueReceiver.getDestination().getName()).reset());
+				if (topics.length == 0) System.out.println(AaAnsi.n().warn("No subscriptions added, I hope you're copying messages into this queue!").toString());
 				latch.await();  // block here until the subs are added
 //				for (String topic : topics) {
 //					Topic t = f.createTopic(topic);

@@ -2,7 +2,7 @@
 # Pretty-print for dumped Solace messages
 
 A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON**, **XML**, **Protobuf**, and Solace **SDT** Maps and Streams. (And binary too).
-Also with a display option for a minimal one-line-per-message view.  Supports Direct topic subscriptions, Queue consume, Queue browsing, and temporary Queue w/subs.  Now with Selector and client-side Filtering support!
+Also with a display option for a minimal one-line-per-message view.  Supports Direct topic subscriptions, Queue consume, Queue browsing, and temporary Queue w/subs.  Now with Selector and client-side Filtering support, and much higher performance than JMSToolBox.
 
 
 - [Building](#building)
@@ -50,6 +50,7 @@ C:\> set PRETTYDUMP_OPTS=-Dsun.stdout.encoding=utf-8
  ~or~
 PS C:\> chcp 65001
 PS C:\> $Env:PRETTYDUMP_OPTS='-Dsun.stdout.encoding=utf-8'
+PS C:\> $Env:TERM='xterm-256color'
 ```
 
 #### No args, default broker options
@@ -191,7 +192,7 @@ To find the ID of the messages on a queue, either use PubSub+ Manager, CLI, or S
 
 ![View Message IDs in PubSubPlus Manager](https://github.com/SolaceLabs/pretty-dump/blob/main/src/browse-msgs.png)
 
-**NOTE:** Use `f:<queueName>` to browse just the _first/oldest_ message on the queue. Very useful for "poison pills" or "head-of-line blocking" messages.
+**NOTE:** Use `f:<queueName>` to browse just the _first/oldest_ message on the queue. Very useful for "poison pills" or "head-of-line blocking" messages.  This the same as regular browse with a count of 1.
 
 ```
 $ prettydump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1
@@ -397,7 +398,7 @@ PrettyDump now supports Selectors (broker-side) when consuming or browsing a que
 
 Selectors can be very useful if you wish to filter the messages at the broker based on certain header metadata or user properties.  Selectors are specified using an SQL-92 like syntax.  Solace doesn't recommend them for general runtime usage due to performance considerations and the fact our topic routing capability is far superior to other JMS brokers.  However, they can certainly come in handy when browsing queues for certain messages.
 
-A Selector is specified either by the environment variable `PRETTY_SELECTOR="blah"` or using the command line argument `--selector="blah"` when runnning PrettyDump.  Note that Selectors don't work with Direct topic subscriptions, but does with queue consume, queue browsing, and temporary queues with subscriptions.  However!  Selectors are performed on the egress Flow, which means that any messages not matching the Selector will be left on the queue.  For example, a tempQ subscribed to `>` but with a very narrow Selector fill up quickly.
+A Selector is specified either by the environment variable `PRETTY_SELECTOR="blah"` or using the command line argument `--selector="blah"` when runnning PrettyDump.  Note that Selectors don't work with Direct topic subscriptions, but does with queue consume, queue browsing, and temporary queues with subscriptions.  However!  Selectors are performed on the egress Flow, which means that any messages not matching the Selector will be left on the queue.  For example, a tempQ subscribed to `>` but with a very narrow Selector could fill up quickly.
 
 Use "first message" browse mode `f:queueName` to stop after the first message that matches the Selector.  Or browse with count option `b:queueName 2 10` to dump the first 10 messages that match the Selector, with an indent of 2.
 
@@ -521,7 +522,7 @@ Raw BytesMessage, SpanData ProtoBuf:
 
 If you really need to use SdkPerf (e.g. for additional features like request-reply, publish-on-receive, or basic performance
 testing), you can use PrettyDump in "wrap" mode to beautify your console: it will pretty-print any displayed message content, 
-as well as a few other goodies.  Simply type your SdkPerf command, and then pipe `|` to `prettydump wrap`:
+as well as a few other goodies.  Simply type your SdkPerf command, and then pipe `|` to `prettydump wrap`:  (looks better with colour!)
 
 
 ```
@@ -552,7 +553,7 @@ Solace has the concept of negative subscriptions or subscription exceptions, but
 ```
 $ prettydump 'tq:>, !bus/> !stats/>'
 ```
-This will configure a temporary queue to use, subscribed to everything, but if the topic matches one of the NOT topics, it won't match.  So in this example, you would receive everything that's not a `bus` topic or a `stats` topic.
+This will configure a temporary queue to use, subscribed to everything, but if the topic matches one of the NOT topics, it won't match.  So in this example, you would receive everything that's not a `bus` topic or a `stats` topic.  Could be useful to see all the messages that your regular apps are _not_ subscribed to.
 
 See: https://docs.solace.com/Messaging/Guaranteed-Msg/System-Level-Subscription-Exception-Config.htm
 
@@ -560,9 +561,9 @@ See: https://docs.solace.com/Messaging/Guaranteed-Msg/System-Level-Subscription-
 
 ### Browse the end of a Queue
 
-Using SEMP, you can query the broker for details of the last _n_ messages sitting on a queue, and use those values to tell PrettyDump to skip all the messages before that (note: the app still needs to pull all the messages off the queue to evaluate them).
+Using SEMP, you can query the broker for details of the last _n_ messages sitting on a queue, and use those values to tell PrettyDump to skip all the messages before that (note: PrettyDump still needs to pull all the messages off the queue to evaluate them).
 ```
-curl -u admin:admin http://localhost:8080/SEMP -d '<rpc><show><queue><name>q1</name><vpn-name>default</vpn-name><messages/><newest/><count/><num-elements>10</num-elements></queue></show></rpc>'
+curl -u admin:admin http://localhost:8080/SEMP -d '<rpc><show><queue><name>q1</name><vpn-name>default</vpn-name><messages/><newest/><count/><num-elements>100</num-elements></queue></show></rpc>'
 
 <rpc-reply semp-version="soltr/10_8_1VMR">
   <rpc>
@@ -581,18 +582,18 @@ curl -u admin:admin http://localhost:8080/SEMP -d '<rpc><show><queue><name>q1</n
                 <message-id>1047543</message-id>
                 <message-sent>no</message-sent>
               </spooled-message>
-SNIP
+...
 ```
 I think there may also be a SEMPv2 equivalent command for this?
 
-This will dump out the Message Spool IDs of the last 10 messages on the queue.  Change `<num-elements>` to 100 if want more.  Then use one of these numbers when you browse `b:` to skip all messages until you get here, e.g.
+This will dump out the Message Spool IDs of the last 100 messages on the queue, sorted **newest first**.  Change `<num-elements>` to 1000 or whatever if want more.  Then use one of these numbers when you browse `b:` to skip all messages until you get here, e.g.:  (note the trailing `-` for "start range")
 ```
 $ prettydump b:q1 
 
 Browse all messages -> press [ENTER],
  or enter specific Message Spool ID, or to/from range of IDs
  (e.g. "106259-110261" or "98517-" or "-103345"),
- or start at RGMID (e.g. "rmid1:3477f-a5ce52..."): 1047543-
+ or start at RGMID (e.g. "rmid1:3477f-a5ce52..."): 1043984-    <--
 ```
 
 
@@ -625,6 +626,7 @@ C>\> prettydump
 
 PS C:\> chcp 65001
 PS C:\> $Env:PRETTYDUMP_OPTS='-Dsun.stdout.encoding=utf-8'
+PS C:\> $Env:TERM='xterm-256color'
 PS C:\> prettydump
 ```
 

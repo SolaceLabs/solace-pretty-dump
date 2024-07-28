@@ -9,14 +9,14 @@ public class ThinkingAnsiHelper {
 	private int screenPosX = 0;
 	private int charIndex = 0;
 	private int rainbowIndex = 0;
-	private static final String[] BACKSPACES = new String[64];
+	private static final String BACKSPACES = (char)27 + "[60D";
 	static {
 //		Ansi ansi = new Ansi();
-		for (int i=0; i<BACKSPACES.length; i++) {
+//		for (int i=0; i<BACKSPACES.length; i++) {
 //			BACKSPACES[i] = UsefulUtils.pad(i, (char)8);
-			BACKSPACES[i] = (char)27 + "[30D"; 
+//			BACKSPACES[i] = (char)27 + "[30D"; 
 //			BACKSPACES[i] = ansi.cursorLeft(30).toString();
-		}
+//		}
 //		System.out.println(Arrays.toString(BACKSPACES[1].getBytes()));
 	}
 	
@@ -39,7 +39,7 @@ public class ThinkingAnsiHelper {
 		} // else nothing to do
 	}
 	
-	public void tick2() {
+	private void tick2() {
 		if (!isFilteringOn) {
 			isFilteringOn = true;
 			System.out.print(new AaAnsi(false).fg(AaAnsi.rainbowTable[(rainbowIndex++) % AaAnsi.rainbowTable.length]));
@@ -65,7 +65,7 @@ public class ThinkingAnsiHelper {
 		screenPosX = m.length();
 //		System.out.print(new AaAnsi(false).fg(AaAnsi.rainbowTable[rainbowIndex]).a(m));
 		System.out.print(m);
-		System.out.print(BACKSPACES[1]);
+		System.out.print(BACKSPACES);
 //		
 //		
 //		if (screenPosX >= 60 || screenPosX >= PayloadHelper.currentScreenWidth * 0.8 - 1) {  // time to rewind

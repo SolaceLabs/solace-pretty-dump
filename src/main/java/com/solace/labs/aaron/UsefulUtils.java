@@ -344,12 +344,14 @@ public class UsefulUtils {
 				aa.fg(Elem.DATA_TYPE).a(String.format("%04x",(i / 16) % (4096))).a('0').a(' ').a(' ').a(' ').fg(Elem.BYTES);
 			}
 //			ansi.a(hex[i]).a(" ");
+			if (i == bytes.length) aa.faintOn();  // when we've run out of bytes
 			if (i < bytes.length) aa.a(hex2.substring(i*2, (i*2)+2)).a(' ');
 			else aa.a('⋅').a('⋅').a(' ');
 			if (i % COLS == COLS-1) {
 				aa.a(' ').a(' ');
 			}
 			if (i % width == width-1) {
+				if (i >= bytes.length) aa.faintOff();
 				aa.a(' ').fg(Elem.BYTES_CHARS);
 				for (int j=i-(width-1); j<=i; j++) {
 					if (j < bytes.length) {
