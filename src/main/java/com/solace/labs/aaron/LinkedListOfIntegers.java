@@ -38,11 +38,11 @@ class LinkedListOfIntegers {
 		this.maxSize = maxSize;
 	}
 	
-	int getMax() {
+	public int getMax() {
 		return max;
 	}
 	
-	void insert(int value) {
+	public void add(int value) {
 		if (head == null) {  // very first one
 			head = new LinkedInteger(value);
 			tail = head;

@@ -625,6 +625,13 @@ public class PrettyDump {
 					nextMsg = browser.getNext(-1);  // don't wait, return immediately
 					if (nextMsg == null) {
 						Thread.sleep(50);
+						String userInput = null;
+						if (System.in.available() > 0) {
+							userInput = reader.readLine();
+						}
+						if (userInput != null) {
+							handleKeyboardInput(userInput);
+						}
 						continue;
 					}
 					//	        		msgCount--;  // decrement 1 from total number of messages to browse
@@ -663,6 +670,13 @@ public class PrettyDump {
 							break;
 						}
 					}
+					String userInput = null;
+					if (System.in.available() > 0) {
+						userInput = reader.readLine();
+					}
+					if (userInput != null) {
+						handleKeyboardInput(userInput);
+					}
 				}
 			} catch (JCSMPException | AccessDeniedException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
 				System.out.println("I'm here inside catch block");
@@ -680,7 +694,7 @@ public class PrettyDump {
 			//        	BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
 			while (!isShutdown) {
 				Thread.sleep(50);
-				// blocking receive mode
+				// blocking receive test code
 //				BytesXMLMessage msg;
 //				if ((msg = directConsumer.receive(0)) != null) {
 //					payloadHelper.dealWithMessage(msg);
@@ -690,22 +704,7 @@ public class PrettyDump {
 					userInput = reader.readLine();
 				}
 				if (userInput != null) {
-					try {
-						int highlight = Integer.parseInt(userInput);
-						if (highlight >= 0 && highlight < 125) {
-							PayloadHelper.highlightTopicLevel = highlight - 1;  // so 0 -> -1 (highlight off), 1 -> 0 (level 1), etc.
-						}
-					} catch (NumberFormatException e) {
-						if ("+".equals(userInput)) {
-							payloadHelper.autoSpaceTopicLevels = true;
-						} else if ("-".equals(userInput)) {
-							payloadHelper.autoSpaceTopicLevels = false;
-						} else if ("t".equals(userInput)) {
-							payloadHelper.autoTrimPayload = !payloadHelper.autoTrimPayload;
-						} else if ("q".equals(userInput)) {
-							isShutdown = true;  // quit
-						}
-					}
+					handleKeyboardInput(userInput);
 				}
 			}
 		}
@@ -714,6 +713,24 @@ public class PrettyDump {
 		System.out.println("Main thread exiting.");
 	}  // end of main()
 
+	private static void handleKeyboardInput(String userInput) {
+		try {
+			int highlight = Integer.parseInt(userInput);
+			if (highlight >= 0 && highlight < 125) {
+				PayloadHelper.highlightTopicLevel = highlight - 1;  // so 0 -> -1 (highlight off), 1 -> 0 (level 1), etc.
+			}
+		} catch (NumberFormatException e) {
+			if ("+".equals(userInput)) {
+				payloadHelper.autoSpaceTopicLevels = true;
+			} else if ("-".equals(userInput)) {
+				payloadHelper.autoSpaceTopicLevels = false;
+			} else if ("t".equals(userInput)) {
+				payloadHelper.autoTrimPayload = !payloadHelper.autoTrimPayload;
+			} else if ("q".equals(userInput)) {
+				isShutdown = true;  // quit
+			}
+		}
+	}
 
 	static Charset CHARSET;
 	static CharsetDecoder DECODER;

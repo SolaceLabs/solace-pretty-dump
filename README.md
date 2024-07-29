@@ -429,15 +429,18 @@ If PrettyDump detects an invalid encoding, it will replace the invalid character
 
 ```
 ⋮
-Message Type:                           Raw BytesMessage
-Binary Attachment:                      len=36 bytes
-Non UTF-8 encoded string:
-The currency is in ¿ Pound Sterling.
-    54 68 65 20 63 75 72 72    65 6e 63 79 20 69 73 20    The curr  ency is
-    69 6e 20 a3 20 50 6f 75    6e 64 20 53 74 65 72 6c    in · Pou  nd Sterl
-    69 6e 67 2e                                           ing.
+Binary Attachment:                      len=56 bytes
+Non UTF-8 charset, XML document:
+<value>
+  <price>3.99</price>
+  <currency>¿</currency>
+</value>
+00000   3c 76 61 6c 75 65 3e 3c   70 72 69 63 65 3e 33 2e    <value><  price>3.
+00010   39 39 3c 2f 70 72 69 63   65 3e 3c 63 75 72 72 65    99</pric  e><curre
+00020   6e 63 79 3e 9c 3c 2f 63   75 72 72 65 6e 63 79 3e    ncy>·</c  urrency>
+00030   3c 2f 76 61 6c 75 65 3e   ·· ·· ·· ·· ·· ·· ·· ··    </value>
 
-^^^^^^^^^^^^^^^^^^^^^^ End Message #3 ^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^ End Message #1 ^^^^^^^^^^^^^^^^^^^^^^
 ```
 
 
@@ -462,7 +465,6 @@ SaxParserException - org.xml.sax.SAXParseException; lineNumber: 1; columnNumber:
 <bad>not having<a>closing bracket</a</bad>
 
 ^^^^^^^^^^^^^^^^^^^^^^ End Message #2 ^^^^^^^^^^^^^^^^^^^^^^
-
 ```
 
 

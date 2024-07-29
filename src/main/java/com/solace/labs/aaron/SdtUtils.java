@@ -27,6 +27,41 @@ import com.solacesystems.jcsmp.SDTStream;
 import com.solacesystems.jcsmp.Topic;
 
 public class SdtUtils {
+	
+	static int countElements(SDTMap map) {
+		int count = 0;
+		try {
+			Iterator<String> it = map.keySet().iterator();
+			while (it.hasNext()) {
+				Object value = map.get(it.next());
+				if (value instanceof SDTMap) {
+					count += countElements((SDTMap)value);
+				} else if (value instanceof SDTStream) {
+					count += countElements((SDTStream)value);
+				} else count++;  // just a regular element
+			}
+		} catch (SDTException e) {  // shouldn't happen, we know it's well-defined since we received it
+			return -1;
+		}
+		return count;
+	}
+	
+	static int countElements(SDTStream stream) {
+		int count = 0;
+		try {
+			while (stream.hasRemaining()) {
+				Object value = stream.read();
+				if (value instanceof SDTMap) {
+					count += countElements((SDTMap)value);
+				} else if (value instanceof SDTStream) {
+					count += countElements((SDTStream)value);
+				} else count++;  // just a regular element
+			}
+		} catch (SDTException e) {  // shouldn't happen, we know it's well-defined since we received it
+			return -1;
+		}
+		return count;
+	}
 
 	static AaAnsi printMap(SDTMap map, final int indentFactor) {
 		try {

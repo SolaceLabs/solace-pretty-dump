@@ -148,7 +148,7 @@ public class AaAnsi /* implements CharSequence */ {
 	
 	private AaAnsi colorizeTopicPlain(String topic, int highlight) {
 		String[] levels = topic.split("/", -1);
-		maxLengthTopicLevels.insert(levels.length);
+		maxLengthTopicLevels.add(levels.length);
 		if (highlight >= 0) faintOn();
 		for (int i=0; i<levels.length; i++) {
 			incChar(levels[i].length());   // need to update manually since adjusting the jansi directly
@@ -193,7 +193,7 @@ public class AaAnsi /* implements CharSequence */ {
 				fg(Elem.TOPIC_SEPARATOR).a('/');  // this does the charCount!  and the rawSb
 			}
 		}
-		return reset();
+		return this;// reset();
 	}
 	
 	// https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -378,8 +378,11 @@ public class AaAnsi /* implements CharSequence */ {
 		return this;
 	}
 
+	// TODO fix this!!!!
 	public int length() {
-		return calcLength(this.toString());
+		int len = calcLength(this.toString());
+		assert len == rawSb.length();
+		return rawSb.length();
 	}
 	
 	static int calcLength(String ansiString) {
@@ -404,34 +407,78 @@ public class AaAnsi /* implements CharSequence */ {
 		return count;
 	}
 	
-	String trim(int len) {
-		if (len <= 0 ) return "…";
-//		assert len > 0;
-		final String s = toString();
+	/** Need to reset() after this call, returned string is not reset */
+	String chop(int len) {
+//		if (len < 0 ) {
+//			return "";
+//		}
 		if (getTotalCharCount() <= len) return toString();
 //		if (s == null && s.isEmpty()) return s;  // so now we know there's at least one char
+		final String s = toString();
 		StringBuilder sb = new StringBuilder();
 		int count = 0;
 		int pos = 0;
 		boolean insideEscape = false;
 		do {
-			sb.append(s.charAt(pos));
-			if (s.charAt(pos) == 27) {
-				insideEscape = true;
-			} else if (insideEscape) {
-				if (s.charAt(pos) == 'm') {
-					insideEscape = false;
-				}
+			char c = s.charAt(pos);
+			if (c == 27 || insideEscape) {  // we know we can add this char without changing the length
+				sb.append(c);
+				if (c == 'm') insideEscape = false;
+				else insideEscape = true;
 			} else {
+				if (count < len) {  // still have room
+					sb.append(c);
+				}
 				count++;
 			}
+//			sb.append(s.charAt(pos));
+//			if (s.charAt(pos) == 27) {
+//				insideEscape = true;
+//			} else if (insideEscape) {
+//				if (s.charAt(pos) == 'm') {
+//					insideEscape = false;
+//				}
+//			} else {
+//				count++;
+//			}
 			pos++;
-		} while (pos < s.length() && (count < len-1 || insideEscape));
-		if (pos < s.length()) return sb.append("…").append(AaAnsi.n()).toString();  // append a reset() to my sb
+		} while (pos < s.length() && (count <= len || insideEscape));
+		if (pos < s.length()) return sb.toString();//.append(AaAnsi.n()).toString();  // append a reset() to my sb
 		else {
 			logger.warn("FYI, AaAnsi just ended up in the final else block, and shouldn't have.  Len == "+len+" and this is "+this.toString());
 			return sb.append(AaAnsi.n()).toString();  // the whole thing   ... this should be impossible now due to implementing charCount
 		}
+		
+	}
+	
+	String trim(int len) {
+		if (len <= 0 ) return "";
+//		if (len == 1 ) return "…";
+		if (getTotalCharCount() <= len) return toString();
+		StringBuilder sb = new StringBuilder();
+		return sb.append(chop(len-1)).append("…").append(AaAnsi.n()).toString();
+//		final String s = toString();
+//		int count = 0;
+//		int pos = 0;
+//		boolean insideEscape = false;
+//		do {
+//			sb.append(s.charAt(pos));
+//			if (s.charAt(pos) == 27) {
+//				insideEscape = true;
+//			} else if (insideEscape) {
+//				if (s.charAt(pos) == 'm') {
+//					insideEscape = false;
+//				}
+//			} else {
+//				count++;
+//			}
+//			pos++;
+//		} while (pos < s.length() && (count < len-1 || insideEscape));
+//		if (pos < s.length()) return sb.append("…").append(AaAnsi.n()).toString();  // append a reset() to my sb
+//		else {
+//			logger.warn("FYI, AaAnsi just ended up in the final else block, and shouldn't have.  Len == "+len+" and this is "+this.toString());
+//			return sb.append(AaAnsi.n()).toString();  // the whole thing   ... this should be impossible now due to implementing charCount
+//		}
 	}
 
 	@Override
@@ -504,6 +551,16 @@ public class AaAnsi /* implements CharSequence */ {
 //		rawCompressedSb.append(bs);
 //		lastRawCompressedChar = 'e';  // doesn't matter, as long as not space
 		incChar(bs.length());
+		return this;
+	}
+
+	public AaAnsi a(int i) {
+		String is = Integer.toString(i);
+		jansi.a(is);
+		rawSb.append(is);
+//		rawCompressedSb.append(bs);
+//		lastRawCompressedChar = 'e';  // doesn't matter, as long as not space
+		incChar(is.length());
 		return this;
 	}
 
