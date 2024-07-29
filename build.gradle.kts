@@ -14,6 +14,8 @@ plugins {
     idea
 }
 
+version = "1.1.0"
+
 repositories {
     mavenCentral()
     flatDir {
@@ -26,8 +28,6 @@ sourceSets {
     main {
         java {
             srcDir("src/main/java")
-            //srcDir("src/dist")
-            //srcDir("protobuf/protobufs/protobufs")   // so eclipse can find the properties file
             srcDir("schemas/classes/classes")   // so eclipse can find the properties file
         }
     }
@@ -41,17 +41,24 @@ buildscript {
     }
 }
 
-tasks.register<Copy>("copyReadme") {
-    //from(layout.buildDirectory.file("reports/my-report.pdf"))
-    from("README.md")
-    into(layout.buildDirectory.dir("toArchive"))
-    //into(layout.buildDirectory.dir)
+distributions {
+    main {
+        //distributionBaseName = "prettydump"
+        //distributionClassifier = version
+        contents {
+            from("README.md")
+            from("scripts") {
+                into("scripts")
+	    }
+        }
+    }
 }
 
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
 }
 
+// doesn't work
 //tasks.withType<JavaExec> {
 //     enableAssertions = true
 //}
@@ -106,8 +113,16 @@ dependencies {
 
 tasks.jar {
     manifest {
-        archiveBaseName.set("solace-pretty-dump-1.0.0")
+        archiveBaseName.set("solace-pretty-dump")
     }
+}
+
+tasks.installDist {
+    destinationDir = file(layout.buildDirectory.dir("staged"))
+}
+
+tasks.assemble {
+    dependsOn("installDist")
 }
 
 application {
@@ -126,7 +141,7 @@ fun createAdditionalScript(name: String, configureStartScripts: CreateStartScrip
     outputDir = File(project.layout.buildDirectory.get().asFile, "scripts")
     classpath = tasks.getByName("jar").outputs.files + configurations.runtimeClasspath.get()
     //defaultJvmOpts = [ "-ea" ]  // enable assertions
-    defaultJvmOpts = listOf("-ea")  // enable assertions
+    //defaultJvmOpts = listOf("-ea")  // enable assertions
     //defaultJvmOpts = listOf("-ea").iterator().asSequence().toList()  // enable assertions
   }.also {
     application.applicationDistribution.into("bin") {
