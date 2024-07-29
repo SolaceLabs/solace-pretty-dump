@@ -11,7 +11,7 @@ NUM=0
 
 echo "┌ This utility copies the last/newest n messages from one queue to another. ┐"
 echo "│ It uses SEMPv1 to retrieve message details (RGMIDs) and SEMPv1 again to   │"
-echo "│ copy each message one-by-one.  Requires curl, xmllint, and cut.           │"
+echo "│ copy each message one-by-one.  Requires curl and xmllint.                 │"
 echo "└───────────────────────────────────────────────────────────────────────────┘"
 
 # read in some vars, or hardcode them above
@@ -49,7 +49,7 @@ fi
 
 # here we go, try to get message details...
 
-RGMIDs=`curl -s --compressed -u $USER:$PW $HOST/SEMP -d "<rpc><show><queue><name>$S_QUEUE</name><vpn-name>$VPN</vpn-name><messages/><newest/><detail/><count/><num-elements>$NUM</num-elements></queue></show></rpc>" | xmllint --xpath '//replication-group-msg-id' - | cut -d'>' -f2 | cut -d'<' -f1`
+RGMIDs=`curl -s --compressed -u $USER:$PW $HOST/SEMP -d "<rpc><show><queue><name>$S_QUEUE</name><vpn-name>$VPN</vpn-name><messages/><newest/><detail/><count/><num-elements>$NUM</num-elements></queue></show></rpc>" | xmllint --xpath '//replication-group-msg-id/text()' -` 
 
 if [[ $RGMIDs == "" ]]; then
     echo "## Problem with SEMP request, probably too many messages! Try less than 4900."
