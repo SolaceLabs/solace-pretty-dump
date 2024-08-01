@@ -100,21 +100,30 @@ public class PrettyDump {
 	private static FlowReceiver flowQueueReceiver = null;  // for queues and tempQueue
     private static XMLMessageConsumer directConsumer = null;  // for Direct
     
+
+    private static void printHelpIndent() {
+    	
+		System.out.println(" - 1..8      normal mode, pretty-printed and indented n spaces");
+		System.out.println(" - 0         normal mode, payload and user properties compressed to one line");
+		System.out.println(" - 00        no payload, user properties still pretty-printed");
+		System.out.println(" - 000       no payload, user properties compressed to one line");
+		System.out.println(" - ±250..±3  one-line mode, topic and payload only, compressed, fixed indent");
+		System.out.println(" - ±2        two-line mode, topic and payload on two lines");
+		System.out.println(" - ±1        one-line mode, automatic variable payload indentation");
+		System.out.println(" - ±0        one-line mode, topic only, with/without topic spacing");
+		System.out.println("Runtime: press 't'[ENTER] (or argument '--trim') to auto-trim payload to screen width");
+		System.out.println("Runtime: press '+' or '-'[ENTER] to toggle topic level spacing during runtime");
+//		System.out.println("Runtime: press \"t[ENTER]\" to toggle payload trim to terminal width (or argument --trim)");
+//		System.out.println("Runtime: press \"+ or -[ENTER]\" to toggle topic level spacing/alignment (or argument \"+indent\")");
+		System.out.println("NOTE: optional content Filter searches entire message body, regardless of indent");
+//		printUsageText();
+		System.out.println("See README.md for more detailed help with indent.");
+    	
+    }
     
-    private static void printHelpText() {
-    	printUsageText();
-		//                System.out.println(" - If using TLS, remember \"tcps://\" before host; or \"ws://\" or \"wss://\" for WebSocket");
-		System.out.println(" - Default protocol \"tcp://\"; for TLS use \"tcps://\"; or \"ws://\" or \"wss://\" for WebSocket");
-		System.out.println(" - Default parameters will be: localhost:55555 default foo bar '#noexport/>' 2");
-		//                System.out.println("     (FYI: if client-username 'default' is enabled in VPN, you can use any username)");
-		System.out.println(" - Subscribing options (param 5, or shortcut mode param 1), one of:");
-		System.out.println("    - Comma-separated list of Direct topic subscriptions");
-		System.out.println("       - Strongly consider prefixing with \"#noexport/\" if using DMR or MNR");
-		System.out.println("    - q:queueName to consume from queue");
-		System.out.println("    - b:queueName to browse a queue (all messages, or range by MsgSpoolID or RGMID)");
-		//                System.out.println("       - Can browse all messages, or specific messages by ID");
-		System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
-		System.out.println("    - tq:topics   to provision a tempQ with topics subscribed (can use NOT '!' topics)");
+    
+    private static void printHelpMoreText() {
+    	printHelpText();
 		System.out.println(" - Optional indent: integer, default==2 spaces; specifying 0 compresses payload formatting");
 		System.out.println("    - No payload mode: use indent '00' to only show headers and props, or '000' for compressed");
 		System.out.println("    - One-line mode: use negative indent value (trim topic length) for topic & payload only");
@@ -143,8 +152,24 @@ public class PrettyDump {
 		System.out.println("SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to \" | prettydump wrap\" to prettify");
 //		System.out.println(" - Note: add the 'bin' directory to your path to make it easier");
 		System.out.println();
-		//                System.out.println("v0.1.0, 2024/01/09");
-		//                System.out.println();
+    	
+    	
+    	
+    }
+    
+    private static void printHelpText() {
+    	printUsageText();
+		System.out.println(" - Default protocol \"tcp://\"; for TLS use \"tcps://\"; or \"ws://\" or \"wss://\" for WebSocket");
+		System.out.println(" - Default parameters will be: localhost:55555 default foo bar '#noexport/>' 2");
+		System.out.println(" - Subscribing options (param 5, or shortcut mode param 1), one of:");
+		System.out.println("    - Comma-separated list of Direct topic subscriptions");
+		System.out.println("       - Strongly consider prefixing with \"#noexport/\" if using DMR or MNR");
+		System.out.println("    - q:queueName to consume from queue");
+		System.out.println("    - b:queueName to browse a queue (all messages, or range by MsgSpoolID or RGMID)");
+		System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
+		System.out.println("    - tq:topics   to provision a tempQ with topics subscribed (can use NOT '!' topics)");
+		System.out.println(" - Optional indent: integer, default==2; > 0 normal, = 0 compress, < 0 one-line mode");
+		System.out.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
     }
     
     private static void printUsageText() {
@@ -187,6 +212,10 @@ public class PrettyDump {
 		for (String arg : args) {
 			if (arg.equals("-h") || arg.startsWith("--h") || arg.equals("-?") || arg.startsWith("--?") || arg.contains("-help")) {
 				printHelpText();
+				System.out.println("Use -hm  for more help");
+				System.exit(0);
+			} else if (arg.equals("-hm") || arg.startsWith("--hm") || arg.equals("-??") || arg.contains("helpmore")) {
+				printHelpMoreText();
 				System.exit(0);
 			}
 		}
@@ -276,22 +305,8 @@ public class PrettyDump {
 			try {
 				PayloadHelper.Helper.dealWithIndentParam(indentStr);
 			} catch (NumberFormatException e) {
-				System.out.println(AaAnsi.n().invalid(String.format("Invalid value for indent: '%s'.  ", indentStr)).a("Valid values:"));
-				System.out.println(" - 1..8      normal mode, pretty-printed and indented n spaces");
-				System.out.println(" - 0         normal mode, payload and user properties compressed to one line");
-				System.out.println(" - 00        no payload, user properties still pretty-printed");
-				System.out.println(" - 000       no payload, user properties compressed to one line");
-				System.out.println(" - ±250..±3  one-line mode, topic and payload only, compressed, fixed indent");
-				System.out.println(" - ±2        two-line mode, topic and payload on two lines");
-				System.out.println(" - ±1        one-line mode, automatic variable payload indentation");
-				System.out.println(" - ±0        one-line mode, topic only, with/without topic spacing");
-				System.out.println("Runtime: press 't'[ENTER] (or argument '--trim') to auto-trim payload to screen width");
-				System.out.println("Runtime: press '+' or '-'[ENTER] to toggle topic level spacing during runtime");
-//				System.out.println("Runtime: press \"t[ENTER]\" to toggle payload trim to terminal width (or argument --trim)");
-//				System.out.println("Runtime: press \"+ or -[ENTER]\" to toggle topic level spacing/alignment (or argument \"+indent\")");
-				System.out.println("NOTE: optional content Filter searches entire message body, regardless of indent");
-//				printUsageText();
-				System.out.println("See README.md for more detailed help with indent.");
+				System.out.println(AaAnsi.n().invalid(String.format("Invalid value for indent: '%s'.  ", indentStr)));
+				System.out.println("prettydump -h  or  -hm for more help details, or see README.md for more details");
 				System.exit(1);
 			}
 		}

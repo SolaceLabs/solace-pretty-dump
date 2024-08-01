@@ -65,7 +65,7 @@ public class SdtUtils {
 
 	static AaAnsi printMap(SDTMap map, final int indentFactor) {
 		try {
-			return privPrintMap(map, indentFactor, indentFactor /*indentFactor == 4 ? 2 : indentFactor*/).reset();
+			return privPrintMap(map, indentFactor, indentFactor).reset();
 		} catch (SDTException e) {
 			throw new IllegalArgumentException("Could not parse SDT", e);
 		}
@@ -220,6 +220,7 @@ public class SdtUtils {
 				} else if (value instanceof ByteArray) {
 					strValue = UsefulUtils.bytesToSpacedHexString(((ByteArray)value).asBytes());
 				}
+//				strValue2 = AaAnsi.n().fg(Elem.guessByType(value)).a(String.valueOf(strValue));  // update
 				if (value instanceof SDTMap) {
 					AaAnsi inner = new AaAnsi();
 					if (indentFactor > 0) inner.a("\n");
