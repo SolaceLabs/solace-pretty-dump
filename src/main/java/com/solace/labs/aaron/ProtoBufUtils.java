@@ -70,7 +70,7 @@ public class ProtoBufUtils {
 				logger.info("This is what I loaded: {}", protobufProps);
 		    	for (Entry<Object,Object> entry : protobufProps.entrySet()) {
 		    		try {
-		    			logger.debug("Verifying topic subscription {}", entry.getKey().toString());
+		    			logger.info("Verifying topic subscription {}", entry.getKey().toString());
 		    			Sub sub = new Sub(entry.getKey().toString());
 		    			logger.debug("Attempting to load class {}", entry.getValue().toString());
 		    			Class<?> clazz = Class.forName(entry.getValue().toString());

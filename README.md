@@ -30,10 +30,9 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 ## Building
 
 ```
-./gradlew assemble
-cd build/distributions
-unzip prettydump.zip
-cd prettydump/bin
+./gradlew clean assemble
+cd build/staged
+prettydump
 ```
 
 Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-dump/releases) with everything already built.
@@ -43,15 +42,7 @@ For Docker container usage, read the comments in [the Dockerfile](Dockerfile).
 
 ## Running
 
-**N.B.** for those using Windows PowerShell or Command Prompt, do this first:
-```
-C:\> chcp 65001
-C:\> set PRETTYDUMP_OPTS=-Dsun.stdout.encoding=utf-8
- ~or~
-PS C:\> chcp 65001
-PS C:\> $Env:PRETTYDUMP_OPTS='-Dsun.stdout.encoding=utf-8'
-PS C:\> $Env:TERM='xterm-256color'
-```
+**N.B.** for those using Windows PowerShell or Command Prompt, see [Tips and Tricks](#tips-and-tricks) at the bottom.
 
 #### No args, default broker options
 ```
@@ -71,7 +62,7 @@ Message Type:                           SDT TextMessage
 Binary Attachment:                      len=26 bytes
 UTF-8 charset, JSON Object:
 {
-    "hello": "world" }
+  "hello": "world" }
 
 ^^^^^^^^^^^^^^^^^^ End Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
@@ -195,15 +186,15 @@ To find the ID of the messages on a queue, either use PubSub+ Manager, CLI, or S
 **NOTE:** Use `f:<queueName>` to browse just the _first/oldest_ message on the queue. Very useful for "poison pills" or "head-of-line blocking" messages.  This the same as regular browse with a count of 1.
 
 ```
-$ prettydump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1
+$ prettydump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1 1
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'aaron-demo-singapore' on broker 'aaron.messaging.solace.cloud'.
 Attempting to browse queue 'q1' on the broker... success!
 
 Browse all messages -> press [ENTER],
- or enter specific Message ID, or to/from range of IDs
- (e.g. "259-261" or "9517-" or "-345"): 31737085
+ or to/from range of Message Spool IDs (e.g. "106259-110261" or "98517-" or "-103345"),
+ or start at RGMID (e.g. "rmid1:3477f-a5ce52..."): 31737085
 
 Starting. Press Ctrl-C to quit.
 ^^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -217,17 +208,18 @@ Message Type:                           SDT TextMessage
 Binary Attachment:                      len=173
 UTF-8 charset, JSON Object:
 {
-    "psgrCap": 1,
-    "heading": 228,
-    "busNum": 1398,
-    "latitude": 1.317,
-    "rpm": 1515,
-    "speed": 60,
-    "routeNum": "4M",
-    "longitude": 103.80721,
-    "status": "OK" }
+  "psgrCap": 1,
+  "heading": 228,
+  "busNum": 1398,
+  "latitude": 1.317,
+  "rpm": 1515,
+  "speed": 60,
+  "routeNum": "4M",
+  "longitude": 103.80721,
+  "status": "OK" }
 
 ^^^^^^^^^^^^^^^^^^ End Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+1 messages received. Quitting.
 Browsing finished!
 Main thread exiting.
 Shutdown detected, quitting...
@@ -597,6 +589,13 @@ Browse all messages -> press [ENTER],
  (e.g. "106259-110261" or "98517-" or "-103345"),
  or start at RGMID (e.g. "rmid1:3477f-a5ce52..."): 1043984-    <--
 ```
+
+
+### Browsing to end still too slow?
+
+If you have a queue with millions of messages, it might take too long to browse to the end, and is also a lot of wasted bandwidth to pull everything off the queue.  So I made another utility that utilizes Solace's "copy message" capability.  The script uses SEMPv1 to query the message details from the back of the queue (newest messages), and then SEMPv1 to copy each message one-by-one to a destination queue.  The intention is to use this in conjunction with a temporary queue `tq:` mode.
+
+Note that the copied messages are _new_ messages, and as such will have different Message Spool IDs and different RGMIDs.  But the contents of the messages with be exactly the same.
 
 
 

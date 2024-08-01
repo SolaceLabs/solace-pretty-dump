@@ -281,7 +281,7 @@ public class UsefulUtils {
 		 */
 	
 	/** this should only be called if we know it's not a UTF-8 (or whatever) string */
-	private static AaAnsi printBytes(byte[] bytes, int indent, int width) {
+/*	private static AaAnsi printBytes(byte[] bytes, int indent, int width) {
 		indent = 2;  // force override, 2 is what SdkPerf does too
 //		String[] hex = bytesToHexStringArray(bytes);
 		String hex2 = bytesToLongHexString(bytes);
@@ -328,7 +328,7 @@ public class UsefulUtils {
 //			if (indent > 0) ansi.a('\n');
 		}
 		return aa;
-	}
+	}*/
 
 	/** this should only be called if we know it's not a UTF-8 (or whatever) string */
 	private static AaAnsi printBytes2(byte[] bytes, int indent, int width) {
@@ -346,7 +346,7 @@ public class UsefulUtils {
 //			ansi.a(hex[i]).a(" ");
 			if (i == bytes.length) aa.faintOn();  // when we've run out of bytes
 			if (i < bytes.length) aa.a(hex2.substring(i*2, (i*2)+2)).a(' ');
-			else aa.a('⋅').a('⋅').a(' ');
+			else aa.a('·').a('·').a(' ');
 			if (i % COLS == COLS-1) {
 				aa.a(' ').a(' ');
 			}
@@ -391,8 +391,16 @@ public class UsefulUtils {
 		return aa;
 	}
 
+
+	private static final String[] INDENTS = new String[80];
+	static {
+		for (int i=0; i<80; i++) {
+			INDENTS[i] = pad(i, ' ');
+		}
+	}
 	
 	static String indent(int amount) {
+		if (amount < 80) return INDENTS[amount];
 		return pad(amount, ' ');
 	}
 

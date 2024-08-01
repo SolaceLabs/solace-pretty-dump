@@ -16,6 +16,26 @@ plugins {
 
 version = "1.1.0"
 
+eclipse {
+    classpath {
+        isDownloadJavadoc = true
+        isDownloadSources = true
+    }
+    jdt {
+        //if you want to alter the java versions (by default they are configured with gradle java plugin settings):
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+}
+
+idea {
+    module {
+        isDownloadJavadoc = true
+        isDownloadSources = true
+    }
+}
+
+
 repositories {
     mavenCentral()
     flatDir {
@@ -44,9 +64,10 @@ buildscript {
 distributions {
     main {
         //distributionBaseName = "prettydump"
-        //distributionClassifier = version
+        distributionClassifier = "beta"
         contents {
             from("README.md")
+            from("LICENSE")
             from("scripts") {
                 into("scripts")
 	    }
@@ -58,10 +79,10 @@ tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
 }
 
-// doesn't work
-//tasks.withType<JavaExec> {
-//     enableAssertions = true
-//}
+tasks.withType<JavaExec> {
+     // uncomment this out if you want faster compiled code with all assertion checks removed
+     //enableAssertions = false
+}
 
 dependencies {
 

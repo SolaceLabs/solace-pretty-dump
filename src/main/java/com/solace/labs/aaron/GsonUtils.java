@@ -216,7 +216,7 @@ public class GsonUtils {
 //			ansi.fgRed().a(reader.nextString()).reset();
 			ansi.fg(Elem.NULL).a("null").reset();
 			reader.nextNull();
-		} else {
+		} else {  // nothing else it could be?  https://javadoc.io/doc/com.google.code.gson/gson/2.6.2/com/google/gson/stream/JsonToken.html
 			ansi.fg(Elem.UNKNOWN).a("<SKIPPING VALUE>").reset();
 			logger.warn("Discovered an \"unknown\" value:\n" + ansi.toString());
 			reader.skipValue();

@@ -22,6 +22,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.fusesource.jansi.Ansi;
 import org.fusesource.jansi.Ansi.Attribute;
+
+import com.solace.labs.aaron.utils.BoundedLinkedList;
+
 import org.fusesource.jansi.AnsiConsole;
 
 /**
@@ -40,7 +43,7 @@ public class AaAnsi /* implements CharSequence */ {
 		;
 	}
 
-	private static ColorMode MODE = ColorMode.STANDARD;
+	static ColorMode MODE = ColorMode.STANDARD;
 	static {
 		if (System.getenv("PRETTY_COLORS") != null) {
 			try {
@@ -92,14 +95,14 @@ public class AaAnsi /* implements CharSequence */ {
 		if (reset) reset();
 	}
 
-	private void incChar(int amount) {
-//		charCount += amount;
-	}
-	
-	private void incChar() {
-//		charCount ++;
-	}
-	
+//	private void incChar(int amount) {
+////		charCount += amount;
+//	}
+//	
+//	private void incChar() {
+////		charCount ++;
+//	}
+//	
 	private boolean isOn() {
 		return (MODE != ColorMode.OFF);
 	}
@@ -143,21 +146,21 @@ public class AaAnsi /* implements CharSequence */ {
 		 * if (MODE == ColorMode.VIVID) return colorizeTopicRainbow(topic,highlight);
 		 * else
 		 */ if (MODE == ColorMode.OFF) return a(topic);
-		else return colorizeTopicPlain(topic, highlight);
+		else return colorizeTopicPlain(topic, highlight).reset();
 	}
 	
 	private AaAnsi colorizeTopicPlain(String topic, int highlight) {
 		String[] levels = topic.split("/", -1);
 		maxLengthTopicLevels.add(levels.length);
-		if (highlight >= 0) faintOn();
+		if (highlight > 0) faintOn();
 		for (int i=0; i<levels.length; i++) {
-			incChar(levels[i].length());   // need to update manually since adjusting the jansi directly
+//			incChar(levels[i].length());   // need to update manually since adjusting the jansi directly
 			if (i == highlight) {
 				jansi.reset();  // back to bright!
 			}
 			fg(figureColor(i, highlight));
 			if (i == highlight) {
-				int firstDot = levels[i].indexOf('⋅');
+				int firstDot = levels[i].indexOf('·');// ('⋅');
 				if (firstDot == -1) {
 					jansi.a(levels[i]);
 					rawSb.append(levels[i]);
@@ -173,7 +176,7 @@ public class AaAnsi /* implements CharSequence */ {
 //					rawCompressedSb.append(levels[i].substring(firstDot));
 				}
 			} else {
-				int firstDot = levels[i].indexOf('⋅');
+				int firstDot = levels[i].indexOf('·');//('⋅');
 				if (firstDot == -1) {
 					jansi.a(levels[i]);
 					rawSb.append(levels[i]);
@@ -193,7 +196,7 @@ public class AaAnsi /* implements CharSequence */ {
 				fg(Elem.TOPIC_SEPARATOR).a('/');  // this does the charCount!  and the rawSb
 			}
 		}
-		return this;// reset();
+		return this;
 	}
 	
 	// https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -219,7 +222,8 @@ public class AaAnsi /* implements CharSequence */ {
 			226, 190, 154, 118, 82
 	};
 	
-	private static LinkedListOfIntegers maxLengthTopicLevels = new LinkedListOfIntegers();
+	// this is used for vivid colouring, to spread the spectrum out more when few topic levels
+	private static BoundedLinkedList.Comparable<Integer> maxLengthTopicLevels = new BoundedLinkedList.Comparable<>(200);;
 	
 	private int figureColor(int i, int highlight) {
 		if (MODE == ColorMode.VIVID) {
@@ -282,22 +286,22 @@ public class AaAnsi /* implements CharSequence */ {
 	}*/
 	
 	public AaAnsi invalid(String s) {
-		if (isOn()) {
-			fg(Elem.ERROR).a(s).reset();
-		} else {
-			jansi.a(s);
-			incChar(s.length());
-		}
+//		if (isOn()) {
+			fg(Elem.ERROR, true).a(s).forceReset();
+//		} else {
+//			jansi.a(s);
+//			incChar(s.length());
+//		}
 		return this;
 	}
 
 	public AaAnsi warn(String s) {
-		if (isOn()) {
-			fg(Elem.WARN).a(s).reset();
-		} else {
-			jansi.a(s);
-			incChar(s.length());
-		}
+//		if (isOn()) {
+			fg(Elem.WARN, true).a(s).forceReset();
+//		} else {
+//			jansi.a(s);
+//			incChar(s.length());
+//		}
 		return this;
 	}
 
@@ -307,27 +311,35 @@ public class AaAnsi /* implements CharSequence */ {
 	}
 
 	public AaAnsi ex(String s, Exception e) {
-		String exception = e.getClass().getSimpleName() + " - " + e.getMessage();
-		return invalid(s + exception);
+		String exception = String.format("%s: %s - %s", s, e.getClass().getSimpleName(), e.getMessage());
+		return invalid(exception);
 	}
 
 	public AaAnsi fg(Elem elem) {
+		return fg(elem, false);
+	}
+	
+	private AaAnsi fg(Elem elem, boolean force) {
 		curElem = elem;
-		if (isOn()) {
+		if (isOn() || force) {
 			Col c = elem.getCurrentColor();
 			if (c.faint) {
-				faintOn().fg(c.value);
+				faintOn().fg(c.value, force);
 			} else if (c.italics) {
-				makeItalics().fg(c.value);
+				makeItalics().fg(c.value, force);
 			} else {
-				fg(c.value);
+				fg(c.value, force);
 			}
 		}
 		return this;
 	}
-	
+
 	public AaAnsi fg(int colorIndex) {
-		if (isOn()) {
+		return fg(colorIndex, false);
+	}
+	
+	public AaAnsi fg(int colorIndex, boolean force) {
+		if (isOn() || force) {
 			if (colorIndex == -1) jansi.fgDefault();
 			else jansi.fg(colorIndex);
 		}
@@ -381,6 +393,9 @@ public class AaAnsi /* implements CharSequence */ {
 	// TODO fix this!!!!
 	public int length() {
 		int len = calcLength(this.toString());
+		if (len != rawSb.length()) {
+			logger.error(String.format("AaAnsi len and rawSb are not the same: %d vs %d", len, rawSb.length()));
+		}
 		assert len == rawSb.length();
 		return rawSb.length();
 	}
@@ -540,7 +555,7 @@ public class AaAnsi /* implements CharSequence */ {
 //			}
 //			lastRawCompressedChar = c;
 //		}
-		incChar();
+//		incChar();
 		return this;
 	}
 
@@ -550,7 +565,7 @@ public class AaAnsi /* implements CharSequence */ {
 		rawSb.append(bs);
 //		rawCompressedSb.append(bs);
 //		lastRawCompressedChar = 'e';  // doesn't matter, as long as not space
-		incChar(bs.length());
+//		incChar(bs.length());
 		return this;
 	}
 
@@ -560,7 +575,7 @@ public class AaAnsi /* implements CharSequence */ {
 		rawSb.append(is);
 //		rawCompressedSb.append(bs);
 //		lastRawCompressedChar = 'e';  // doesn't matter, as long as not space
-		incChar(is.length());
+//		incChar(is.length());
 		return this;
 	}
 
@@ -571,6 +586,24 @@ public class AaAnsi /* implements CharSequence */ {
 	public AaAnsi aStyledString(String s) {
 		return fg(Elem.STRING).a(s, true);
 	}
+	
+//	private static final String BLACK_SPACE = new Ansi().reset().bg(0).fg(Elem.DESTINATION.getCurrentColor().value).fg(7).a('│').bgDefault().toString();
+	private static final String BLACK_SPACE = new Ansi().reset().bg(0).a(' ').bgDefault().toString();
+	public AaAnsi insertBlackSpace() {
+		this.aRaw(BLACK_SPACE, " ");
+		return this;
+	}
+	
+	public AaAnsi blackOn() {
+		this.aRaw(new Ansi().bg(0).toString(), "");
+		return this;
+	}
+	
+	public AaAnsi blackOff() {
+		this.aRaw(new Ansi().bgDefault().toString(), "");
+		return this;
+	}
+	
 
 	/** Consider each char individually, and if replacement \ufffd char then add some red colour.
 	 */
@@ -671,6 +704,13 @@ public class AaAnsi /* implements CharSequence */ {
 			if (Elem.DEFAULT.getCurrentColor().value != -1) jansi.fg(Elem.DEFAULT.getCurrentColor().value);
 			curElem = null;
 		}
+		return this;
+	}
+	
+	private AaAnsi forceReset() {
+		jansi.reset();
+		if (Elem.DEFAULT.getCurrentColor().value != -1) jansi.fg(Elem.DEFAULT.getCurrentColor().value);
+		curElem = null;
 		return this;
 	}
 

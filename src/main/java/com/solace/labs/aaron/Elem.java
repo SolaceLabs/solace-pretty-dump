@@ -29,8 +29,6 @@ import com.solacesystems.common.util.ByteArray;
 import com.solacesystems.jcsmp.Destination;
 import com.solacesystems.jcsmp.SDTMap;
 import com.solacesystems.jcsmp.SDTStream;
-import com.solacesystems.jcsmp.impl.sdt.MapImpl;
-import com.solacesystems.jcsmp.impl.sdt.StreamImpl;
 
 /**
  * Used by AaAnsi, my wrapper around the JAnsi library to give me better controls over colours.
@@ -86,17 +84,36 @@ public enum Elem {
 
 		colorMap.put(AaAnsi.ColorMode.MINIMAL, new HashMap<>());
 		map = colorMap.get(AaAnsi.ColorMode.MINIMAL);
-		map.put(KEY, new Col(12));
+//		map.put(KEY, new Col(12));
+//		map.put(DATA_TYPE, new Col(-1));
+//		map.put(PAYLOAD_TYPE, new Col(-1));
+//		map.put(NULL, new Col(2, false, true));
+//		map.put(STRING, new Col(2));
+//		map.put(CHAR, new Col(2));
+//		map.put(NUMBER, new Col(-1));
+//		map.put(FLOAT, new Col(-1));
+//		map.put(BOOLEAN, new Col(2));
+//		map.put(BYTES, new Col(5));
+//		map.put(BYTES_CHARS, new Col(2));
+//		map.put(BRACE, new Col(-1));
+//		map.put(DESTINATION, new Col(14));
+//		map.put(TOPIC_SEPARATOR, new Col(6));
+//		map.put(MSG_BREAK, new Col(-1));
+//		map.put(WARN, new Col(11));
+//		map.put(ERROR, new Col(9));
+//		map.put(UNKNOWN, new Col(13, false, true));
+//		map.put(DEFAULT, new Col(-1));
+		map.put(KEY, new Col(-1));
 		map.put(DATA_TYPE, new Col(-1));
-		map.put(PAYLOAD_TYPE, new Col(-1));
+		map.put(PAYLOAD_TYPE, new Col(15));
 		map.put(NULL, new Col(2, false, true));
-		map.put(STRING, new Col(2));
-		map.put(CHAR, new Col(2));
+		map.put(STRING, new Col(-1));
+		map.put(CHAR, new Col(-1));
 		map.put(NUMBER, new Col(-1));
 		map.put(FLOAT, new Col(-1));
-		map.put(BOOLEAN, new Col(2));
+		map.put(BOOLEAN, new Col(-1));
 		map.put(BYTES, new Col(5));
-		map.put(BYTES_CHARS, new Col(2));
+		map.put(BYTES_CHARS, new Col(-1));
 		map.put(BRACE, new Col(-1));
 		map.put(DESTINATION, new Col(14));
 		map.put(TOPIC_SEPARATOR, new Col(6));
@@ -126,7 +143,7 @@ public enum Elem {
 		map.put(TOPIC_SEPARATOR, new Col(43));
 		map.put(MSG_BREAK, new Col(-1,true));
 		map.put(WARN, new Col(208));
-		map.put(ERROR, new Col(196));
+		map.put(ERROR, new Col(9));
 		map.put(UNKNOWN, new Col(196, false, true));
 //		defaults.put(DEFAULT, new Col(66));
 		map.put(DEFAULT, new Col(102));
@@ -182,6 +199,12 @@ public enum Elem {
 		map.put(ERROR, new Col(157));
 		map.put(UNKNOWN, new Col(157, false, true));
 		map.put(DEFAULT, new Col(28));
+
+		colorMap.put(AaAnsi.ColorMode.OFF, new HashMap<>());
+		map = colorMap.get(AaAnsi.ColorMode.OFF);
+		map.put(WARN, new Col(11));
+		map.put(ERROR, new Col(9));
+		map.put(DEFAULT, new Col(-1));
 	}
 	
 	static Elem guessByType(Object value) {

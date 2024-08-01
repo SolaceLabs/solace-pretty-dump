@@ -3,7 +3,6 @@ package com.solace.labs.aaron;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.StringReader;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -106,7 +105,9 @@ Destination:                            Topic 'q1/abc'
 //		System.out.println(formatMapLookingThing(test));
 //		System.exit(0);
 //        protobufCallbacks = ProtoBufUtils.loadProtobufDefinitions();
-    	PayloadHelper payloadHelper = new PayloadHelper(StandardCharsets.UTF_8);
+//    	PayloadHelper payloadHelper = new PayloadHelper(StandardCharsets.UTF_8);
+//    	PayloadHelper payloadHelper;
+    	PayloadHelper.init(StandardCharsets.UTF_8);
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 		// test code
 		
@@ -166,14 +167,14 @@ Destination:                            Topic 'q1/abc'
 						insideMessage = true;
 //						System.out.println( input);
 //						wrapPrintln(PayloadHelper.printMessageStart(++msgCount));
-						wrapPrintln(payloadHelper.printMessageStart());
+						wrapPrintln(MessageHelper.printMessageStart());
 					} else if (input.contains("^^^ End Message ^^^")) {
 						assert insideMessage;
 						assert !insidePayloadSection;
 						insideMessage = false;
 //						System.out.println(input);
 //						wrapPrintln(PayloadHelper.printMessageEnd(msgCount));
-						wrapPrintln(payloadHelper.printMessageEnd());
+						wrapPrintln(MessageHelper.printMessageEnd());
 						AaAnsi.resetAnsi(System.out);
 //					} else if (input.matches("^(?:XML:|Binary Attachment:).*len.*")) {
 					} else if (input.startsWith("XML:       ") || input.startsWith("Binary Attachment:  ") || input.startsWith("Binary Attachment String:  ") || input.startsWith("User Data:   ")) {
@@ -212,7 +213,7 @@ Destination:                            Topic 'q1/abc'
 						if (input.isEmpty() || !input.startsWith(" ")) {  // end of payload section!
 							insidePayloadSection = false;
 							bb.flip();  // ready to read!
-							com.solace.labs.aaron.PayloadHelper.PayloadSection payload = payloadHelper.buildPayloadSection(bb);
+							com.solace.labs.aaron.PayloadHelper.PayloadSection payload = PayloadHelper.Helper.buildPayloadSection(bb);
 							if (payload.getType().contains("Non ") || payload.getType().contains("INVALID")) {
 								wrapPrintln(new AaAnsi().invalid(payload.getType()).toString());
 							} else {

@@ -22,23 +22,19 @@ import java.util.zip.GZIPInputStream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.fusesource.jansi.Ansi;
-import org.fusesource.jansi.Ansi.Attribute;
 import org.fusesource.jansi.AnsiConsole;
 
 import com.google.protobuf.MessageOrBuilder;
+import com.solace.labs.aaron.utils.BoundedLinkedList;
 import com.solace.labs.topic.Sub;
 import com.solacesystems.jcsmp.BytesMessage;
 import com.solacesystems.jcsmp.BytesXMLMessage;
-import com.solacesystems.jcsmp.DeliveryMode;
 import com.solacesystems.jcsmp.Destination;
 import com.solacesystems.jcsmp.MapMessage;
-import com.solacesystems.jcsmp.Queue;
 import com.solacesystems.jcsmp.StreamMessage;
 import com.solacesystems.jcsmp.TextMessage;
 import com.solacesystems.jcsmp.Topic;
 import com.solacesystems.jcsmp.XMLContentMessage;
-import com.solacesystems.jcsmp.XMLMessage;
 import com.solacesystems.jcsmp.impl.sdt.MapImpl;
 import com.solacesystems.jcsmp.impl.sdt.MapTLVBuffer;
 import com.solacesystems.jcsmp.impl.sdt.StreamImpl;
@@ -47,88 +43,185 @@ import com.solacesystems.jcsmp.impl.sdt.StreamTLVBuffer;
 /**
  * A PayloadHelper contains a charset and an indent amount, and is used for 
  */
-public class PayloadHelper {
-
+public enum PayloadHelper {
 	
+	Helper,
+	;
+	
+	private PayloadHelper() {
+		
+	}
+
+//	private static PayloadHelper this_;
 	
 //	private static Map<Charset, CharsetDecoder> mapOfDecoders = new ConcurrentHashMap<>();  // why do this?  I only need one..?
 	
     private static final Logger logger = LogManager.getLogger(PayloadHelper.class);
 	
-    
-    private final Charset charset;
-	private final CharsetDecoder decoder;
-    Map<Sub, Method> protobufCallbacks = new HashMap<>();
-    static long msgCount = 0;
-    Pattern filterRegexPattern = null;
+    private volatile boolean isStopped = false;
+    private Charset charset;
+	private CharsetDecoder decoder;
+    private Map<Sub, Method> protobufCallbacks = new HashMap<>();
+    private long msgCount = 0;
+    private long filteredCount = 0;
+    private Pattern filterRegexPattern = null;
 //	boolean filteringOn = false;
-    static int currentScreenWidth = 80;  // assume for now
-    ThinkingAnsiHelper thinking = new ThinkingAnsiHelper();
+//    static int currentScreenWidth = 80;  // assume for now
+//    private ThinkingAnsiHelper thinking = new ThinkingAnsiHelper();
+	private int highlightTopicLevel = -1;
 
 	
     private int INDENT = 2;  // default starting value
     private boolean oneLineMode = false;
     private boolean noPayload = false;
     private boolean autoResizeIndent = false;  // specify -1 as indent for this MODE
-    boolean autoSpaceTopicLevels = false;  // specify +something to space out the levels
-    boolean autoTrimPayload = false;
-    private LinkedListOfIntegers maxLengthTopicsList = new LinkedListOfIntegers();
-    private List<LinkedListOfIntegers> levelLengths = new ArrayList<>();
-    private LinkedListOfIntegers maxLengthUserPropsList = new LinkedListOfIntegers();
-    private LinkedListOfIntegers minLengthPayloadLength = new LinkedListOfIntegers();  // max min-length of payload to display for -1 mode
+    private boolean autoSpaceTopicLevels = false;  // specify +something to space out the levels
+    private boolean autoTrimPayload = false;
+    private BoundedLinkedList.Comparable<Integer> maxLengthTopicsList = new BoundedLinkedList.Comparable<>(50);
+    private List<BoundedLinkedList.Comparable<Integer>> levelLengths = new ArrayList<>();
+    private BoundedLinkedList<MessageHelper> lastNMessages = null;
     
-	public PayloadHelper(Charset charset) {
+	private void payloadHelperInit(Charset charset) {
 		this.charset = charset;
 		decoder = this.charset.newDecoder().onMalformedInput(CodingErrorAction.REPLACE).onUnmappableCharacter(CodingErrorAction.REPLACE);
-		
-		
+	}
+	
+	public static void init(Charset charset) {
+//		this_ = new PayloadHelper(charset);
+		Helper.payloadHelperInit(charset);
+	}
+	
+	public void setAutoTrimPayload(boolean trim) {
+		autoTrimPayload = trim;
 	}
 
-	public boolean isFilteringOn() {
-		return thinking.isFilteringOn();
+	public void toggleAutoTrimPayload() {
+		autoTrimPayload = !autoTrimPayload;
+	}
+
+	public void setRegexFilterPattern(Pattern regex) {
+		filterRegexPattern = regex;
+	}
+	
+	public void enableLastNMessage(int amount) {
+		lastNMessages = new BoundedLinkedList<>(amount);
+	}
+	
+	public void setProtobufCallbacks(Map<Sub, Method> map) {
+		protobufCallbacks = map;
+	}
+	
+	
+	public boolean isOneLineMode() {
+		return oneLineMode;
+	}
+	
+	public boolean isNoPayload() {
+		return noPayload;
+	}
+	
+	public boolean isAutoResizeIndent() {
+		return autoResizeIndent;
+	}
+	
+	public boolean isAutoTrimPayload() {
+		return autoTrimPayload;
+	}
+	
+	public void setAutoSpaceIndentLevels(boolean enabled) {
+		autoSpaceTopicLevels = enabled;
 	}
     
+	public boolean isLastNMessagesEnabled() {
+		return lastNMessages != null;
+	}
 	
+	public int getHighlightedTopicLevel() {
+		return highlightTopicLevel;
+	}
+
+	public void setHighlightedTopicLevel(int level) {
+		highlightTopicLevel = level;
+	}
+
+	public int getLastNMessagesSize() {
+		if (lastNMessages == null) return 0;
+		else return lastNMessages.size();
+	}
+
+	public int getLastNMessagesCapacity() {
+		if (lastNMessages == null) return 0;
+		else return lastNMessages.capacity();
+	}
+
+	public void incMessageCount() {
+		msgCount++;
+	}
+	
+	public void incFilteredCount() {
+		filteredCount++;
+	}
+	
+	public long getMessageCount() {
+		return msgCount;
+    }
+	
+	public long getFilteredCount() {
+		return filteredCount;
+	}
+	
+	public BoundedLinkedList<MessageHelper> getLastNMessages() {
+		return lastNMessages;
+	}
+
     /** this method tracks what the longest topic string has been for the last 50 messages, so things line up nicely with indent mode "-1"
 	 *  only used in "-1" auto-indent mode
      */
-    private void updateTopicIndentValue(int maxTopicLength) {
-    	maxLengthTopicsList.add(maxTopicLength);
-    	if (maxLengthTopicsList.getMax() + 1 != INDENT) {  // changed our current max
-//    		int from = Math.abs(INDENT);
-    		INDENT = maxLengthTopicsList.getMax() + 1;  // so INDENT will always be at least 3 (even MQTT spec states topic must be length > 1)
-//    		System.out.println(new Ansi().reset().a(Attribute.INTENSITY_FAINT).a("** changing INDENT from " + from + " to " + Math.abs(INDENT) + "**").reset().toString());
+    public void updateTopicIndentValue(int maxTopicLength) {
+    	if (autoResizeIndent) {
+	    	maxLengthTopicsList.add(maxTopicLength);
+	    	if (maxLengthTopicsList.getMax() + 1 != INDENT) {  // changed our current max
+	//    		int from = Math.abs(INDENT);
+	    		INDENT = maxLengthTopicsList.getMax() + 1;  // so INDENT will always be at least 3 (even MQTT spec states topic must be length > 1)
+	//    		System.out.println(new org.fusesource.jansi.Ansi().reset().a(org.fusesource.jansi.Ansi.Attribute.INTENSITY_FAINT).a("** changing INDENT from " + from + " to " + Math.abs(INDENT) + "**").reset().toString());
+	//    	} else {
+	//    		System.out.println(new org.fusesource.jansi.Ansi().reset().a(org.fusesource.jansi.Ansi.Attribute.INTENSITY_FAINT).a("** keeping INDENT = " + Math.abs(INDENT) + "**").reset().toString());
+	    	}
     	}
     }
     
     
-    private String updateTopicSpaceOutLevels(String topic) {
-    	String[] levels = topic.split("/");
-    	if (levelLengths.size() < levels.length) {
-    		for (int i=levelLengths.size(); i < levels.length; i++) {
-    			levelLengths.add(new LinkedListOfIntegers(200));  // Keep column sizes for 200 msgs
-    		}
-    	}
-    	for (int i=0; i < levelLengths.size(); i++) {
-    		if (i < levels.length) {
-    			levelLengths.get(i).add(levels[i].length());
-    		} else {
-    			levelLengths.get(i).add(0);
-    		}
-    	}
-    	StringBuilder sb = new StringBuilder();
-    	for (int i=0; i < levels.length; i++) {
-    		sb.append(levels[i]);
-    		int max = levelLengths.get(i).getMax();
-    		if (i < levels.length-1) {
-	    		if (max > levels[i].length()) {
-					sb.append(UsefulUtils.pad(max - levels[i].length(), '⋅' /* '·' */));
+    public String updateTopicSpaceOutLevels(String topic) {
+    	if (autoSpaceTopicLevels) {
+	    	String[] levels = topic.split("/");
+	    	if (levelLengths.size() < levels.length) {
+	    		for (int i=levelLengths.size(); i < levels.length; i++) {
+	    			levelLengths.add(new BoundedLinkedList.Comparable<Integer>(200));  // Keep column sizes for 200 msgs
 	    		}
-	    		if (INDENT == Integer.MIN_VALUE) sb.append("⋅/");  // always space out topic-only mode
-	    		else sb.append('/');
 	    	}
+	    	for (int i=0; i < levelLengths.size(); i++) {
+	    		if (i < levels.length) {
+	    			levelLengths.get(i).add(levels[i].length());
+	    		} else {
+	    			levelLengths.get(i).add(0);
+	    		}
+	    	}
+	    	StringBuilder sb = new StringBuilder();
+	    	for (int i=0; i < levels.length; i++) {
+	    		sb.append(levels[i]);
+	    		int max = levelLengths.get(i).getMax();
+	    		if (i < levels.length-1) {
+		    		if (max > levels[i].length()) {
+						sb.append(UsefulUtils.pad(max - levels[i].length(), /*'⋅'*/ '·' ));
+		    		}
+		    		if (INDENT == Integer.MIN_VALUE) sb.append("·/");// ("⋅/");  // always space out topic-only mode
+		    		else sb.append('/');
+		    	}
+	    	}
+	    	return sb.toString();
+    	} else {
+    		return topic;
     	}
-    	return sb.toString();
     }
     
     
@@ -138,18 +231,18 @@ public class PayloadHelper {
     }
     
     /** for auto-indent one-line "-1" mode */
-    int getEffectiveIndent() {
+    int getFormattingIndent() {
     	if (oneLineMode) return 0;
     	return INDENT;
 //    	return Math.min(INDENT, currentScreenWidth - 15);
     }
     
-    void dealWithIndentParam(String indentStr) throws NumberFormatException {
+    public void dealWithIndentParam(String indentStr) throws NumberFormatException {
     	if (indentStr.startsWith("+") && indentStr.length() >= 2) {
     		autoSpaceTopicLevels = true;
     		indentStr = "-" + indentStr.substring(1);
     	}
-		int indent = Integer.parseInt(indentStr);
+		int indent = Integer.parseInt(indentStr);  // might throw
 		if (indent < -250 || indent > 8) throw new NumberFormatException();
 		INDENT = indent;
 		if (INDENT < 0) {
@@ -157,11 +250,11 @@ public class PayloadHelper {
 			if (INDENT == -1) {
 				autoResizeIndent = true;  // use auto-resizing based on max topic length
 				INDENT = 3;  // starting value (1 + 2 for padding)
-				updateTopicIndentValue(1);  // now update it
+				updateTopicIndentValue(2);  // now update it
 			} else if (INDENT == -2) {  // two line mode
 				INDENT = Math.abs(INDENT);
 			} else {
-				INDENT = Math.abs(INDENT) + 2;
+				INDENT = Math.abs(INDENT) + 2; // TODO why is this 2?  I think 1 for ... and 1 for space
 //				updateTopicIndentValue(INDENT);  // now update it  TODO why do we need to update if not auto-indenting?
 			}
 		} else if (INDENT == 0) {
@@ -237,7 +330,7 @@ public class PayloadHelper {
 
 	/** Only used by PrettyWrap */
 	public PayloadSection buildPayloadSection(ByteBuffer payloadContents) {
-    	currentScreenWidth = AnsiConsole.getTerminalWidth();
+    	int currentScreenWidth = AnsiConsole.getTerminalWidth();
     	if (currentScreenWidth == 0) currentScreenWidth = 80;
 		PayloadSection payload = new PayloadSection();
 		payload.formatByteBufferFromWrapMode(payloadContents);
@@ -299,7 +392,7 @@ public class PayloadHelper {
 			String trimmed = text.trim();
         	if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || contentType.contains("application/json")) {  // try JSON object
         		try {
-            		formatted = GsonUtils.parseJsonObject(trimmed, getEffectiveIndent());
+            		formatted = GsonUtils.parseJsonObject(trimmed, getFormattingIndent());
         			type = charset.displayName() + " charset, JSON Object";
 				} catch (IOException e) {
         			type = charset.displayName() + " charset, INVALID JSON payload";
@@ -308,7 +401,7 @@ public class PayloadHelper {
 				}
         	} else if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || contentType.contains("application/json")) {  // try JSON array
         		try {
-            		formatted = GsonUtils.parseJsonArray(trimmed, getEffectiveIndent());
+            		formatted = GsonUtils.parseJsonArray(trimmed, getFormattingIndent());
         			type = charset.displayName() + " charset, JSON Array";
         		} catch (IOException e) {
         			type = charset.displayName() + " charset, INVALID JSON payload";
@@ -318,7 +411,7 @@ public class PayloadHelper {
         	} else if ((trimmed.startsWith("<") && trimmed.endsWith(">")) ||
         			"application/xml".equals(contentType)  || contentType.contains("text/xml")) {  // try XML
     			try {
-    				SaxHandler handler = new SaxHandler(getEffectiveIndent());
+    				SaxHandler handler = new SaxHandler(getFormattingIndent());
 					SaxParser.parseString(trimmed, handler);
                     formatted = handler.getResult();  // overwrite
                     type = charset.displayName() + " charset, XML document";
@@ -340,10 +433,10 @@ public class PayloadHelper {
         	}
         	double ratio = (1.0 * formatted.getControlCharsCount() + formatted.getReplacementCharsCount()) / formatted.getTotalCharCount();
 			if (malformed && ratio >= 0.25 /* && !oneLineMode */) {  // 25%, very likely a binary file
-				formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, getEffectiveIndent(), currentScreenWidth);
+				formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, getFormattingIndent(), AnsiConsole.getTerminalWidth());
         	} else if (malformed || formatted.getControlCharsCount() > 0) {  // any unusual control chars (not tab, LF, CR, FF, or Esc, or NUL at string end
-				if (!oneLineMode && getEffectiveIndent() > 0) {  // only if not in one-line mode!
-					formatted.a('\n').a(UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, getEffectiveIndent(), currentScreenWidth));
+				if (!oneLineMode && getFormattingIndent() > 0) {  // only if not in one-line mode!
+					formatted.a('\n').a(UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, getFormattingIndent(), AnsiConsole.getTerminalWidth()));
 				}
         	}
 		}
@@ -410,7 +503,7 @@ public class PayloadHelper {
 					MapTLVBuffer buf = new MapTLVBuffer(copy);  // sneaky hidden but public methods
 					MapImpl map = new MapImpl(buf);
 //					String test = SdtUtils.printMap(map, 3).toString();
-					formatted = SdtUtils.printMap(map, getEffectiveIndent());
+					formatted = SdtUtils.printMap(map, getFormattingIndent());
 	            	type = PrettyMsgType.MAP.toString();  // hack, should be in the msg helper object
 					return;
     			} else {
@@ -425,7 +518,7 @@ public class PayloadHelper {
 					StreamTLVBuffer buf = new StreamTLVBuffer(copy);  // sneaky hidden but public methods
 					StreamImpl map = new StreamImpl(buf);
 //					String test = SdtUtils.printMap(map, 3).toString();
-					formatted = SdtUtils.printStream(map, getEffectiveIndent());
+					formatted = SdtUtils.printStream(map, getFormattingIndent());
 	            	type = PrettyMsgType.STREAM.toString();
 					return;
     			} else {
@@ -454,14 +547,15 @@ public class PayloadHelper {
 		}	
 
 	}
-	
+/*	
 	private class MessageHelperObject {
 		
 		final BytesXMLMessage orig;
-		String[] headerLines;
-    	String msgDestName;  // this would only be used in the 1-line version
+		final long msgCountNumber;
+		final String[] headerLines;
+    	final String msgDestName;  // this would only be used in the 1-line version
     	AaAnsi msgDestNameFormatted;
-        String msgType;
+        String msgType;  // could change
         boolean hasPrintedMsgTypeYet = false;  // have we printed out the message type?
 
         PayloadSection binary;
@@ -469,13 +563,17 @@ public class PayloadHelper {
         PayloadSection userProps = null;
         PayloadSection userData = null;
                 
-        private MessageHelperObject(BytesXMLMessage message) {
+        private MessageHelperObject(BytesXMLMessage message, long msgCountNumber) {
         	orig = message;
+        	this.msgCountNumber = msgCountNumber;
+        	this.msgDestName = message.getDestination().getName();
+        	headerLines = orig.dump(XMLMessage.MSGDUMP_BRIEF).split("\n");
         	msgType = orig.getClass().getSimpleName();  // will be "Impl" unless overridden later
         }
 
-        /** this only gets called in non-one-line mode, otherwise we might have to do some trimming first */
+        /** this only gets called in non-one-line mode, otherwise we might have to do some trimming first * /
         private void colorizeDestForRegularMode() {
+        	String msgDestName = orig.getDestination().getName();
         	if (orig.getDestination() instanceof Queue) {
         		msgDestNameFormatted = AaAnsi.n().fg(Elem.DESTINATION).a("Queue '").a(msgDestName).a('\'');
         	} else {  // a Topic
@@ -488,9 +586,10 @@ public class PayloadHelper {
         	msgDestNameFormatted.reset();
         }
         
-        private void prepMessageForPrinting() {
-        	headerLines = orig.dump(XMLMessage.MSGDUMP_BRIEF).split("\n");
-        }
+        // make sure this is called before printMessage()
+//        private void prepMessageForPrinting() {
+//        	headerLines = orig.dump(XMLMessage.MSGDUMP_BRIEF).split("\n");
+//        }
         
         public String buildFullStringObject() {
         	StringBuilder sb = new StringBuilder();
@@ -500,9 +599,9 @@ public class PayloadHelper {
         		} else if (line.startsWith("User Property Map") && userProps != null) {
         			sb.append(line).append('\n').append(userProps).append('\n');
         		} else if (line.startsWith("Binary Attachment") && binary != null) {
-        			sb.append(getMessageTypeLine().reset()).append('\n').append(line).append('\n').append(binary).append('\n');
+        			sb.append(getMessageTypeLine().toRawString()).append('\n').append(line).append('\n').append(binary).append('\n');
         		} else if (line.startsWith("XML") && xml != null) {
-        			sb.append(getMessageTypeLine().reset()).append('\n').append(line).append('\n').append(xml).append('\n');
+        			sb.append(getMessageTypeLine().toRawString()).append('\n').append(line).append('\n').append(xml).append('\n');
         		} else {
         			sb.append(line).append('\n');
         		}
@@ -510,16 +609,10 @@ public class PayloadHelper {
         	return sb.toString();
         }
         
-        /** Only call this once all the filtering is done and time to space out the topic */
+        /** Only call this once all the filtering is done and time to space out the topic * /
         void updateTopicSpacing() {
+        	String msgDestName = orig.getDestination().getName();
         	AaAnsi aaDest = new AaAnsi().fg(Elem.DESTINATION);
-//        	if (orig.getDestination() instanceof Queue) {
-//        		msgDestName = "Queue '" + orig.getDestination().getName() + "'";
-//        		ansi.a("Queue '" + orig.getDestination().getName() + "'");
-//        	} else {  // a Topic
-//        		msgDestName = orig.getDestination().getName();
-//        		ansi.colorizeTopic(orig.getDestination().getName());
-//        	}
         	if (orig.getDestination() instanceof Queue) {
         		msgDestName = "Queue '" + orig.getDestination().getName() + "'";
             	if (autoResizeIndent) updateTopicIndentValue(msgDestName.length());
@@ -555,34 +648,196 @@ public class PayloadHelper {
     			hasPrintedMsgTypeYet = true;
     		}
         }
+        
+        
+        SystemOutHelper printMessage() {
+            // now it's time to try printing it!
+            SystemOutHelper systemOut = new SystemOutHelper();
+            if (!oneLineMode) {
+                systemOut.println(printMessageStart(msgCountNumber));
+                for (String line : headerLines) {
+                	if (line.isEmpty() || line.matches("\\s*")) continue;  // testing 
+					if (line.startsWith("User Property Map:") && userProps != null) {
+                		if (getEffectiveIndent() == 0) {
+	                		systemOut.println("User Property Map:                      " + userProps.formatted);
+                		} else {
+//                    		systemOut.println(new AaAnsi().a(line));
+	                		systemOut.println("User Property Map:                      " + userProps.numElements + " elements");
+                    		systemOut.println(userProps.formatted);
+                		}
+                		if (getEffectiveIndent() > 0 && !noPayload) systemOut.println();
+                	} else if (line.startsWith("User Data:") && userData != null) {
+                		if (getEffectiveIndent() == 0) {
+	                		systemOut.println("User Data:                              " + userData.formatted);
+                		} else {
+	                		systemOut.println(new AaAnsi().a(line).a(" bytes"));
+	                		systemOut.println(userData.formatted);
+                		}
+                		if (getEffectiveIndent() > 0 && !noPayload) systemOut.println();
+                	} else if (line.startsWith("SDT Map:") || line.startsWith("SDT Stream:")) {
+                		// skip (handled as part of the binary attachment)
+                	} else if (line.startsWith("Binary Attachment:")) {
+//                		assert binary != null;
+                    	printMsgTypeIfRequired(systemOut);
+                    	AaAnsi payloadText = AaAnsi.n().a(line).a(" bytes");
+                    	if (binary != null) handlePayloadSection(line, binary, payloadText);
+                    	systemOut.println(payloadText);
+                	} else if (line.startsWith("XML:")) {
+//                		assert xml != null;
+                    	printMsgTypeIfRequired(systemOut);
+                    	AaAnsi payloadText = AaAnsi.n().fg(Elem.WARN).a("XML Payload section:           ").reset();
+                    	payloadText.a("         ").a(line.substring(40)).a(" bytes").reset();
+                    	if (xml != null) handlePayloadSection(line, xml, payloadText);
+                    	systemOut.println(payloadText);
+                	} else if (line.startsWith("Destination:           ")) {
+                		systemOut.print("Destination:                            ");
+                		colorizeDestForRegularMode();
+                		systemOut.println(msgDestNameFormatted);  // just print out since it's already formatted
+                	} else if (line.startsWith("Message Id:") && orig.getDeliveryMode() == DeliveryMode.DIRECT) {
+                		// skip it, hide the auto-generated message ID on Direct messages
+                	} else {  // everything else
+//                		System.out.println(new AaAnsi().a(line));
+                		systemOut.println(UsefulUtils.guessIfMapLookingThing(line));
+                	}
+                }
+                if (!orig.hasContent() && !orig.hasAttachment()) {
+                	printMsgTypeIfRequired(systemOut);
+//                	systemOut.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(UsefulUtils.capitalizeFirst(msgType)).a(", <EMPTY PAYLOAD>").reset().toString());
+                	systemOut.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a("<NO PAYLOAD>").reset().toString());
+                } else if (orig.hasAttachment() && orig.getAttachmentContentLength() == 0) {
+                	printMsgTypeIfRequired(systemOut);
+//                	systemOut.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(UsefulUtils.capitalizeFirst(msgType)).a(", <EMPTY PAYLOAD>").reset().toString());
+                	systemOut.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a("<EMPTY PAYLOAD>").reset().toString());
+                	
+                }
+    			if (getEffectiveIndent() > 0) systemOut.println(printMessageEnd(msgCountNumber));
+        	} else {  // one-line mode!
+                updateTopicSpacing();  // now that we've determined if we're gonna filter this message, do the topic stuff
+        		String payloadSizeString;
+        		if (binary != null && xml != null) {
+        			// that's not great for one-line printing!  but probably pretty rare!!!!
+        			systemOut.println("Message contains both binary and XML payloads:");
+        			systemOut.println(orig.dump().trim());  // raw JCSMP full dump
+        		} else if (noPayload) {  // "-0" mode
+    				systemOut.println(msgDestNameFormatted);
+        		} else {  // one payload section defined, or empty
+    				AaAnsi payload = null;
+    				if (binary != null) {
+    					payload = binary.formatted;
+    					payloadSizeString = binary.getSizeString();
+    				}
+    				else if (xml != null) {
+    					payload = xml.formatted;
+    					payloadSizeString = xml.getSizeString();
+    				}
+    				else {
+    					payload = AaAnsi.n().faintOn().a("<EMPTY> ").a(msgType).reset();  // hopefully an EMPTY message
+    					payloadSizeString = "";  // empty payload is already the payload
+    				}
+//					int minPayloadStringSizeLength = payloadSizeString.length();
+    				minLengthPayloadLength.add(payloadSizeString.length());
+    				if (userProps != null) {
+    					if (userProps.numElements == 0) maxLengthUserPropsList.add(0);
+    					if (userProps.numElements < 10) maxLengthUserPropsList.add(1);
+    					else if (userProps.numElements < 100) maxLengthUserPropsList.add(2);
+    					else if (userProps.numElements < 100) maxLengthUserPropsList.add(3);  // assume 999 is the most!
+    				}
+    				else  maxLengthUserPropsList.add(0);
+    				// we need all that in case we're in -1 mode and we need to trim
+    				
+    				if (getCurrentIndent() == 2) {  // two-line mode
+						AaAnsi props = AaAnsi.n().fg(Elem.PAYLOAD_TYPE);
+    					if (userProps != null) {
+//    						props.a(userProps.numElements + (userProps.numElements == 1 ? " UserProp" : " UserProps")).reset();  // wiggles to much back and for with 1 / 2
+    						props.a(userProps.numElements + " UserProps").reset();
+    					} else {
+    						props.faintOn().a("- UserProps").reset();
+    					}
+    					int spaceToAdd = currentScreenWidth - msgDestNameFormatted.length() - props.length();
+    					if (spaceToAdd < 0) {
+    	    				systemOut.print(msgDestNameFormatted.trim(msgDestNameFormatted.length() + spaceToAdd - 1)).print(" ");
+    					} else {
+    	    				systemOut.print(msgDestNameFormatted);
+    	    				systemOut.print(UsefulUtils.pad(spaceToAdd, ' '));
+    					}
+    					systemOut.println(props);
+    					systemOut.print("  ");
+        				if (autoTrimPayload) {
+        					if (payload.length() > currentScreenWidth - getCurrentIndent()) {
+	        					systemOut.print(payload.trim(currentScreenWidth - getCurrentIndent() - payloadSizeString.length()));
+	        					systemOut.println(payloadSizeString);
+        					} else {  // enough space
+        						systemOut.println(payload);
+        					}
+        				}
+        				else {
+        					systemOut.println(payload.reset());  // need the reset b/c a (fancy) string payload won't have the reset() at the end
+        					if (getCurrentIndent() + payload.getTotalCharCount() > currentScreenWidth) systemOut.println();
+        				}
+    				} else {  // proper one-line mode!
+    					final int PADDING_CORRECTION = 1;
+        				int minPayloadLength = minLengthPayloadLength.getMax();
+        				if (maxLengthUserPropsList.getMax() > 0) minPayloadLength += maxLengthUserPropsList.getMax() + 2 - PADDING_CORRECTION;  // user prop spacing + 1 + 1 for blackspace
+        				int effectiveIndent = getCurrentIndent();
+//        				System.out.printf("minPayloadLength=%d, maxLengthUserProps=%d%n", minLengthPayloadLength.getMax(), maxLengthUserPropsList.getMax());
+        				if (autoResizeIndent) {  // mode -1
+        					if (getCurrentIndent() > currentScreenWidth - minPayloadLength - 1) {  // need to trim the topic!   minPL = 11
+        						effectiveIndent = currentScreenWidth - minPayloadLength - 1;
+        						systemOut.print(msgDestNameFormatted.trim(effectiveIndent-1));
+        						int spaceToAdd = effectiveIndent - Math.min(msgDestName.length(), effectiveIndent-1);
+        						systemOut.print(UsefulUtils.pad(spaceToAdd + PADDING_CORRECTION, ' '));
+        					} else {
+        						systemOut.print(msgDestNameFormatted);
+        						int spaceToAdd = getCurrentIndent() - msgDestName.length();
+        						systemOut.print(UsefulUtils.pad(spaceToAdd + PADDING_CORRECTION, ' '));
+        					}
+        				} else {
+        					systemOut.print(msgDestNameFormatted.trim(getCurrentIndent()-1));
+        					int spaceToAdd = getCurrentIndent() - Math.min(msgDestName.length(), getCurrentIndent()-1);
+        					systemOut.print(UsefulUtils.pad(spaceToAdd + PADDING_CORRECTION, ' '));
+        				}
+        				
+    					AaAnsi props = AaAnsi.n().fg(Elem.PAYLOAD_TYPE);
+//    					AaAnsi props = AaAnsi.n().insertBlackSpace().a(' ').fg(Elem.BYTES);
+    					if (maxLengthUserPropsList.getMax() > 0) {
+//    						props.blackOn();
+    						if (userProps == null || userProps.numElements == 0) props.faintOn().a('-');
+    						else props.a(userProps.numElements);
+//    						props.blackOff();
+    						props.a(' ');
+    					}
+    					systemOut.print(props.reset());
+    					if (autoTrimPayload) {
+    						int trimLength = currentScreenWidth - effectiveIndent - PADDING_CORRECTION - props.length();// - payloadSizeString.length();
+    						if (payload.length() <= trimLength) {
+    							systemOut.println(payload);
+    						} else {
+//    							System.out.printf("w=%d,in=%d,efIn=%d,MXpay=%d,len=%d,trim=%d%n", currentScreenWidth, getCurrentIndent(), effectiveIndent, minLengthPayloadLength.getMax(), payloadSizeString.length(), trimLength);
+    							systemOut.print(payload.trim(trimLength - payloadSizeString.length())).println(payloadSizeString);
+    						}
+    					}
+    					else {
+    						systemOut.println(payload.reset());  // need the reset b/c a (fancy) string payload won't have the reset() at the end
+//    					System.out.printf("charCount=%d, calcLength=%d, width=%d, size=%d%n", binary.formatted.getCharCount(), AaAnsi.length(binary.formatted.toString()),currentScreenWidth,Math.abs(INDENT)+binary.formatted.getCharCount());
+    						if (getCurrentIndent() + payload.getTotalCharCount() > currentScreenWidth) systemOut.println();
+    					}
+    				}
+        		}
+        	}
+			return systemOut;
+        }
 	}
-	
-	static int highlightTopicLevel = -1;
+	*/
 	
     
     // Helper class, for printing message to the console ///////////////////////////////////////
 
-	private static final int DIVIDER_LENGTH = 60;  // same as SdkPerf JCSMP
-
-	public AaAnsi printMessageStart() {
-        String head = " Start Message #" + msgCount + " ";
-        String headPre = UsefulUtils.pad((int)Math.ceil((DIVIDER_LENGTH - head.length()) / 2.0) , '^');
-        String headPost = UsefulUtils.pad((int)Math.floor((DIVIDER_LENGTH - head.length()) / 2.0) , '^');
-        return AaAnsi.n().fg(Elem.MSG_BREAK).a(headPre).a(head).a(headPost).reset();
-	}
-	
-	public AaAnsi printMessageEnd() {
-        String end = " End Message #" + msgCount + " ";
-        String end2 = UsefulUtils.pad((int)Math.ceil((DIVIDER_LENGTH - end.length()) / 2.0) , '^');
-        String end3 = UsefulUtils.pad((int)Math.floor((DIVIDER_LENGTH - end.length()) / 2.0) , '^');
-        return new AaAnsi().fg(Elem.MSG_BREAK).a(end2).a(end).a(end3).reset();
-	}
 
 	// Destination:                            Topic 'solace/samples/jcsmp/hello/aaron'
 	public static AaAnsi colorizeDestination(Destination jcsmpDestination) {
 		AaAnsi aa = new AaAnsi().fg(Elem.PAYLOAD_TYPE).a("Destination:                            ").fg(Elem.DESTINATION);
 		if (jcsmpDestination instanceof Topic) {
-			aa.a("Topic '").colorizeTopic(jcsmpDestination.getName(), highlightTopicLevel).fg(Elem.DESTINATION).a("'");
+			aa.a("Topic '").colorizeTopic(jcsmpDestination.getName(), -1).fg(Elem.DESTINATION).a("'");
 		} else {  // queue
 			aa.a("Queue '").a(jcsmpDestination.getName()).a("'");
 		}
@@ -595,7 +850,7 @@ public class PayloadHelper {
 		AaAnsi aa = new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(destinationLine.substring(0,40)).fg(Elem.DESTINATION);
 		String rest = destinationLine.substring(40);
 		if (rest.startsWith("Topic")) {
-			aa.a("Topic '").colorizeTopic(rest.substring(7, rest.length()-1), highlightTopicLevel).fg(Elem.DESTINATION).a("'");
+			aa.a("Topic '").colorizeTopic(rest.substring(7, rest.length()-1), -1).fg(Elem.DESTINATION).a("'");
 		} else {
 			aa.a("Queue '").a(rest.substring(7, rest.length()-1)).a("'");
 		}
@@ -623,9 +878,9 @@ public class PayloadHelper {
 	}
 
 	
-	private void handlePayloadSection(String line, PayloadSection ps, AaAnsi aa) {
+	public void handlePayloadSection(String line, PayloadSection ps, AaAnsi aa) {
 		boolean invalid = ps.type != null && (ps.type.contains("non") || ps.type.contains("INVALID"));
-		if (getEffectiveIndent() == 0 || noPayload) {  // so compressed and/or no payload
+		if (getFormattingIndent() == 0 || noPayload) {  // so compressed and/or no payload
     		if (ps.type != null) {
     			aa.a(',').a(' ');
     			if (invalid) aa.invalid(ps.type);
@@ -646,13 +901,17 @@ public class PayloadHelper {
         	}
 		}
 	}
-	
+
+	public void stop() {
+		isStopped = true;
+	}
 
     public void dealWithMessage(BytesXMLMessage message) {
+    	if (isStopped) return;
     	msgCount++;
-    	currentScreenWidth = AnsiConsole.getTerminalWidth();
-    	if (currentScreenWidth == 0) currentScreenWidth = 80;  // for running in eclipse or others that don't return a good value
-    	MessageHelperObject ms = new MessageHelperObject(message);
+//    	currentScreenWidth = AnsiConsole.getTerminalWidth();
+//    	if (currentScreenWidth == 0) currentScreenWidth = 80;  // for running in eclipse or others that don't return a good value
+    	MessageHelper ms = new MessageHelper(message, msgCount);
         // if doing topic only, or if there's no payload in compressed (<0) MODE, then just print the topic
     	// can't do this anymore here b/c we have filtering now
 //    	if (INDENT == Integer.MIN_VALUE || (INDENT < 0 && !message.hasContent() && !message.hasAttachment())) {
@@ -692,11 +951,11 @@ public class PayloadHelper {
 	        		ms.binary.size = message.getAttachmentContentLength();
 		            if (message instanceof MapMessage) {
 	//	            	ms.msgType = "SDT MapMessage";
-		            	ms.binary.formatted = SdtUtils.printMap(((MapMessage)message).getMap(), getEffectiveIndent());
+		            	ms.binary.formatted = SdtUtils.printMap(((MapMessage)message).getMap(), getFormattingIndent());
 		            } else if (message instanceof StreamMessage) {
 	//	            	ms.msgType = "SDT StreamMessage";
 		            	// set directly
-		            	ms.binary.formatted = SdtUtils.printStream(((StreamMessage)message).getStream(), getEffectiveIndent());
+		            	ms.binary.formatted = SdtUtils.printStream(((StreamMessage)message).getStream(), getFormattingIndent());
 		            } else {  // either text or binary, try/hope that the payload is a string, and then we can try to format it
 			            if (message instanceof TextMessage) {
 //			            	String pay = ((TextMessage)message).getText();
@@ -715,7 +974,9 @@ public class PayloadHelper {
 			            		} else {  // invalid!!
 //			            			ms.msgType = "*malformed* SDT TextMessage";
 			            			ms.binary.type = "INVALID *malformed* SDT TextMessage";
-			            			ms.binary.formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, getEffectiveIndent(), currentScreenWidth);
+			            			int currentScreenWidth = AnsiConsole.getTerminalWidth();
+			            			if (currentScreenWidth == 0) currentScreenWidth = 80;
+			            			ms.binary.formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, getFormattingIndent(), currentScreenWidth);
 			            		}
 			            	} else {  // should be valid! maybe check if it's properly formatted, UTF-8
 			    	        	ms.msgType = PrettyMsgType.TEXT.toString();
@@ -732,7 +993,7 @@ public class PayloadHelper {
 										bytes = os.toByteArray();
 										ms.msgType = "GZIPed " + ms.msgType;
 									} catch (IOException e) {
-										logger.warn("Had a message marked as 'gzip' but wasn't", e);
+										logger.warn("Had a message marked as 'gzip' but wasn't");
 										logger.warn(message.dump());
 										System.out.println(AaAnsi.n().ex("Had a message marked as 'gzip' but wasn't", e).toString());
 									}
@@ -752,7 +1013,7 @@ public class PayloadHelper {
 											try {
 												o = entry.getValue().invoke(null, bytes);
 												MessageOrBuilder protoMsg = (MessageOrBuilder)o;
-												ms.binary.formatted = ProtoBufUtils.decode(protoMsg, getEffectiveIndent());
+												ms.binary.formatted = ProtoBufUtils.decode(protoMsg, getFormattingIndent());
 												ms.binary.type = protoMsg.getClass().getSimpleName() + " ProtoBuf";
 											} catch (IllegalAccessException e) {
 												// TODO Auto-generated catch block
@@ -775,203 +1036,64 @@ public class PayloadHelper {
         	}
             if (message.getProperties() != null && !message.getProperties().isEmpty()) {
             	ms.userProps = new PayloadSection();
-            	ms.userProps.formatted = SdtUtils.printMap(message.getProperties(), getEffectiveIndent());
+            	ms.userProps.formatted = SdtUtils.printMap(message.getProperties(), getFormattingIndent());
             	ms.userProps.numElements = SdtUtils.countElements(message.getProperties());
             }
             if (message.getUserData() != null && message.getUserData().length > 0) {
             	ms.userData = new PayloadSection();
             	ms.userData.formatBytes(message.getUserData(), null);
+            	ms.userData.type = null;
             }
             
             // done preparing the message.  Now we might have to filter it?
-            ms.prepMessageForPrinting();
+//            ms.prepMessageForPrinting();
             if (filterRegexPattern != null) {
-            	if (!filterRegexPattern.matcher(ms.buildFullStringObject()).find()) {
-                	thinking.tick();
+            	String rawDump = ms.buildFullStringObject();
+            	if (!filterRegexPattern.matcher(rawDump).find()) {
+            		incFilteredCount();
+					if (isLastNMessagesEnabled()) {  // gathering
+						ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("Msg filtered.",
+								getMessageCount(), getFilteredCount(), getMessageCount()-getFilteredCount(), getLastNMessagesCapacity()));
+					} else {
+						ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringPrinted("Msg filtered.",
+								getMessageCount(), getFilteredCount(), getMessageCount()-getFilteredCount()));
+					}
+//            		if (lastNMessages == null) ThinkingAnsiHelper.tick();
+//            		else ThinkingAnsiHelper.tick(String.format("%d messages gathered, skipping filtered msg #", lastNMessages.size()));
                 	return;
             	} else {
-            		thinking.filteringOff();
+//            		System.out.println(rawDump);
+            		ThinkingAnsiHelper.filteringOff();
             	}
             }
-            ms.updateTopicSpacing();  // now that we've determined if we're gonna filter this message, do the topic stuff
             
+            // TODO only update the spacing when we're actually printing it out?
+//            ms.updateTopicSpacing();  // now that we've determined if we're gonna filter this message, do the topic stuff
+
             // now it's time to try printing it!
-            SystemOutHelper systemOut = new SystemOutHelper();
-            if (!oneLineMode) {
-            	String[] headerLines = ms.headerLines;
-                for (String line : headerLines) {
-                	if (line.isEmpty() || line.matches("\\s*")) continue;  // testing 
-					if (line.startsWith("User Property Map:") && ms.userProps != null) {
-                		if (getEffectiveIndent() == 0) {
-	                		systemOut.println("User Property Map:                      " + ms.userProps.formatted);
-                		} else {
-//                    		systemOut.println(new AaAnsi().a(line));
-	                		systemOut.println("User Property Map:                      " + ms.userProps.numElements + " elements");
-                    		systemOut.println(ms.userProps.formatted);
-                		}
-                		if (getEffectiveIndent() > 0 && !noPayload) systemOut.println();
-                	} else if (line.startsWith("User Data:") && ms.userData != null) {
-                		if (getEffectiveIndent() == 0) {
-	                		systemOut.println("User Data:                              " + ms.userData.formatted);
-                		} else {
-	                		systemOut.println(new AaAnsi().a(line).a(" bytes"));
-	                		systemOut.println(ms.userData.formatted);
-                		}
-                		if (getEffectiveIndent() > 0 && !noPayload) systemOut.println();
-                	} else if (line.startsWith("SDT Map:") || line.startsWith("SDT Stream:")) {
-                		// skip (handled as part of the binary attachment)
-                	} else if (line.startsWith("Binary Attachment:")) {
-//                		assert ms.binary != null;
-                    	ms.printMsgTypeIfRequired(systemOut);
-                    	AaAnsi payloadText = AaAnsi.n().a(line).a(" bytes");
-                    	if (ms.binary != null) handlePayloadSection(line, ms.binary, payloadText);
-                    	systemOut.println(payloadText);
-                	} else if (line.startsWith("XML:")) {
-//                		assert ms.xml != null;
-                    	ms.printMsgTypeIfRequired(systemOut);
-                    	AaAnsi payloadText = AaAnsi.n().fg(Elem.WARN).a("XML Payload section:           ").reset();
-                    	payloadText.a("         ").a(line.substring(40)).a(" bytes").reset();
-                    	if (ms.xml != null) handlePayloadSection(line, ms.xml, payloadText);
-                    	systemOut.println(payloadText);
-                	} else if (line.startsWith("Destination:           ")) {
-                		systemOut.print("Destination:                            ");
-                		ms.colorizeDestForRegularMode();
-                		systemOut.println(ms.msgDestNameFormatted);  // just print out since it's already formatted
-                	} else if (line.startsWith("Message Id:") && message.getDeliveryMode() == DeliveryMode.DIRECT) {
-                		// skip it, hide the auto-generated message ID on Direct messages
-                	} else {  // everything else
-//                		System.out.println(new AaAnsi().a(line));
-                		systemOut.println(UsefulUtils.guessIfMapLookingThing(line));
-                	}
-                }
-                if (!message.hasContent() && !message.hasAttachment()) {
-                	ms.printMsgTypeIfRequired(systemOut);
-//                	systemOut.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(UsefulUtils.capitalizeFirst(ms.msgType)).a(", <EMPTY PAYLOAD>").reset().toString());
-                	systemOut.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a("<NO PAYLOAD>").reset().toString());
-                } else if (message.hasAttachment() && message.getAttachmentContentLength() == 0) {
-                	ms.printMsgTypeIfRequired(systemOut);
-//                	systemOut.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(UsefulUtils.capitalizeFirst(ms.msgType)).a(", <EMPTY PAYLOAD>").reset().toString());
-                	systemOut.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a("<EMPTY PAYLOAD>").reset().toString());
-                	
-                }
-        	} else {  // one-line mode!
-                ms.updateTopicSpacing();  // now that we've determined if we're gonna filter this message, do the topic stuff
-        		String payloadSizeString;
-        		if (ms.binary != null && ms.xml != null) {
-        			// that's not great for one-line printing!  but probably pretty rare!!!!
-        			systemOut.println("Message contains both binary and XML payloads:");
-        			systemOut.println(message.dump().trim());  // raw JCSMP full dump
-        		} else if (noPayload) {  // "-0" mode
-    				systemOut.println(ms.msgDestNameFormatted);
-        		} else {  // one payload section defined, or empty
-    				AaAnsi payload = null;
-    				if (ms.binary != null) {
-    					payload = ms.binary.formatted;
-    					payloadSizeString = ms.binary.getSizeString();
-    				}
-    				else if (ms.xml != null) {
-    					payload = ms.xml.formatted;
-    					payloadSizeString = ms.xml.getSizeString();
-    				}
-    				else {
-    					payload = AaAnsi.n().faintOn().a("<EMPTY> ").a(ms.msgType).reset();  // hopefully an EMPTY message
-    					payloadSizeString = "";  // empty payload is already the payload
-    				}
-//					int minPayloadStringSizeLength = payloadSizeString.length();
-    				minLengthPayloadLength.add(payloadSizeString.length());
-    				if (ms.userProps != null) {
-    					if (ms.userProps.numElements == 0) maxLengthUserPropsList.add(0);
-    					if (ms.userProps.numElements < 10) maxLengthUserPropsList.add(1);
-    					else if (ms.userProps.numElements < 100) maxLengthUserPropsList.add(2);
-    					else if (ms.userProps.numElements < 100) maxLengthUserPropsList.add(3);  // assume 999 is the most!
-    				}
-    				else  maxLengthUserPropsList.add(0);
-    				// we need all that in case we're in -1 mode and we need to trim
-    				
-    				if (getCurrentIndent() == 2) {  // two-line mode
-						AaAnsi props = AaAnsi.n().fg(Elem.BYTES);
-    					if (ms.userProps != null) {
-    						props.a(ms.userProps.numElements + (ms.userProps.numElements == 1 ? " UserProp" : " UserProps")).reset();
-    					} else {
-    						props.faintOn().a("- UserProps").reset();
-    					}
-    					int spaceToAdd = currentScreenWidth - ms.msgDestName.length() - props.length();
-    					if (spaceToAdd < 0) {
-    	    				systemOut.print(ms.msgDestNameFormatted.trim(ms.msgDestName.length() + spaceToAdd - 1)).print(" ");
-    					} else {
-    	    				systemOut.print(ms.msgDestNameFormatted);
-    	    				systemOut.print(UsefulUtils.pad(spaceToAdd, ' '));
-    					}
-    					systemOut.println(props);
-    					systemOut.print("  ");
-        				if (autoTrimPayload) {
-        					if (payload.length() > currentScreenWidth - getCurrentIndent()) {
-	        					systemOut.print(payload.trim(currentScreenWidth - getCurrentIndent() - payloadSizeString.length()));
-	        					systemOut.println(payloadSizeString);
-        					} else {  // enough space
-        						systemOut.println(payload);
-        					}
-        				}
-        				else {
-        					systemOut.println(payload.reset());  // need the reset b/c a (fancy) string payload won't have the reset() at the end
-        					if (getCurrentIndent() + payload.getTotalCharCount() > currentScreenWidth) systemOut.println();
-        				}
-    				} else {  // proper one-line mode!
-        				int minPayloadLength = minLengthPayloadLength.getMax();
-        				if (maxLengthUserPropsList.getMax() > 0) minPayloadLength += maxLengthUserPropsList.getMax() + 1;  // user prop spacing + 1
-        				int effectiveIndent = getCurrentIndent();
-//        				System.out.printf("minPayloadLength=%d, maxLengthUserProps=%d%n", minLengthPayloadLength.getMax(), maxLengthUserPropsList.getMax());
-        				if (autoResizeIndent) {  // mode -1
-        					if (getCurrentIndent() > currentScreenWidth - minPayloadLength - 1) {  // need to trim the topic!   minPL = 11
-        						effectiveIndent = currentScreenWidth - minPayloadLength - 1;
-        						systemOut.print(ms.msgDestNameFormatted.trim(effectiveIndent-1));
-        						int spaceToAdd = effectiveIndent - Math.min(ms.msgDestName.length(), effectiveIndent-1);
-        						systemOut.print(UsefulUtils.pad(spaceToAdd + 1, ' '));
-        					} else {
-        						systemOut.print(ms.msgDestNameFormatted);
-        						int spaceToAdd = getCurrentIndent() - ms.msgDestName.length();
-        						systemOut.print(UsefulUtils.pad(spaceToAdd + 1, ' '));
-        					}
-        				} else {
-        					systemOut.print(ms.msgDestNameFormatted.trim(getCurrentIndent()-1));
-        					int spaceToAdd = getCurrentIndent() - Math.min(ms.msgDestName.length(), getCurrentIndent()-1);
-        					systemOut.print(UsefulUtils.pad(spaceToAdd + 1, ' '));
-        				}
-    					AaAnsi props = AaAnsi.n().fg(Elem.BYTES);
-    					if (maxLengthUserPropsList.getMax() > 0) {
-    						if (ms.userProps == null || ms.userProps.numElements == 0) props.faintOn().a('-');
-    						else props.a(ms.userProps.numElements);
-    						props.a(' ');
-        					systemOut.print(props.reset());
-    					}
-    					if (autoTrimPayload) {
-    						int trimLength = currentScreenWidth - effectiveIndent - 1- props.length();// - payloadSizeString.length();
-    						if (payload.length() <= trimLength) {
-    							systemOut.println(payload);
-    						} else {
-//    							System.out.printf("w=%d,in=%d,efIn=%d,pros=%d,len=%d,trim=%d%n", currentScreenWidth, getCurrentIndent(), effectiveIndent, props.length(), payloadSizeString.length(), trimLength);
-    							systemOut.print(payload.trim(trimLength - payloadSizeString.length())).println(payloadSizeString);
-    						}
-    					}
-    					else {
-    						systemOut.println(payload.reset());  // need the reset b/c a (fancy) string payload won't have the reset() at the end
-//    					System.out.printf("charCount=%d, calcLength=%d, width=%d, size=%d%n", ms.binary.formatted.getCharCount(), AaAnsi.length(ms.binary.formatted.toString()),currentScreenWidth,Math.abs(INDENT)+ms.binary.formatted.getCharCount());
-    						if (getCurrentIndent() + payload.getTotalCharCount() > currentScreenWidth) systemOut.println();
-    					}
-    				}
-        		}
-        	}
-            if (!oneLineMode) System.out.println(printMessageStart());
-            System.out.print(systemOut);//.raw.toString());
-			if (!oneLineMode && getEffectiveIndent() > 0 /* && !noPayload */) System.out.println(printMessageEnd());
-			
+//            if (lastNMessages != null) {
+			if (isLastNMessagesEnabled()) {  // gathering
+				lastNMessages.add(ms);
+				ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("",
+						getMessageCount(), getFilteredCount(), getMessageCount()-getFilteredCount(), getLastNMessagesCapacity()));
+//            	ThinkingAnsiHelper.tick("Gathering last " + lastNMessages.capacity() + " messages, received ");
+            } else {
+            	if (isStopped) return;  // stop if we're stopped!
+            	if (ThinkingAnsiHelper.isFilteringOn()) ThinkingAnsiHelper.filteringOff();
+                SystemOutHelper systemOut = ms.printMessage();
+            	System.out.print(systemOut);
+            }
         } catch (RuntimeException e) {  // really shouldn't happen!!
-        	System.out.println(printMessageStart());
+        	System.out.println(MessageHelper.printMessageStart());
         	System.out.println(AaAnsi.n().ex("Exception occured, check ~/.pretty/pretty.log for details. ", e));
         	logger.warn("Had issue parsing a message.  Message follows after exception.",e);
         	logger.warn(message.dump());
         	System.out.println(message.dump());
-        	System.out.println(printMessageEnd());
+        	System.out.println(MessageHelper.printMessageEnd());
         }
     }
+    
+    
+
+    
 }

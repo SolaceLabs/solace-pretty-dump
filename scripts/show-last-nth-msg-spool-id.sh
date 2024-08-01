@@ -5,7 +5,7 @@ HOST="http://localhost:8080"
 USER="admin"
 PW="admin"
 VPN="default"
-S_QUEUE=""
+QUEUE=""
 NUM=0
 
 echo "┌ This utility returns the Message Spool ID of a message from the back of ┐"
@@ -33,19 +33,20 @@ if [[ $VPN == "" ]]; then
     echo -n "Message VPN: "
     read VPN
 fi
-if [[ $S_QUEUE == "" ]]; then
-    echo -n "Source Queue: "
-    read S_QUEUE
+if [[ $QUEUE == "" ]]; then
+    echo -n "Queue: "
+    read QUEUE
 fi
 if [[ $NUM == 0 ]]; then
-    echo -n "Get MsgSpoolID for nth-last message: n="
+    echo -n "Get Message Spool ID for nth-last message: n="
     read NUM
 fi
 
 # here we go, try to get message details...
 
-RGMIDs=`curl -s --compressed -u $USER:$PW $HOST/SEMP -d "<rpc><show><queue><name>$S_QUEUE</name><vpn-name>$VPN</vpn-name><messages/><newest/><count/><num-elements>$NUM</num-elements></queue></show></rpc>" | xmllint --xpath '//message-id/text()' - `
+RGMIDs=`curl -s --compressed -u $USER:$PW $HOST/SEMP -d "<rpc><show><queue><name>$QUEUE</name><vpn-name>$VPN</vpn-name><messages/><newest/><count/><num-elements>$NUM</num-elements></queue></show></rpc>" | xmllint --xpath '//message-id/text()' - `
 
+# uncomment this to dump them all to the console
 #echo $RGMIDs
 
 if [[ $RGMIDs == "" ]]; then
@@ -58,4 +59,4 @@ IFS=$'\n'
 names=($RGMIDs)
 
 echo
-echo "The MsgSpoolID of the ${#names[@]}th-last message on queue '$S_QUEUE' is: ${names[${#names[@]}-1]} "
+echo "The MsgSpoolID of the ${#names[@]}th-last message on queue '$QUEUE' is: ${names[${#names[@]}-1]} "

@@ -2,7 +2,7 @@
 <Configuration status="warn" monitorInterval="30" shutdownHook="disable" xmlns:xi="http://www.w3.org/2001/XInclude">
   <Appenders>
     <Console name="console" target="SYSTEM_OUT">
-      <PatternLayout pattern=" > %d{HH:mm:ss.SSS} [%t] %-5level %logger{5.} - %msg%n"/>
+      <PatternLayout pattern="%highlight{ > %d{HH:mm:ss.SSS} [%t] %-5level %logger{5.} - %msg}%n"/>
     </Console>
     <File name="logfile" fileName="${sys:user.home}/.pretty/pretty.log">
       <PatternLayout>
@@ -21,10 +21,16 @@
     <!-- you can dynamically set the log level from the command line using jvm system variables -->
     <!-- e.g. '-Djcsmp_api_log_level=debug', or use the Gradle env variable: 'export JAVA_OPTS=-Djcsmp_api_log_level=debug' -->
     <!-- or override this file completely by specifying your own: 'export JAVA_OPTS=-Dlog4j2.configurationFile=log4j2-override.xml' -->
-    <Logger name="com.solacesystems" level="${sys:jcsmp_api_log_level:-info}"/>
-    <Logger name="com.solace" level="${sys:pretty_app_log_level:-info}"/>
+    <Logger name="com.solacesystems" level="${sys:jcsmp_api_log_level:-info}" additivity="false">
+      <AppenderRef ref="console" level="warn"/>
+      <AppenderRef ref="logfile"/>
+    </Logger>
+    <Logger name="com.solace.labs.aaron" level="${sys:pretty_app_log_level:-info}" additivity="false">
+      <AppenderRef ref="console" level="error"/>
+      <AppenderRef ref="logfile"/>
+    </Logger>
     <Root level="${sys:root_log_level:-info}">
-      <!-- AppenderRef ref="console"/ -->
+      <AppenderRef ref="console" level="warn"/>
       <AppenderRef ref="logfile"/>
       <!-- AppenderRef ref="solaceLogger"/ -->
     </Root>
