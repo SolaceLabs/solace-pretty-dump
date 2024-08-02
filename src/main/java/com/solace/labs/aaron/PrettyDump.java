@@ -391,7 +391,7 @@ public class PrettyDump {
 			} else {
 				host = argsList.get(0);
 			}
-		} else {
+		} else if (argsList.size() > 0) {
 			host = argsList.get(0);
 		}
 //		System.out.println(argsList);

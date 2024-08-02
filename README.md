@@ -281,6 +281,25 @@ UTF-8 charset, JSON Object:
   "customerId": "12345" }
 
 ^^^^^^^^^^^^^^^^^^ End Message #8 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^ Start Message #4 ^^^^^^^^^^^^^^^^^^^^^
+Destination:                            Topic 'abcld/df/d/frd'
+Priority:                               4
+Class Of Service:                       USER_COS_1
+DeliveryMode:                           DIRECT
+HTTP Content Encoding:                  zip
+Message Type:                           Raw BytesMessage
+Binary Attachment:                      len=386 bytes
+Non UTF-8 encoded string:
+00000   50 4b 03 04 14 00 00 00   08 00 da 6c ec 58 51 fa    PK······  ···l·XQ·
+00010   1d 1b cc 00 00 00 33 01   00 00 10 00 1c 00 6a 73    ······3·  ······js
+00020   6f 6e 2d 70 72 65 74 74   79 2e 6a 73 6f 6e 55 54    on-prett  y.jsonUT
+00030   04 e8 03 00 00 04 e8 03   00 00 65 4f cd 4a c3 40    ········  ··eO·J·@
+00040   10 3e 67 9f 62 d8 73 91   a6 49 89 f1 22 b9 88 85    ·>g·b·s·  ·I··"···
+00050   d2 4b c5 8b 78 18 e3 14   17 92 1d 9d dd 69 09 a5    ·K··x···  ·····i··
+00060   00 00 00 00 01 00 01 00   56 00 00 00 16 01 00 00    ········  V·······
+00070   00 00 ·· ·· ·· ·· ·· ··   ·· ·· ·· ·· ·· ·· ·· ··    ··
+
+^^^^^^^^^^^^^^^^^^^^^^ End Message #4 ^^^^^^^^^^^^^^^^^^^^^^
 ```
 
 ### Compact: indent = 0
