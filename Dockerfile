@@ -22,6 +22,9 @@
 #
 #     1) ./gradlew clean assemble      (or download a pre-built release from GitHub)
 #     2) docker build -t solace-pretty-dump:latest -t solace-pretty-dump:1.1.0 --file Dockerfile .
+#
+# Optional, for distribution:
+#
 #     3) docker save solace-pretty-dump:latest | gzip > solace-pretty-dump-x.y.z.tar.gz
 #
 

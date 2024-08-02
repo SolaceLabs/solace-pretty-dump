@@ -158,8 +158,6 @@ public class PrettyDump {
 		System.out.println("https://github.com/SolaceLabs/solace-pretty-dump");
 		System.out.println("https://solace.community/discussion/3238/sdkperf-but-pretty-for-json-and-xml");
 		System.out.println();
-
-
 	}
 
 	private static void printHelpText(boolean full) {
@@ -393,8 +391,10 @@ public class PrettyDump {
 			} else {
 				host = argsList.get(0);
 			}
+		} else {
+			host = argsList.get(0);
 		}
-		System.out.println(argsList);
+//		System.out.println(argsList);
 		if (argsList.size() > 1) vpn = argsList.get(1);
 		if (argsList.size() > 2) username = argsList.get(2);
 		if (argsList.size() > 3) password = argsList.get(3);

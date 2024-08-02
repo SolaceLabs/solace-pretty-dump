@@ -9,7 +9,7 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 - [Running](#running)
 - [Command-line parameters](#command-line-parameters)
 - Subscribing options: [Direct topic subscriptions](#direct-subscriptions), [Queue consume](#queue-consume), [Browsing a queue](#browsing-a-queue), [TempQ with subs](#temporary-queue-with-subscriptions)
-- [Output Indent options](#output-indent-options---the-6th-argument) ([One-line Mode](#one-line-mode-indent--0))
+- [Output Indent options](#output-indent-options--the-6th-argument) ([One-line Mode](#one-line-mode-indent--0))
 - [Count, Selectors and Filtering](#count-selectors-and-filtering)
 - [One-line Mode: Runtime options](#one-line-mode-runtime-options)
 - [Charset Encoding](#charset-encoding)
@@ -117,10 +117,12 @@ Usage: prettydump [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [i
     • Or if first arg parses as integer, select as indent, rest default options
  - Additional non-ordered args: --count, --filter, --selector, --trim
  - Environment variables for decoding charset and colour mode
+ 
+prettydump -hm for more help on indent, count, Seletors, Filters, charsets, and colour mode
 ```
 
 
-## Subscribing options - the 5th argument
+## Subscribing options: the 5th argument
 
 ### Direct Subscription(s)
 
@@ -166,26 +168,34 @@ Are you sure? [y|yes]:
 
 To non-destructively view the messages on a queue, use the browse option: `b:<queueName>`.  Once the app starts up
 and initializes, you have the option of browsing
-all messages, a single message based on Message ID, or a range of messages (either closed "`12345-67890`" or open-ended "`12345-`").
+ALL messages, or a range of messages using the Message Spool ID or Repication Group Message ID (either closed "`12345-67890`" or open-ended "`12345-`").
 
-To find the ID of the messages on a queue, either use PubSub+ Manager, CLI, or SEMP:
-
-![View Message IDs in PubSubPlus Manager](https://github.com/SolaceLabs/pretty-dump/blob/main/src/browse-msgs.png)
-
-**NOTE:** Use `f:<queueName>` to browse just the _first/oldest_ message on the queue. Very useful for "poison pills" or "head-of-line blocking" messages.  This the same as regular browse with a count of 1.
+To find the Message Spool ID or RGMID of the messages on a queue, either use PubSub+ Manager, CLI, or SEMP:
 
 ```
-$ prettydump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1 1
+solace> show queue q1 message-vpn default messages newest detail
+```
+![View Message IDs in PubSubPlus Manager](https://github.com/SolaceLabs/pretty-dump/blob/main/src/browse-msgs.png)
+
+I'm working on some bash shell scripts to help with this stuff.
+
+**NOTE:** Use `f:<queueName>` to browse just the _first/oldest_ message on the queue. Very useful for "poison pills" or "head-of-line blocking" messages.  This the same as regular browse with `--count=1`.
+
+```
+$ prettydump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1 --count=1
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'aaron-demo-singapore' on broker 'aaron.messaging.solace.cloud'.
+
 Attempting to browse queue 'q1' on the broker... success!
 
 Browse all messages -> press [ENTER],
- or to/from range of Message Spool IDs (e.g. "106259-110261" or "98517-" or "-103345"),
- or start at RGMID (e.g. "rmid1:3477f-a5ce52..."): 31737085
+ or to/from or range of MsgSpoolIDs (e.g. "10659-11061" or "9817-" or "-10845"),
+ or to/from RGMID (e.g. "-rmid1:3477f-a5ce52..."): 31737085-
+
 
 Starting. Press Ctrl-C to quit.
+🔎 MsgSpoolId outside of range. Recv'd=8960, Filtered=8960, Printed=0
 ^^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'bus_trak/gps/v2/004M/01398/001.31700/0103.80721/30/OK'
 Priority:                               4
@@ -232,7 +242,7 @@ Subscribed tempQ to *NOT* topic: '!#noexport/orders/cancelled/>'
 
 
 
-## Output Indent options - the 6th argument
+## Output Indent options: the 6th argument
 
 ### Regular: indent > 0
 
