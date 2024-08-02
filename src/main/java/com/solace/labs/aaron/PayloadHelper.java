@@ -128,8 +128,12 @@ public enum PayloadHelper {
 		return autoTrimPayload;
 	}
 	
-	public void setAutoSpaceIndentLevels(boolean enabled) {
+	public void setAutoSpaceTopicLevels(boolean enabled) {
 		autoSpaceTopicLevels = enabled;
+	}
+	
+	public boolean isAutoSpaceTopicLevelsEnabled() {
+		return autoSpaceTopicLevels;
 	}
     
 	public boolean isLastNMessagesEnabled() {
@@ -237,13 +241,15 @@ public enum PayloadHelper {
 //    	return Math.min(INDENT, currentScreenWidth - 15);
     }
     
-    public void dealWithIndentParam(String indentStr) throws NumberFormatException {
+    /** Throws NumberFormat if it can't be parsed, or IllegalArgument if it is a number, but invalid */
+    public void dealWithIndentParam(String indentStr) throws NumberFormatException, IllegalArgumentException {
+    	// first, switch any pluses to minuses
     	if (indentStr.startsWith("+") && indentStr.length() >= 2) {
     		autoSpaceTopicLevels = true;
     		indentStr = "-" + indentStr.substring(1);
     	}
 		int indent = Integer.parseInt(indentStr);  // might throw
-		if (indent < -250 || indent > 8) throw new NumberFormatException();
+		if (indent < -250 || indent > 8) throw new IllegalArgumentException();
 		INDENT = indent;
 		if (INDENT < 0) {
 			oneLineMode = true;
@@ -263,11 +269,19 @@ public enum PayloadHelper {
 				oneLineMode = true;
 				noPayload = true;
 			} else if (indentStr.equals("00")) {
-				noPayload = true;
 				INDENT = 2;
+				noPayload = true;
 			} else if (indentStr.equals("000")) {
 				noPayload = true;
+//				INDENT = 0;  // that's already done above!
+			} else if (indentStr.equals("0")) {
+				// nothing, normal
+			} else if (indentStr.equals("0000")) {  // something new, no user proper or data
 				INDENT = 0;
+				noPayload = true;
+				autoTrimPayload = true;
+			} else {  // shouldn't be anything else (e.g. "0000")
+				throw new IllegalArgumentException();
 			}
 		}
     }

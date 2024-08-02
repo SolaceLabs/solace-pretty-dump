@@ -22,6 +22,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.fusesource.jansi.Ansi;
 import org.fusesource.jansi.Ansi.Attribute;
+import org.fusesource.jansi.AnsiColors;
 
 import com.solace.labs.aaron.utils.BoundedLinkedList;
 
@@ -526,20 +527,25 @@ public class AaAnsi /* implements CharSequence */ {
 	}
 
 	/** Just copy the whole AaAnsi into this one. */
-	public AaAnsi a(AaAnsi ansi) {
-		jansi.a(ansi.toString());
-		if (curElem != null) fg(curElem.getCurrentColor().value);  // put it back to whatever color it was before
+	public AaAnsi a(AaAnsi aa) {
+		jansi.a(aa.toString());
+		if (curElem != null && aa.curElem != null && curElem != aa.curElem) {
+			fg(curElem.getCurrentColor().value);  // put it back to whatever color it was before
+		} else if (MODE == ColorMode.MATRIX) {  // gonna make some wacky colours!
+			fg(Elem.STRING.getCurrentColor().value);  // doesn't matter what type
+			// comment this out if we're using the real palette and not random colors
+		}
 //		charCount += ansi.charCount;
-		controlChars += ansi.controlChars;
-		replacementChars += ansi.replacementChars;
-		rawSb.append(ansi.rawSb);
+		controlChars += aa.controlChars;
+		replacementChars += aa.replacementChars;
+		rawSb.append(aa.rawSb);
 //		if (ansi.rawCompressedSb.length() > 0 && ansi.rawCompressedSb.charAt(0) == ' ' && lastRawCompressedChar == ' ') {
 //			rawCompressedSb.append(ansi.rawCompressedSb.substring(1));
 //		} else {
 //			rawCompressedSb.append(ansi.rawCompressedSb);
 //		}
 //		lastRawCompressedChar = ansi.lastRawCompressedChar;
-		insideEscapeCode = ansi.insideEscapeCode;  // possibly inside an escape code, but I doubt it!
+		insideEscapeCode = aa.insideEscapeCode;  // possibly inside an escape code, but I doubt it!
 		return this;
 	}
 	

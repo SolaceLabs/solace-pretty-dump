@@ -5,49 +5,46 @@ import java.util.regex.Pattern;
 
 public class SystemOutHelper {
 
-	StringBuilder sb = new StringBuilder();
-	StringBuilder raw = new StringBuilder();
+	StringBuilder col = new StringBuilder();
+	StringBuilder bw = new StringBuilder();
 	
 	public SystemOutHelper print(String s) {
-		sb.append(s);
-		raw.append(s);
+		col.append(s);
+		bw.append(s);
 		return this;
 	}
 	
 	public SystemOutHelper print(AaAnsi aa) {
-		sb.append(aa.toString());
-		raw.append(aa.toRawString());
+		col.append(aa.toString());
+		bw.append(aa.toRawString());
 		return this;
 	}
 	
 	public SystemOutHelper println(String s) {
-		sb.append(s).append('\n');
-		raw.append(s).append('\n');
+		col.append(s).append('\n');
+		bw.append(s).append('\n');
 		return this;
 	}
 	
 	public SystemOutHelper println() {
-		sb.append('\n');
-		raw.append('\n');
+		col.append('\n');
+		bw.append('\n');
 		return this;
 	}
 	
 	public SystemOutHelper println(AaAnsi aa) {
-		sb.append(aa.toString()).append('\n');
-		raw.append(aa.toRawString()).append('\n');
+		col.append(aa.toString()).append('\n');
+		bw.append(aa.toRawString()).append('\n');
 		return this;
 	}
 	
 	public boolean containsRegex(Pattern p) {
-//		Pattern p = Pattern.compile(regex, Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
-		Matcher m = p.matcher(raw.toString());
-		
-//		Matcher m = p.matcher("hello aaron world");
+		Matcher m = p.matcher(bw.toString());
 		return m.find();
 	}
 	
 	@Override
 	public String toString() {
-		return sb.toString();
+		return col.toString();
 	}
 }

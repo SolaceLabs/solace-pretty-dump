@@ -142,7 +142,12 @@ public class MessageHelper {
             	if (line.isEmpty() || line.matches("\\s*")) continue;  // testing 
 				if (line.startsWith("User Property Map:") && userProps != null) {
             		if (PayloadHelper.Helper.getFormattingIndent() == 0) {
-                		systemOut.println("User Property Map:                      " + userProps.formatted);
+            			if (PayloadHelper.Helper.isAutoTrimPayload()) {
+//            				systemOut.println(line);  // hide the user props
+                    		systemOut.println("User Property Map:                      " + userProps.numElements + " elements");
+            			} else {
+            				systemOut.println("User Property Map:                      " + userProps.formatted);
+            			}
             		} else {
 //                		systemOut.println(new AaAnsi().a(line));
                 		systemOut.println("User Property Map:                      " + userProps.numElements + " elements");
@@ -151,7 +156,11 @@ public class MessageHelper {
             		if (PayloadHelper.Helper.getFormattingIndent() > 0 && !PayloadHelper.Helper.isNoPayload()) systemOut.println();
             	} else if (line.startsWith("User Data:") && userData != null) {
             		if (PayloadHelper.Helper.getFormattingIndent() == 0) {
-                		systemOut.println("User Data:                              " + userData.formatted);
+            			if (PayloadHelper.Helper.isAutoTrimPayload()) {
+	                		systemOut.println(line);
+            			} else {
+	                		systemOut.println("User Data:                              " + userData.formatted);
+            			}
             		} else {
                 		systemOut.println(new AaAnsi().a(line).a(" bytes"));
                 		systemOut.println(userData.formatted);
@@ -233,8 +242,8 @@ public class MessageHelper {
 				if (PayloadHelper.Helper.getCurrentIndent() == 2) {  // two-line mode
 					AaAnsi props = AaAnsi.n().fg(Elem.PAYLOAD_TYPE);
 					if (userProps != null) {
-//						props.a(userProps.numElements + (userProps.numElements == 1 ? " UserProp" : " UserProps")).reset();  // wiggles to much back and for with 1 / 2
-						props.a(userProps.numElements + " UserProps").reset();
+						props.a(userProps.numElements + (userProps.numElements == 1 ? " UserProp " : " UserProps")).reset();
+//						props.a(userProps.numElements + " UserProps").reset();
 					} else {
 						props.faintOn().a("- UserProps").reset();
 					}

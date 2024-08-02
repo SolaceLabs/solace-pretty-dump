@@ -31,7 +31,7 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 
 ```
 ./gradlew clean assemble
-cd build/staged
+cd build/staged/bin
 prettydump
 ```
 
@@ -93,7 +93,7 @@ solace/samples/testing       This is a text payload.
 ## Command-line parameters
 
 ```
-$ prettydump -h  or  --help
+$ prettydump -h   or  --help  or  -hm
 
 Usage: prettydump [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [indent] [count]
    or: prettydump <topics|[qbf]:queueName|tq:topics> [indent] [count]  for "shortcut" mode

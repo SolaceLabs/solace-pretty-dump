@@ -337,21 +337,31 @@ public class UsefulUtils {
 //		String[] hex = bytesToHexStringArray(bytes);
 		String hex2 = bytesToLongHexString(bytes);
 		AaAnsi aa = new AaAnsi();
-		int roundedLenghth = (int)(Math.ceil(bytes.length * 1.0 / width) * width);  
+		int roundedLenghth = (int)(Math.ceil(bytes.length * 1.0 / width) * width);
+		StringBuilder bytesSoFar = new StringBuilder();
 		for (int i=0; i < roundedLenghth; i++) {
 			if (i % width == 0) {
 				// some extra row values to show the complete hex code here
-				aa.fg(Elem.DATA_TYPE).a(String.format("%04x",(i / 16) % (4096))).a('0').a(' ').a(' ').a(' ').fg(Elem.BYTES);
+				aa.fg(Elem.DATA_TYPE).a(String.format("%04x0   ",(i / 16) % (4096))).fg(Elem.BYTES);
+				bytesSoFar.setLength(0);  // reuse
 			}
 //			ansi.a(hex[i]).a(" ");
 			if (i == bytes.length) aa.faintOn();  // when we've run out of bytes
-			if (i < bytes.length) aa.a(hex2.substring(i*2, (i*2)+2)).a(' ');
-			else aa.a('·').a('·').a(' ');
+//			if (i < bytes.length) aa.a(hex2.substring(i*2, (i*2)+2)).a(' ');
+//			else aa.a('·').a('·').a(' ');
+//			if (i % COLS == COLS-1) {
+//				aa.a(' ').a(' ');
+//			}
+			if (i < bytes.length) bytesSoFar.append(hex2.substring(i*2, (i*2)+2)).append(' ');
+			else bytesSoFar.append("·· ");
 			if (i % COLS == COLS-1) {
-				aa.a(' ').a(' ');
+				bytesSoFar.append("  ");
 			}
+
 			if (i % width == width-1) {
-				if (i >= bytes.length) aa.faintOff();
+				/* if (i >= bytes.length) */ aa.faintOff();
+				aa.a(bytesSoFar.toString());
+				bytesSoFar.setLength(0);  // reuse
 				aa.a(' ').fg(Elem.BYTES_CHARS);
 				for (int j=i-(width-1); j<=i; j++) {
 					if (j < bytes.length) {

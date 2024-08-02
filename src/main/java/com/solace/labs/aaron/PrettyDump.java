@@ -25,7 +25,6 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.regex.Pattern;
 
@@ -78,7 +77,7 @@ public class PrettyDump {
 	}
 	private static final JCSMPFactory f = JCSMPFactory.onlyInstance();
 
-//	private static PayloadHelper payloadHelper;
+	//	private static PayloadHelper payloadHelper;
 
 	private static volatile boolean isShutdown = false;          // are we done yet?
 	private static volatile boolean isConnected = false;
@@ -98,38 +97,41 @@ public class PrettyDump {
 	private static ReplicationGroupMessageId browseFromRGMID = null;
 
 	private static FlowReceiver flowQueueReceiver = null;  // for queues and tempQueue
-    private static XMLMessageConsumer directConsumer = null;  // for Direct
-    
+	private static XMLMessageConsumer directConsumer = null;  // for Direct
 
-    private static void printHelpIndent() {
-    	
-		System.out.println(" - 1..8      normal mode, pretty-printed and indented n spaces");
-		System.out.println(" - 0         normal mode, payload and user properties compressed to one line");
-		System.out.println(" - 00        no payload, user properties still pretty-printed");
-		System.out.println(" - 000       no payload, user properties compressed to one line");
-		System.out.println(" - ±250..±3  one-line mode, topic and payload only, compressed, fixed indent");
-		System.out.println(" - ±2        two-line mode, topic and payload on two lines");
-		System.out.println(" - ±1        one-line mode, automatic variable payload indentation");
-		System.out.println(" - ±0        one-line mode, topic only, with/without topic spacing");
-		System.out.println("Runtime: press 't'[ENTER] (or argument '--trim') to auto-trim payload to screen width");
-		System.out.println("Runtime: press '+' or '-'[ENTER] to toggle topic level spacing during runtime");
-//		System.out.println("Runtime: press \"t[ENTER]\" to toggle payload trim to terminal width (or argument --trim)");
-//		System.out.println("Runtime: press \"+ or -[ENTER]\" to toggle topic level spacing/alignment (or argument \"+indent\")");
-		System.out.println("NOTE: optional content Filter searches entire message body, regardless of indent");
-//		printUsageText();
-		System.out.println("See README.md for more detailed help with indent.");
-    	
-    }
-    
-    
-    private static void printHelpMoreText() {
-    	printHelpText();
-		System.out.println(" - Optional indent: integer, default==2 spaces; specifying 0 compresses payload formatting");
-		System.out.println("    - No payload mode: use indent '00' to only show headers and props, or '000' for compressed");
-		System.out.println("    - One-line mode: use negative indent value (trim topic length) for topic & payload only");
-		System.out.println("       - Or use -1 for auto column width adjustment, or -2 for two-line mode");
-		System.out.println("       - Use negative zero -0 for topic only, no payload");
-		System.out.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
+
+	private static void printHelpIndent() {
+
+		System.out.println("    - 1..8      normal mode, pretty-printed and indented n spaces");
+		System.out.println("    - 0         normal mode, payload and user properties compressed to one line");
+		System.out.println("    - 00        no payload mode, user properties still pretty-printed");
+		System.out.println("    - 000       no payload mode, user properties each compressed to one line");
+		System.out.println("    - 0000      no payload mode, no user properties, headers only");
+		System.out.println("    - ±250..±3  one-line mode, topic and payload only, compressed, fixed indent");
+		System.out.println("    - ±2        two-line mode, topic and payload on two lines");
+		System.out.println("    - ±1        one-line mode, automatic variable payload indentation");
+		System.out.println("    - ±0        one-line mode, topic only, with/without topic spacing");
+		//		System.out.println("Runtime: press 't'[ENTER] (or argument '--trim') to auto-trim payload to screen width");
+		//		System.out.println("Runtime: press '+' or '-'[ENTER] to toggle topic level spacing during runtime");
+		////		System.out.println("Runtime: press \"t[ENTER]\" to toggle payload trim to terminal width (or argument --trim)");
+		////		System.out.println("Runtime: press \"+ or -[ENTER]\" to toggle topic level spacing/alignment (or argument \"+indent\")");
+		//		System.out.println("NOTE: optional content Filter searches entire message body, regardless of indent");
+		////		printUsageText();
+		//		System.out.println("See README.md for more detailed help with indent.");
+
+	}
+
+
+	private static void printHelpMoreText() {
+		printHelpText();
+		System.out.println(" - Optional indent: integer, valid values:");
+		printHelpIndent();
+		//		System.out.println(" - Optional indent: integer, default==2 spaces; specifying 0 compresses payload formatting");
+		//		System.out.println("    - No payload mode: use indent '00' to only show headers and props, or '000' for compressed");
+		//		System.out.println("    - One-line mode: use negative indent value (trim topic length) for topic & payload only");
+		//		System.out.println("       - Or use -1 for auto column width adjustment, or -2 for two-line mode");
+		//		System.out.println("       - Use negative zero -0 for topic only, no payload");
+		//		System.out.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
 		System.out.println(" - Shortcut mode: first argument contains '>', '*', or starts '[qbf]:', assume default broker");
 		System.out.println("    - e.g. prettydump 'logs/>' -1  ~or~  prettydump q:q1  ~or~  prettydump b:dmq -0");
 		System.out.println("    - Or if first argument parses as integer, select as indent, rest default options");
@@ -143,22 +145,21 @@ public class PrettyDump {
 		System.out.println("    - Press \"[1-n][ENTER]\" to highlight a particular topic level (\"0[ENTER]\" to revert)");
 		System.out.println("Environment variable options:");
 		System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=ISO-8859-1");
-//		System.out.println("    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or \"set\" on Windows)");
+		//		System.out.println("    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or \"set\" on Windows)");
 		System.out.println(" - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever");
 		System.out.println("    - Choose: \"standard\" (default), \"vivid\", \"light\", \"minimal\", \"matrix\", \"off\"");
-		System.out.println(" - Selector for Queue consume and browse: export PRETTY_SELECTOR=\"what like 'ever%'\"");
-		System.out.println(" - Client-side regex Filtering on any received message: export PRETTY_FILTER=\"ID:123abc\"");
-		System.out.println("    - Or use --selector=\"what like 'ever%'\" and --filter=\"ID:123abc\" in command line args");
+		System.out.println(" - Selector for Queue consume and browse: --selector=\"what like 'ever%'\"");
+		System.out.println(" - Client-side regex Filtering on any received message: --filter=\"ID:123abc\"");
 		System.out.println("SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to \" | prettydump wrap\" to prettify");
-//		System.out.println(" - Note: add the 'bin' directory to your path to make it easier");
+		//		System.out.println(" - Note: add the 'bin' directory to your path to make it easier");
 		System.out.println();
-    	
-    	
-    	
-    }
-    
-    private static void printHelpText() {
-    	printUsageText();
+
+
+
+	}
+
+	private static void printHelpText() {
+		printUsageText();
 		System.out.println(" - Default protocol \"tcp://\"; for TLS use \"tcps://\"; or \"ws://\" or \"wss://\" for WebSocket");
 		System.out.println(" - Default parameters will be: localhost:55555 default foo bar '#noexport/>' 2");
 		System.out.println(" - Subscribing options (param 5, or shortcut mode param 1), one of:");
@@ -167,48 +168,93 @@ public class PrettyDump {
 		System.out.println("    - q:queueName to consume from queue");
 		System.out.println("    - b:queueName to browse a queue (all messages, or range by MsgSpoolID or RGMID)");
 		System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
-		System.out.println("    - tq:topics   to provision a tempQ with topics subscribed (can use NOT '!' topics)");
-		System.out.println(" - Optional indent: integer, default==2; > 0 normal, = 0 compress, < 0 one-line mode");
-		System.out.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
-    }
-    
-    private static void printUsageText() {
-		System.out.printf("Usage: %s [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [indent] [count]%n", APP_NAME.toLowerCase());
-		System.out.printf("   or: %s <topics|[qbf]:queueName|tq:topics> [indent] [count]  for \"shortcut\" mode%n%n", APP_NAME.toLowerCase());
-    }
-    
-    private static void printParamsInfo(String indentStr, long count) {
-//    	indent = PayloadHelper.Helper.getCurrentIndent()
-    	
-    	
-    	
-    	
-    	AaAnsi aa = AaAnsi.n().a("Indent = ").fg(Elem.NUMBER).a(indentStr).reset();
-//    	if ((PayloadHelper.Helper.getCurrentIndent() != 2 && !PayloadHelper.Helper.isNoPayload()) || count != Long.MAX_VALUE) {  // one of the defaults has changed
-    		if (PayloadHelper.Helper.isOneLineMode()) {
-    			if (PayloadHelper.Helper.getCurrentIndent() == 2) {
-    				aa.a(" two-line mode");
-    			} else {
-    				aa.a(" one-line mode");
-    			}
+		System.out.println("    - tq:topics   to provision a tempQ with optional topics  (can use NOT '!' topics)");
+		System.out.println(" - Optional indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode");
+		//		System.out.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
+		System.out.println(" - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume default broker");
+		System.out.println("    - Or if first arg parses as integer, select as indent, rest default options");
+		System.out.println(" - Additional non-ordered args: --count, --filter, --selector, --trim");
+		System.out.println(" - Environment variables for decoding charset and colour mode");
+		System.out.println();
+		System.out.println(" - See -hm for more details on indent, count, Seletors, Filters, charsets, and color mode");
+	}
+
+	private static void printUsageText() {
+		System.out.printf("Usage: %s [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [indent]%n", APP_NAME.toLowerCase());
+		System.out.printf("   or: %s <topics|[qbf]:queueName|tq:topics> [indent]  for \"shortcut\" mode%n", APP_NAME.toLowerCase());
+		System.out.println();
+	}
+
+	private static void printParamsInfo(String indentStr, String countStr) {
+		//    	if (indentStr.isEmpty()) indentStr = "2";
+		//    	String countStr = Long.toString(count);
+		//    	System.out.println(countStr);
+		int pad = Math.max(indentStr.length(), countStr.length());
+		AaAnsi aa = AaAnsi.n();
+		if (!indentStr.isEmpty()) {
+			aa.a("Indent=").fg(Elem.NUMBER).a(String.format("%"+pad+"s",indentStr)).reset().a(" (");
+			if (PayloadHelper.Helper.isOneLineMode()) {
+				if (PayloadHelper.Helper.isNoPayload()) {
+					aa.a("topic-only mode");
+				} else if (PayloadHelper.Helper.getCurrentIndent() == 2) {
+					aa.a("two-line mode");
+				} else {
+					aa.a("one-line mode");
+					if (PayloadHelper.Helper.isAutoResizeIndent()) {
+						aa.a(", auto-indent");
+					} else {
+						aa.a(", topic width=").a(PayloadHelper.Helper.getCurrentIndent()-2);
+					}
+				}
+				if (PayloadHelper.Helper.isAutoSpaceTopicLevelsEnabled()) {
+					aa.a(", aligned topic levels");
+				} else {
+				}
+				if (!PayloadHelper.Helper.isNoPayload()) {
+					if (PayloadHelper.Helper.isAutoTrimPayload()) {
+						aa.a(", auto-trim payload");
+					} else {
+						aa.a(", full payload");
+					}
+				}
 			} else {
 				if (PayloadHelper.Helper.isNoPayload()) {
-					
+					aa.a("no-payload mode");//normal mode, indent=").a(PayloadHelper.Helper.getCurrentIndent());
+				} else {
+					aa.a("normal mode");
+					if (PayloadHelper.Helper.getCurrentIndent() > 0) aa.a(", indent=").a(PayloadHelper.Helper.getCurrentIndent());
 				}
-				aa.a(" normal mode");
-    		}
-//    	}
-    	System.out.println(aa);
-    }
+				if (PayloadHelper.Helper.getCurrentIndent() == 0) {
+					aa.a(", compressed");
+					if (PayloadHelper.Helper.isAutoTrimPayload()) aa.a(", hide User Props");
+				}
+			}
+			aa.a(')');
+		}
+		if (!countStr.isEmpty()) {  // normal mode
+			if (aa.length() > 0) aa.a("\n Count=");
+			else aa.a("Count=");
+			aa.fg(Elem.NUMBER).a(String.format("%"+pad+"s", countStr)).reset();
+			if (origMsgCount == Long.MAX_VALUE) {
+				assert PayloadHelper.Helper.isLastNMessagesEnabled();
+				aa.a(" (only dump last " + PayloadHelper.Helper.getLastNMessagesCapacity());
+			} else {
+				aa.a(" (stop after " + countStr);
+			}
+			aa.a(" messages)");
+		}
+		//    	}
+		System.out.println(aa);
+	}
 
 	@SuppressWarnings("deprecation")  // this is for our use of Message ID for the browser
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
-//		
-//		ReplicationGroupMessageId one = f.createReplicationGroupMessageId("rmid1:3477f-a5ce520f5ec-00000000-000f89e2");
-//		ReplicationGroupMessageId two = f.createReplicationGroupMessageId("rmid1:3477f-a5ce520f5ec-00000000-000f89e2");
-//		System.out.println(one.equals(two));
-//		System.exit(0);
-//		
+		//		
+		//		ReplicationGroupMessageId one = f.createReplicationGroupMessageId("rmid1:3477f-a5ce520f5ec-00000000-000f89e2");
+		//		ReplicationGroupMessageId two = f.createReplicationGroupMessageId("rmid1:3477f-a5ce520f5ec-00000000-000f89e2");
+		//		System.out.println(one.equals(two));
+		//		System.exit(0);
+		//		
 		for (String arg : args) {
 			if (arg.equals("-h") || arg.startsWith("--h") || arg.equals("-?") || arg.startsWith("--?") || arg.contains("-help")) {
 				printHelpText();
@@ -225,26 +271,66 @@ public class PrettyDump {
 		}
 		PayloadHelper.init(CHARSET);
 		if (System.getenv("PRETTY_SELECTOR") != null && !System.getenv("PRETTY_SELECTOR").isEmpty()) {
-			selector = System.getenv("PRETTY_SELECTOR");
+			System.out.println(AaAnsi.n().invalid(String.format("Env var PRETTY_SELECTOR deprecated, use argument --selector=\"%s\" instead.%n", System.getenv("PRETTY_SELECTOR"))));
+			System.exit(1);
+			//			selector = System.getenv("PRETTY_SELECTOR");
 		}
 		if (System.getenv("PRETTY_FILTER") != null && !System.getenv("PRETTY_FILTER").isEmpty()) {
-			contentFilter = System.getenv("PRETTY_FILTER");
+			System.out.println(AaAnsi.n().invalid(String.format("Env var PRETTY_FILTER deprecated, use argument --filter=\"%s\" instead.%n", System.getenv("PRETTY_FILTER"))));
+			System.exit(1);
+			//			contentFilter = System.getenv("PRETTY_FILTER");
 		}
 
 		// special command-line argument handling
-		List<String> args2 = new ArrayList<>();
+		ArrayList<String> argsList = new ArrayList<>();
+		//		ArrayList<String>
 		for (String arg : args) {
-			if (arg.startsWith("--selector=")) {
-				selector = arg.substring("--selector=".length());
-			} else if (arg.startsWith("--filter=")) {
-				contentFilter = arg.substring("--filter=".length());
+			if (arg.startsWith("--selector")) {
+				try {
+					selector = arg.substring("--selector=".length());
+				} catch (StringIndexOutOfBoundsException e) {
+					System.out.println(AaAnsi.n().invalid(String.format("Must specify a value for Selector.")));
+					printHelpText();
+					System.out.println("See README.md for more detailed help.");
+					System.exit(1);
+				}
+			} else if (arg.startsWith("--filter")) {
+				try {
+					contentFilter = arg.substring("--filter=".length());
+				} catch (StringIndexOutOfBoundsException e) {
+					System.out.println(AaAnsi.n().invalid(String.format("Must specify a regex for Filter.")));
+					printHelpText();
+					System.out.println("See README.md for more detailed help.");
+				}
 			} else if (arg.equals("--trim")) {
 				PayloadHelper.Helper.setAutoTrimPayload(true);
+			} else if (arg.startsWith("--count")) {
+				String argVal = "?";
+				try {
+					argVal = arg.substring("--count=".length());
+					//				System.out.println(argVal);
+					long count = Long.parseLong(argVal);
+					if (count > 0) {
+						msgCountRemaining = count;
+						origMsgCount = count;
+					} else if (count < 0) {  // keep the last N messages
+						PayloadHelper.Helper.enableLastNMessage(Math.abs((int)count));
+					} else {
+						throw new NumberFormatException();
+					}
+				} catch (NumberFormatException | StringIndexOutOfBoundsException e) {
+					System.out.println(AaAnsi.n().invalid(String.format("Invalid value for count: '%s'. > 0 to stop after n msgs; < 0 to display last n msgs.", argVal)));
+					printUsageText();
+					System.out.println("See README.md for more detailed help.");
+					System.exit(1);
+				}
+
 			} else {
-				args2.add(arg);  // add argument normally
+				argsList.add(arg);  // add argument normally
 			}
 		}
-		args = args2.toArray(new String[0]);
+		//		args = args2.toArray(new String[0]);
+		args = null;
 		if (selector != null && !selector.isEmpty()) {
 			if (selector.length() > 2000) {
 				System.out.println(AaAnsi.n().invalid("Selector length greater than 2000 character limit!"));
@@ -256,78 +342,97 @@ public class PrettyDump {
 			// compiling might throw an exception
 			Pattern p = Pattern.compile(contentFilter, Pattern.MULTILINE | Pattern.DOTALL);//| Pattern.CASE_INSENSITIVE);
 			PayloadHelper.Helper.setRegexFilterPattern(p);
-//			System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Filter detected: \"%s\"", contentFilter)));
+			//			System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Filter detected: \"%s\"", contentFilter)));
 		}
-//		System.out.println(Arrays.toString(args));
-//		System.out.printf("selector='%s'%n", selector);
-//		System.out.printf("filter='%s'%n", contentFilter);
-		
+
 		String host = "localhost";
-		boolean shortcut = false;
+		String vpn = "default";
+		String username = "foo";
+		String password = "bar";
 		// new shortcut MODE... if first arg looks like topics, assume topic wildcard, and assume localhost default connectivity for rest
-		if (args.length > 0) {
-			if (args[0].contains(">") || args[0].contains("*") || args[0].startsWith("tq:")) {  // shortcut MODE
+		if (argsList.size() > 0 && argsList.size() <= 2) {  // can only have topic+indent in shortcut mode
+			String arg0 = argsList.get(0);
+			boolean shortcut = false;
+			if ((arg0.contains("/") && !arg0.contains("//"))
+					|| arg0.contains("*")
+					|| arg0.contains("#")
+					|| arg0.startsWith("tq:")) {  // shortcut MODE
 				shortcut = true;
-				topics = args[0].split("\\s*,\\s*");  // split on commas, remove any whitespace around them
-			} else if (args[0].matches("^[qbf]:.+")) {  // either browse, queue consume, or browse first to localhost
+				//				topics = args[0].split("\\s*,\\s*");  // split on commas, remove any whitespace around them
+			} else if (arg0.matches("^[qbf]:.+")) {  // either browse, queue consume, or browse first to localhost
 				shortcut = true;
-				topics = new String[] { args[0] };  // just the one, queue name will get parsed out later
-			} else if (args.length == 1 || args.length == 2) {  // either just indent, or indent & count
+				//				topics = new String[] { args[0] };  // just the one, queue name will get parsed out later
+			} else if (argsList.size() == 1) {  // just indent?
 				// see if it's an integer, we'll use for indent
 				try {
-					PayloadHelper.Helper.dealWithIndentParam(args[0]);
+					PayloadHelper.Helper.dealWithIndentParam(arg0);
 					// if nothing thrown, then it's a valid indent, so assume shortcut mode
 					shortcut = true;
+					argsList.add(0, DEFAULT_TOPIC);
 					// let's modify the args list to make parsing the count easier
-					if (args.length == 2) args = new String[] { DEFAULT_TOPIC, args[0], args[1] };
-				} catch (NumberFormatException e) {
-					host = args[0];
+					//					if (args.length == 2) args = new String[] { DEFAULT_TOPIC, args[0], args[1] };
+				} catch (NumberFormatException e) {  // not a number
+					//					host = args[0];
+				} catch (IllegalArgumentException e) {  // a number, but not valid... let the check code later deal with it
+					shortcut = true;
+					argsList.add(0, DEFAULT_TOPIC);
 				}
+			}
+			if (shortcut) {  // add the default params in reverse order
+				argsList.add(0, password);
+				argsList.add(0, username);
+				argsList.add(0, vpn);
+				argsList.add(0, host);
 			} else {
-				host = args[0];
+				host = argsList.get(0);
 			}
 		}
-		String vpn = "default";
-		if (args.length > 1 && !shortcut) vpn = args[1];
-		String username = "foo";
-		if (args.length > 2 && !shortcut) username = args[2];
-		String password = "bar";
-		if (args.length > 3 && !shortcut) password = args[3];
-		if (args.length > 4 && !shortcut) {
-			if (args[4].matches("^[qbf]:.+")) {
-				topics = new String[] { args[4] };  // just the one, queue name will get parsed out later
+		System.out.println(argsList);
+		if (argsList.size() > 1) vpn = argsList.get(1);
+		if (argsList.size() > 2) username = argsList.get(2);
+		if (argsList.size() > 3) password = argsList.get(3);
+		if (argsList.size() > 4) {
+			String arg4 = argsList.get(4);
+			if (arg4.matches("^[qbf]:.+")) {
+				topics = new String[] { arg4 };  // just the one, queue name will get parsed out later
 			} else {
-				topics = args[4].split("\\s*,\\s*");  // split on commas, remove any whitespace around them
+				topics = arg4.split("\\s*,\\s*");  // split on commas, remove any whitespace around them, might start with tq:
 			}
 		}
-		if ((args.length > 5 && !shortcut) || (shortcut && args.length > 1)) {
-			String indentStr = args[shortcut ? 1 : 5];  // grab the correct command-line argument
+		if (argsList.size() > 5) {
+			String indentStr = argsList.get(5);  // grab the correct command-line argument
 			try {
 				PayloadHelper.Helper.dealWithIndentParam(indentStr);
-			} catch (NumberFormatException e) {
+			} catch (IllegalArgumentException e) {
 				System.out.println(AaAnsi.n().invalid(String.format("Invalid value for indent: '%s'.  ", indentStr)));
+				System.out.println();
+				printHelpIndent();
+				System.out.println();
 				System.out.println("prettydump -h  or  -hm for more help details, or see README.md for more details");
 				System.exit(1);
 			}
 		}
-		if ((args.length > 6 && !shortcut) || (shortcut && args.length > 2)) {
-			String argVal = args[shortcut ? 2 : 6];
-			try {
-				long count = Long.parseLong(argVal);
-				if (count > 0) {
-					msgCountRemaining = count;
-					origMsgCount = count;
-				} else if (count < 0) {  // keep the last N messages
-					PayloadHelper.Helper.enableLastNMessage(Math.abs((int)count));
-				} else {
-					throw new NumberFormatException();
-				}
-			} catch (NumberFormatException e) {
-				System.out.println(AaAnsi.n().invalid(String.format("Invalid value for count: '%s'. > 0 to stop after n msgs; < 0 to display last n msgs.", argVal)));
-				printUsageText();
-				System.out.println("See README.md for more detailed help.");
-				System.exit(1);
-			}
+		if (argsList.size() > 6) {
+			printHelpMoreText();
+			throw new IllegalArgumentException("Too many arguments");
+			//			String argVal = argsList.get(6);
+			//			System.out.println(argVal);
+			//			try {
+			//				long count = Long.parseLong(argVal);
+			//				if (count > 0) {
+			//					msgCountRemaining = count;
+			//					origMsgCount = count;
+			//				} else if (count < 0) {  // keep the last N messages
+			//					PayloadHelper.Helper.enableLastNMessage(Math.abs((int)count));
+			//				} else {
+			//					throw new NumberFormatException();
+			//				}
+			//			} catch (NumberFormatException e) {
+			//				System.out.println(AaAnsi.n().invalid(String.format("Invalid value for count: '%s'. > 0 to stop after n msgs; < 0 to display last n msgs.", argVal)));
+			//				printUsageText();
+			//				System.out.println("See README.md for more detailed help.");
+			//				System.exit(1);
+			//			}
 		}
 		AnsiConsole.systemInstall();
 		//		AaAnsi a = AaAnsi.n().a("hello there ").faintOn().a(" now this is faint").faintOff().a(" and now not.");
@@ -336,7 +441,7 @@ public class PrettyDump {
 		else System.out.println();
 		System.out.println(APP_NAME + " initializing...");
 		PayloadHelper.Helper.setProtobufCallbacks(ProtoBufUtils.loadProtobufDefinitions());
-//		payloadHelper.protobufCallbacks = ProtoBufUtils.loadProtobufDefinitions();
+		//		payloadHelper.protobufCallbacks = ProtoBufUtils.loadProtobufDefinitions();
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		// now let's get on with it!
 		final JCSMPProperties properties = new JCSMPProperties();
@@ -346,12 +451,12 @@ public class PrettyDump {
 		properties.setProperty(JCSMPProperties.PASSWORD, password);  // client-password
 		properties.setProperty(JCSMPProperties.REAPPLY_SUBSCRIPTIONS, true);  // subscribe Direct subs after reconnect
 		properties.setProperty(JCSMPProperties.SUB_ACK_WINDOW_SIZE, 20);  // moderate performance
-//		properties.setProperty(JCSMPProperties.GENERATE_RCV_TIMESTAMPS, true);  // turn on receive timestamping
+		//		properties.setProperty(JCSMPProperties.GENERATE_RCV_TIMESTAMPS, true);  // turn on receive timestamping
 		JCSMPChannelProperties channelProps = new JCSMPChannelProperties();
 		channelProps.setConnectRetries(0);
 		channelProps.setReconnectRetries(-1);
 		channelProps.setConnectRetriesPerHost(1);
-//		channelProps.setCompressionLevel(9);
+		//		channelProps.setCompressionLevel(9);
 		properties.setProperty(JCSMPProperties.CLIENT_CHANNEL_PROPERTIES, channelProps);
 		properties.setProperty(JCSMPProperties.IGNORE_DUPLICATE_SUBSCRIPTION_ERROR, false);  // we need these exceptions to know if our tempQ is new or same
 		JCSMPGlobalProperties.setShouldDropInternalReplyMessages(false);  // neat trick to hear all other req/rep messages
@@ -363,7 +468,7 @@ public class PrettyDump {
 				if (event.getEvent() == SessionEvent.RECONNECTING) {
 					if (isConnected) {  // first time
 						isConnected = false;
-//						System.out.print(AaAnsi.n().invalid("Connection lost!") + "\n > RECONNECTING...");
+						//						System.out.print(AaAnsi.n().invalid("Connection lost!") + "\n > RECONNECTING...");
 						System.out.println(AaAnsi.n().warn("TCP Connection lost!"));
 						System.out.print(" > SESSION RECONNECTING...");
 					} else {
@@ -390,23 +495,25 @@ public class PrettyDump {
 		isConnected = true;
 		session.setProperty(JCSMPProperties.CLIENT_NAME, "PrettyDump_" + session.getProperty(JCSMPProperties.CLIENT_NAME));
 		System.out.printf("%s connected to '%s' VPN on broker '%s'.%n%n", APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE), session.getProperty(JCSMPProperties.HOST));
-		
-		if ("yet".equals("not yet")) {
-			String indentStr = "2";  // default
-			if ((args.length > 5 && !shortcut) || (shortcut && args.length > 1)) {
-				indentStr = args[shortcut ? 1 : 5];  // grab the correct command-line argument
-			}
-			printParamsInfo(indentStr, msgCountRemaining);
+
+		{  // print out some nice param info
+			String indentStr = "";  // default
+			String countStr = "";
+			if (argsList.size() > 5) indentStr = argsList.get(5);  // grab the correct command-line argument
+			if (origMsgCount != Long.MAX_VALUE) countStr = Long.toString(origMsgCount);
+			else if (PayloadHelper.Helper.isLastNMessagesEnabled()) countStr = Integer.toString(-PayloadHelper.Helper.getLastNMessagesCapacity());
+			if (argsList.size() > 6) countStr = argsList.get(6);
+			if (!indentStr.isEmpty() || !countStr.isEmpty()) printParamsInfo(indentStr, countStr);
 		}		
-		
-//		for (CapabilityType cap : CapabilityType.values()) {
-//			System.out.println(cap + ": " + session.getCapability(cap));
-//		}
-		
-//		if (contentFilter != null) {
-////			System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Client-side Filter detected: \"%s\"", contentFilter)).reset());
-//			System.out.println(AaAnsi.n().a("🔎 Client-side Filter detected: ").aStyledString(contentFilter).reset());
-//		}
+
+		//		for (CapabilityType cap : CapabilityType.values()) {
+		//			System.out.println(cap + ": " + session.getCapability(cap));
+		//		}
+
+		//		if (contentFilter != null) {
+		////			System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Client-side Filter detected: \"%s\"", contentFilter)).reset());
+		//			System.out.println(AaAnsi.n().a("🔎 Client-side Filter detected: ").aStyledString(contentFilter).reset());
+		//		}
 
 		// is it a queue?
 		if (topics.length == 1 && topics[0].startsWith("q:") && topics[0].length() > 2) {  // QUEUE CONSUME!
@@ -443,7 +550,7 @@ public class PrettyDump {
 						} else if (fe == FlowEvent.FLOW_ACTIVE) {
 							isFlowActive = true;
 							if (latch.getCount() == 1) {  // first time here, so skip this notification
-								
+
 							} else {
 								if (!isConnected) System.out.println();  // connection coming back up
 								System.out.println(" > " + fe);
@@ -455,22 +562,21 @@ public class PrettyDump {
 						} else {
 							System.out.println(" > " + fe);
 						}
-//						System.out.printf(" ### Received a Flow event: %s%n", event);  // hide this, don't really need to show in this app
+						//						System.out.printf(" ### Received a Flow event: %s%n", event);  // hide this, don't really need to show in this app
 					}
 				});
 				System.out.println("success!");
-				latch.countDown();
 				System.out.println();
 				// double-check
 				if (contentFilter != null) {
-					System.out.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").aStyledString(contentFilter).reset());
+					System.out.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").fg(Elem.STRING).a(contentFilter).reset());
 					System.out.println(AaAnsi.n().warn("Filtered messages that are not displayed will still be ACKed!"));
 				}
 				if (PayloadHelper.Helper.isLastNMessagesEnabled()) {
 					System.out.println(AaAnsi.n().warn(String.format("Only last %d will be displayed, but all received messages will still be ACKed!", PayloadHelper.Helper.getLastNMessagesCapacity())));
 				}
 				if (selector != null) {
-					System.out.println(AaAnsi.n().a("🔎 Selector detected: ").aStyledString(selector).reset());
+					System.out.println(AaAnsi.n().a("🔎 Selector detected: ").fg(Elem.STRING).a(selector).reset());
 					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s' that match Selector.%nUse browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
 				} else {  // no selectors, consume all
 					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s'.%nUse browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
@@ -482,6 +588,7 @@ public class PrettyDump {
 					System.out.println("\nExiting. 👎🏼");
 					System.exit(0);
 				}
+				latch.countDown();  // this hides the FLOW_ACTIVE until after all this stuff
 				//                reader.close();
 				// tell the broker to start sending messages on this queue receiver
 				flowQueueReceiver.start();
@@ -525,20 +632,20 @@ public class PrettyDump {
 						} else if (event.getEvent() == FlowEvent.FLOW_RECONNECTED) {
 							System.out.println("\n > FLOW RECONNECTED!");
 						} // else ignore!
-//						System.out.printf(" ### Received a Flow event: %s%n", event);  // hide this, don't really need to show in this app
+						//						System.out.printf(" ### Received a Flow event: %s%n", event);  // hide this, don't really need to show in this app
 					}
 				});
 				System.out.println("success!");
 				System.out.println();
 				if (selector != null) {
-//					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Selector detected: \"%s\"", selector)).reset());
-					System.out.println(AaAnsi.n().a("🔎 Selector detected: ").aStyledString(selector).reset());
+					//					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Selector detected: \"%s\"", selector)).reset());
+					System.out.println(AaAnsi.n().a("🔎 Selector detected: ").fg(Elem.STRING).a(selector).reset());
 				}
 				if (contentFilter != null) {
-					System.out.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").aStyledString(contentFilter).reset());
+					System.out.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").fg(Elem.STRING).a(contentFilter).reset());
 				}
 				if (topics[0].startsWith("b:")) {  // regular browse, prompt for msg IDs
-					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or to/from or range of Message Spool IDs (e.g. \"10659-11061\" or \"9817-\" or \"-10845\"),%n or to/from RGMID (e.g. \"-rmid1:3477f-a5ce52...\"): ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
+					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or to/from or range of MsgSpoolIDs (e.g. \"10659-11061\" or \"9817-\" or \"-10845\"),%n or to/from RGMID (e.g. \"-rmid1:3477f-a5ce52...\"): ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
 					System.out.print(AaAnsi.n().fg(Elem.KEY));  // turn the console blue
 					String answer = reader.readLine().trim().toLowerCase();
 					System.out.print(AaAnsi.n());  // to reset() the ANSI
@@ -592,7 +699,7 @@ public class PrettyDump {
 			}
 		} else {  // either direct or temporaryQ with subs
 			if (contentFilter != null) {
-				System.out.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").aStyledString(contentFilter).reset());
+				System.out.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").fg(Elem.STRING).a(contentFilter).reset());
 			}
 			// now 
 			if (topics[0].startsWith("tq:")) {  // gonna use a temporary queue for Guaranteed delivery
@@ -604,12 +711,12 @@ public class PrettyDump {
 				ConsumerFlowProperties flowProps = new ConsumerFlowProperties();
 				flowProps.setActiveFlowIndication(true);
 				flowProps.setEndpoint(queue);
-				flowProps.setAckMode(JCSMPProperties.SUPPORTED_MESSAGE_ACK_AUTO);  // not best practice, but good enough for this app
+				flowProps.setAckMode(JCSMPProperties.SUPPORTED_MESSAGE_ACK_CLIENT);
 				if (selector != null) {
 					flowProps.setSelector(selector);
 				}
-//				System.out.println("max msg queue: " + (Integer)session.getCapability(CapabilityType.MAX_GUARANTEED_MSG_SIZE));
-//				EndpointProperties endpointProps = new EndpointProperties(EndpointProperties.ACCESSTYPE_NONEXCLUSIVE, (Integer)session.getCapability(CapabilityType.MAX_GUARANTEED_MSG_SIZE), EndpointProperties.PERMISSION_NONE, 100);
+				//				System.out.println("max msg queue: " + (Integer)session.getCapability(CapabilityType.MAX_GUARANTEED_MSG_SIZE));
+				//				EndpointProperties endpointProps = new EndpointProperties(EndpointProperties.ACCESSTYPE_NONEXCLUSIVE, (Integer)session.getCapability(CapabilityType.MAX_GUARANTEED_MSG_SIZE), EndpointProperties.PERMISSION_NONE, 100);
 				EndpointProperties endpointProps = new EndpointProperties(EndpointProperties.ACCESSTYPE_NONEXCLUSIVE, 9_999_999, EndpointProperties.PERMISSION_NONE, 100);
 				endpointProps.setMaxMsgRedelivery(15);
 				endpointProps.setDiscardBehavior(EndpointProperties.DISCARD_NOTIFY_SENDER_OFF);  // we don't want this temp queue filling up and forcing a NACK!
@@ -619,7 +726,7 @@ public class PrettyDump {
 				}
 				System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Creating temporary Queue.")).reset());
 				if (selector != null) {
-					System.out.println(AaAnsi.n().a(" 🔎 Selector detected: ").aStyledString(selector).reset());
+					System.out.println(AaAnsi.n().a(" 🔎 Selector detected: ").fg(Elem.STRING).a(selector).reset());
 				} else {
 					System.out.println();
 				}
@@ -627,19 +734,19 @@ public class PrettyDump {
 				flowQueueReceiver = session.createFlow(new PrinterHelper(), flowProps, endpointProps, new FlowEventHandler() {
 					@Override
 					public void handleEvent(Object source, FlowEventArgs event) {
-//						System.out.printf(" ### Received a Flow event: %s on thread %s %n", event, Thread.currentThread().getName());  // hide this, don't really need to show in this app
-//						System.out.println(queue.getName());
-//						if (event.getEvent() == FlowEvent.FLOW_ACTIVE && queue != null && !queue.isDurable()) {  // don't need to check this stuff here b/c this handler would only exist if we come down this path of the code
+						//						System.out.printf(" ### Received a Flow event: %s on thread %s %n", event, Thread.currentThread().getName());  // hide this, don't really need to show in this app
+						//						System.out.println(queue.getName());
+						//						if (event.getEvent() == FlowEvent.FLOW_ACTIVE && queue != null && !queue.isDurable()) {  // don't need to check this stuff here b/c this handler would only exist if we come down this path of the code
 						if (event.getEvent() == FlowEvent.FLOW_ACTIVE) {
 							boolean isNewTempQueue = false;
-//							System.out.println("temp queue deteted!  gonna re-add subs");
+							//							System.out.println("temp queue deteted!  gonna re-add subs");
 							for (String topic : topics) {
 								Topic t = f.createTopic(topic);
 								try {
 									try {
 										session.addSubscription(queue, t, JCSMPSession.WAIT_FOR_CONFIRM);  // will throw exception if already there
 										if (latch.getCount() == 1) {  // first time doing this
-//											AaAnsi aa = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '%s'", (topic.startsWith("!") ? "*NOT* " : ""), AaAnsi.n().colorizeTopic(topic)));
+											//											AaAnsi aa = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '%s'", (topic.startsWith("!") ? "*NOT* " : ""), AaAnsi.n().colorizeTopic(topic)));
 											AaAnsi aa = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '", (topic.startsWith("!") ? "*NOT* " : "")));
 											aa.a(AaAnsi.colorizeTopic(topic));
 											aa.a('\'').reset();
@@ -658,8 +765,8 @@ public class PrettyDump {
 								} catch (JCSMPException | RuntimeException e) {
 									System.out.println(AaAnsi.n().ex(e));
 									System.exit(5);
-//									e.printStackTrace();
-//									isShutdown = true;
+									//									e.printStackTrace();
+									//									isShutdown = true;
 								}
 							}
 							latch.countDown();  // subs added, let's continue
@@ -674,18 +781,23 @@ public class PrettyDump {
 				System.out.println(AaAnsi.n().a("Queue name: ").fg(Elem.KEY).a(flowQueueReceiver.getDestination().getName()).reset());
 				if (topics.length == 0) System.out.println(AaAnsi.n().warn("No subscriptions added, I hope you're copying messages into this queue!").toString());
 				latch.await();  // block here until the subs are added
-//				for (String topic : topics) {
-//					Topic t = f.createTopic(topic);
-//					session.addSubscription(queue, t, JCSMPSession.WAIT_FOR_CONFIRM);
-//					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '%s'", (topic.startsWith("!") ? "*NOT* " : ""), topic)).reset());
-//				}
+				//				for (String topic : topics) {
+				//					Topic t = f.createTopic(topic);
+				//					session.addSubscription(queue, t, JCSMPSession.WAIT_FOR_CONFIRM);
+				//					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '%s'", (topic.startsWith("!") ? "*NOT* " : ""), topic)).reset());
+				//				}
 				flowQueueReceiver.start();
 			} else {
 				// Regular Direct topic consumer, using async / callback to receive
 				directConsumer = session.getMessageConsumer((JCSMPReconnectEventHandler)null, new PrinterHelper());
 				for (String topic : topics) {
 					TopicProperties tp = new TopicProperties();
-					tp.setName(topic);
+					if (topic.equals("#") || topic.endsWith("/#")) {  // special MQTT wildcard, zero-or-more
+						//						topic = topic.substring(0, topic.length()-1) + (char)3;
+						tp.setName(topic.substring(0, topic.length()-1) + (char)3);
+					} else {
+						tp.setName(topic);
+					}
 					tp.setRxAllDeliverToOne(true);  // ensure DTO-override / DA is enabled for this sub
 					Topic t = f.createTopic(tp);
 					session.addSubscription(t, true);  // true == wait for confirm
@@ -699,7 +811,7 @@ public class PrettyDump {
 		System.out.println("Starting. Press Ctrl-C to quit.");
 		if (PayloadHelper.Helper.isLastNMessagesEnabled()) {
 			ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered(null, 0, 0, 0, PayloadHelper.Helper.getLastNMessagesCapacity()));
-//			ThinkingAnsiHelper.tick(String.format("%d messages gathered, # messages received = ", PayloadHelper.Helper.getLastNMessagesSize()));
+			//			ThinkingAnsiHelper.tick(String.format("%d messages gathered, # messages received = ", PayloadHelper.Helper.getLastNMessagesSize()));
 		}
 
 		final Thread shutdownThread = new Thread(new Runnable() {
@@ -772,7 +884,7 @@ public class PrettyDump {
 								} else {
 									PayloadHelper.Helper.incMessageCount();
 									PayloadHelper.Helper.incFilteredCount();
-//									ThinkingAnsiHelper.tick("RGMID outside of range, skipping msg #");
+									//									ThinkingAnsiHelper.tick("RGMID outside of range, skipping msg #");
 									if (PayloadHelper.Helper.isLastNMessagesEnabled()) {  // gathering
 										ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("RGMID outside of range.",
 												PayloadHelper.Helper.getMessageCount(), PayloadHelper.Helper.getFilteredCount(), 0, PayloadHelper.Helper.getLastNMessagesCapacity()));
@@ -784,7 +896,7 @@ public class PrettyDump {
 							} catch (JCSMPNotComparableException e) {  // can't compare, so ignore and keep going
 								PayloadHelper.Helper.incMessageCount();
 								PayloadHelper.Helper.incFilteredCount();
-//								ThinkingAnsiHelper.tick("RGMID outside of range, skipping msg #");
+								//								ThinkingAnsiHelper.tick("RGMID outside of range, skipping msg #");
 								if (PayloadHelper.Helper.isLastNMessagesEnabled()) {  // gathering
 									ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("RGMID outside of range.",
 											PayloadHelper.Helper.getMessageCount(), PayloadHelper.Helper.getFilteredCount(), 0, PayloadHelper.Helper.getLastNMessagesCapacity()));
@@ -812,7 +924,7 @@ public class PrettyDump {
 							} else if (msgId < browseFrom) {  // haven't got there yet
 								PayloadHelper.Helper.incMessageCount();
 								PayloadHelper.Helper.incFilteredCount();
-//								ThinkingAnsiHelper.tick("MsgSpoolId outside of range, skipping msg #");
+								//								ThinkingAnsiHelper.tick("MsgSpoolId outside of range, skipping msg #");
 								if (PayloadHelper.Helper.isLastNMessagesEnabled()) {  // gathering
 									ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("MsgSpoolId outside of range.",
 											PayloadHelper.Helper.getMessageCount(), PayloadHelper.Helper.getFilteredCount(), 0, PayloadHelper.Helper.getLastNMessagesCapacity()));
@@ -848,10 +960,10 @@ public class PrettyDump {
 			while (!isShutdown) {
 				Thread.sleep(50);
 				// blocking receive test code
-//				BytesXMLMessage msg;
-//				if ((msg = directConsumer.receive(0)) != null) {
-//					payloadHelper.dealWithMessage(msg);
-//				}
+				//				BytesXMLMessage msg;
+				//				if ((msg = directConsumer.receive(0)) != null) {
+				//					payloadHelper.dealWithMessage(msg);
+				//				}
 				handleKeyboardInput(reader);
 			}
 		}
@@ -865,27 +977,35 @@ public class PrettyDump {
 		if (System.in.available() > 0) {
 			userInput = reader.readLine();
 		}
-		if (userInput != null) {
+		if (userInput != null && !userInput.isEmpty()) {
 			try {
+				userInput = userInput.toLowerCase();
 				int highlight = Integer.parseInt(userInput);
 				if (highlight >= 0 && highlight < 125) {
 					PayloadHelper.Helper.setHighlightedTopicLevel(highlight - 1);  // so 0 -> -1 (highlight off), 1 -> 0 (level 1), etc.
 				}
 			} catch (NumberFormatException e) {
 				if ("+".equals(userInput)) {
-					PayloadHelper.Helper.setAutoSpaceIndentLevels(true);
+					PayloadHelper.Helper.setAutoSpaceTopicLevels(true);
 				} else if ("-".equals(userInput)) {
-					PayloadHelper.Helper.setAutoSpaceIndentLevels(false);
+					PayloadHelper.Helper.setAutoSpaceTopicLevels(false);
 				} else if ("t".equals(userInput)) {
 					PayloadHelper.Helper.toggleAutoTrimPayload();
 				} else if ("q".equals(userInput)) {
 					isShutdown = true;  // quit
-				} else {
-					try {
-						ColorMode user = ColorMode.valueOf(userInput.toUpperCase());
-						Elem.updateColors(user);
-						AaAnsi.MODE = user;
-					} catch (IllegalArgumentException e2) {
+				} else if (userInput.charAt(0) == 'c' && userInput.length() == 2) {
+					// assume we're trying to switch colours
+					ColorMode temp = null;
+					switch (userInput.charAt(1)) {
+					case 'v': temp = ColorMode.VIVID; break;
+					case 's': temp = ColorMode.STANDARD; break;
+					case 'm': temp = ColorMode.MINIMAL; break;
+					case 'l': temp = ColorMode.LIGHT; break;
+					case 'o': temp = ColorMode.OFF; break;
+					}
+					if (temp != null) {
+						Elem.updateColors(temp);
+						AaAnsi.MODE = temp;
 					}
 				}
 			}
@@ -923,8 +1043,8 @@ public class PrettyDump {
 			PayloadHelper.Helper.dealWithMessage(message);
 			if (!ThinkingAnsiHelper.isFilteringOn()) msgCountRemaining--;  // payload helper would turn it off
 			// if we're not browsing, and it's not a Direct message (doesn't matter if we ACK a Direct message anyhow)
-            if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
-//			message.ackMessage();
+			// NOTE!  You can still ACK a browsed message!!
+			if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
 			if (msgCountRemaining == 0) {
 				System.out.println("\n" + AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(origMsgCount + " messages received. Quitting.").reset());
 				isShutdown = true;
@@ -936,7 +1056,7 @@ public class PrettyDump {
 		@Override
 		public void onException(JCSMPException e) {  // uh oh!
 			System.out.println(AaAnsi.n().ex(" ### MessageListener's onException()", e).a(" - check ~/.pretty/pretty.log for details. "));
-			logger.error("Caught in my onExecption() callback", e);
+			logger.warn("Caught in my onExecption() callback", e);
 			if (e instanceof JCSMPTransportException) {  // all reconnect attempts failed (impossible now since we're at -1)
 				isShutdown = true;  // let's quit
 			}
