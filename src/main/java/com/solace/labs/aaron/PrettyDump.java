@@ -422,24 +422,6 @@ public class PrettyDump {
 		if (argsList.size() > 6) {
 			printHelpMoreText();
 			throw new IllegalArgumentException("Too many arguments");
-			//			String argVal = argsList.get(6);
-			//			System.out.println(argVal);
-			//			try {
-			//				long count = Long.parseLong(argVal);
-			//				if (count > 0) {
-			//					msgCountRemaining = count;
-			//					origMsgCount = count;
-			//				} else if (count < 0) {  // keep the last N messages
-			//					PayloadHelper.Helper.enableLastNMessage(Math.abs((int)count));
-			//				} else {
-			//					throw new NumberFormatException();
-			//				}
-			//			} catch (NumberFormatException e) {
-			//				System.out.println(AaAnsi.n().invalid(String.format("Invalid value for count: '%s'. > 0 to stop after n msgs; < 0 to display last n msgs.", argVal)));
-			//				printUsageText();
-			//				System.out.println("See README.md for more detailed help.");
-			//				System.exit(1);
-			//			}
 		}
 		AnsiConsole.systemInstall();
 		//		AaAnsi a = AaAnsi.n().a("hello there ").faintOn().a(" now this is faint").faintOff().a(" and now not.");
@@ -557,7 +539,9 @@ public class PrettyDump {
 						} else if (fe == FlowEvent.FLOW_ACTIVE) {
 							isFlowActive = true;
 							if (latch.getCount() == 1) {  // first time here, so skip this notification
-
+								if (isFlowActive) {
+									// TODO just to hide the warning, but need to probably do something with this?
+								}
 							} else {
 								if (!isConnected) System.out.println();  // connection coming back up
 								System.out.println(" > " + fe);

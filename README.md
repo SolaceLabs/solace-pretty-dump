@@ -54,7 +54,7 @@ PrettyDump connected to VPN 'default' on broker 'localhost'.
 Subscribed to Direct topic: '#noexport/>'
 
 Starting. Press Ctrl-C to quit.
-^^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'hello/world'
 Priority:                               4
 Class Of Service:                       USER_COS_1
@@ -196,7 +196,7 @@ Browse all messages -> press [ENTER],
 
 Starting. Press Ctrl-C to quit.
 🔎 MsgSpoolId outside of range. Recv'd=8960, Filtered=8960, Printed=0
-^^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'bus_trak/gps/v2/004M/01398/001.31700/0103.80721/30/OK'
 Priority:                               4
 Class Of Service:                       USER_COS_1
@@ -217,7 +217,7 @@ UTF-8 charset, JSON Object:
   "longitude": 103.80721,
   "status": "OK" }
 
-^^^^^^^^^^^^^^^^^^ End Message #1 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^ End Message #1 ^^^^^^^^^^^^^^^^^^^^^^
 1 messages received. Quitting.
 Browsing finished!
 Main thread exiting.
@@ -248,7 +248,7 @@ Subscribed tempQ to *NOT* topic: '!#noexport/orders/cancelled/>'
 
 Valid vales are between 1 and 8.  Indent is default 2 in these examples:
 ```
-^^^^^^^^^^^^^^^^^ Start Message #7 ^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^ Start Message #7 ^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
@@ -264,8 +264,8 @@ Valid UTF-8 charset, XML document:
   </nested>
 </apps>
 
-^^^^^^^^^^^^^^^^^^ End Message #7 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-^^^^^^^^^^^^^^^^^ Start Message #8 ^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^ End Message #7 ^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^ Start Message #8 ^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
@@ -280,15 +280,15 @@ UTF-8 charset, JSON Object:
   "streetAddress": "Singapore",
   "customerId": "12345" }
 
-^^^^^^^^^^^^^^^^^^ End Message #8 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-^^^^^^^^^^^^^^^^^^^^^ Start Message #4 ^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^ End Message #8 ^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^ Start Message #9 ^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'abcld/df/d/frd'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
 HTTP Content Encoding:                  zip
 Message Type:                           Raw BytesMessage
-Binary Attachment:                      len=386 bytes
+Binary Attachment:                      len=114 bytes
 Non UTF-8 encoded string:
 00000   50 4b 03 04 14 00 00 00   08 00 da 6c ec 58 51 fa    PK······  ···l·XQ·
 00010   1d 1b cc 00 00 00 33 01   00 00 10 00 1c 00 6a 73    ······3·  ······js
@@ -308,7 +308,7 @@ Specifying "0" as the indent value will cause JSON and XML strings to be compres
 
 ```
 PrettyDump connected, and running. Press Ctrl-C to quit.
-^^^^^^^^^^^^^^^^^^^^^ Start Message #4 ^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^ Start Message #1 ^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
@@ -316,7 +316,7 @@ DeliveryMode:                           DIRECT
 Message Type:                           Raw BytesMessage
 Binary Attachment:                      len=58 bytes, valid UTF-8 charset, XML document
 <apps><another>hello</another><that>this</that></apps>
-^^^^^^^^^^^^^^^^^^^^^ Start Message #5 ^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^ Start Message #2 ^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'test'
 Priority:                               4
 Class Of Service:                       USER_COS_1
@@ -329,12 +329,11 @@ Binary Attachment:                      len=159, UTF-8 charset, JSON Object
 
 ### No Payload: indent = '00', '000', or '0000'
 
-These modes will still parse the payloads (for validation and possible filtering) but not display them.
+These modes will still parse the payloads (for validation and possible filtering using regex Filter `--filter` option) but not display them.
  - `00` will still pretty-print the User Properties
  - `000` will compact the User Properties onto the same line
  - `0000` will not display the User Properties at all (just a count)
 
-Note: when portions of the message, payload, etc. are not displayed, they are still parsed and searched when using regex Filter `--filter` option.
 
 
 
@@ -355,10 +354,10 @@ pq-demo/stats/pq/pub-44e7           {"prob":0,"paused":false,"delay":0,"nacks":0
 pq/3/pub-44e7/e7-0/0/_              <EMPTY> Raw BytesMessage
 ```
 
- - Use `-1` for "auto-indenting", where the amount of indent will vary dynamically with topic length.
- - Use `-2` for two-line mode, topic on one line, payload on another.
- - `-3` .. `-250` will trim the topic length to that amount.
- - Change `-` to `+` in the argument to enable topic level alignment.
+ - Use `-1` for "auto-indenting", where the amount of indent will vary dynamically with topic length
+ - Use `-2` for two-line mode, topic on one line, payload on another ("minimal" colour mode is good for this)
+ - `-3` .. `-250` will trim the topic length to that amount
+ - Change `-` to `+` in the argument to enable topic level alignment
 
 
 ### One-Line, Topic only: indent = "-0"
@@ -388,6 +387,17 @@ PrettyDump now supports Selectors (broker-side) when consuming or browsing a que
 
 ### Count
 
+Specified using `--count=n` anywhere in the arguments, this allows you to:
+
+ - when `n > 0`: stop PrettyDump after receiving _n_ messages
+ - when `n < 0`: cause PrettyDump to buffer the last _n_ messages, and dump them out when the program terminates
+
+This allows you to do such things as:
+ - consume/ACK the first 5 messages off a queue: `q:q1 --count=5`
+ - browse the last 50 messaes on a queue: `b:q1 --count=-50` (must wait until filtering has stopped)
+ - during program development / debugging, have PrettyDump tracking the last 500 messages `'>' --count -500`, and when an error is detected, Ctrl+C PrettyDump to show the last 500 messages for analysis
+
+This can be combined with the Selector and Filter features below to allow even more advanced filtering capabilities.
 
 
 ### Selectors
@@ -477,7 +487,7 @@ Non UTF-8 charset, XML document:
 00020   6e 63 79 3e 9c 3c 2f 63   75 72 72 65 6e 63 79 3e    ncy>·</c  urrency>
 00030   3c 2f 76 61 6c 75 65 3e   ·· ·· ·· ·· ·· ·· ·· ··    </value>
 
-^^^^^^^^^^^^^^^^^^^^^^ End Message #1 ^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^ End Message #4 ^^^^^^^^^^^^^^^^^^^^^^
 ```
 
 
