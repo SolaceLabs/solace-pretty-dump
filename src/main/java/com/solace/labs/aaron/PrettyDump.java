@@ -162,7 +162,7 @@ public class PrettyDump {
 
 	private static void printHelpText(boolean full) {
 		printUsageText(false);
-		System.out.println(" - Default protocol \"tcp://\"; for TLS use \"tcps://\"; or \"ws://\" or \"wss://\" for WebSocket");
+		System.out.println(" - Default protocol TCP; for TLS use \"tcps://\"; or \"ws://\" or \"wss://\" for WebSocket");
 		System.out.println(" - Default parameters will be: localhost:55555 default foo bar '#noexport/>' 2");
 		System.out.println(" - Subscribing options (arg 5, or shortcut mode arg 1), one of:");
 		System.out.println("    • Comma-separated list of Direct topic subscriptions");
@@ -170,15 +170,15 @@ public class PrettyDump {
 		System.out.println("    • q:queueName to consume from queue");
 		System.out.println("    • b:queueName to browse a queue (all messages, or range by MsgSpoolID or RGMID)");
 		System.out.println("    • f:queueName to browse/dump only first oldest message on a queue");
-		System.out.println("    • tq:topics   to provision a tempQ with optional topics  (can use NOT '!' topics)");
-		if (full) System.out.println(" - Optional indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode");
+		System.out.println("    • tq:topics   provision a tempQ with optional topics  (can use NOT '!' topics)");
+		if (full) System.out.println(" - Indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode");
 		//		System.out.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
 		System.out.println(" - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume default broker");
 		System.out.println("    • Or if first arg parses as integer, select as indent, rest default options");
 		if (full) System.out.println(" - Additional non-ordered args: --count, --filter, --selector, --trim");
 		if (full) System.out.println(" - Environment variables for decoding charset and colour mode");
 		if (full) System.out.println();
-		if (full) System.out.println("prettydump -hm for more help on indent, count, Seletors, Filters, charsets, and colour mode");
+		if (full) System.out.println("prettydump -hm for more help on indent, count, Seletor, Filter, charsets, and colours");
 		if (full) System.out.println();
 	}
 

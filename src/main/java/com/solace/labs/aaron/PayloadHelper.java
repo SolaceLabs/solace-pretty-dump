@@ -430,7 +430,7 @@ public enum PayloadHelper {
                     formatted = handler.getResult();  // overwrite
                     type = charset.displayName() + " charset, XML document";
 				} catch (SaxParserException e) {
-					logger.error("Couldn't parse xml", e);
+					logger.warn("Couldn't parse xml", e);
         			type = charset.displayName() + " charset, INVALID XML payload";
         			formatted = new AaAnsi().ex(e).a('\n').a(trimmed);
 				}

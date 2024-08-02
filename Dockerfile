@@ -31,10 +31,6 @@
 
 # This is where the actual Dockerfile starts
 
-LABEL version=1.1.0
-LABEL author="Aaron @ Solace"
-LABEL repo="https://github.com/SolaceLabs/solace-pretty-dump"
-
 FROM amazoncorretto:22-alpine as corretto-jdk
 #FROM amazoncorretto:17-alpine as corretto-jdk
 
@@ -63,3 +59,9 @@ WORKDIR /opt/pretty
 COPY build/staged/ ./
 
 ENTRYPOINT ["./bin/prettydump"] 
+
+ENV TERM="xterm-256color"
+
+LABEL version=1.1.0
+LABEL author="Aaron @ Solace"
+LABEL repo="https://github.com/SolaceLabs/solace-pretty-dump"

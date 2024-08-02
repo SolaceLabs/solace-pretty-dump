@@ -103,7 +103,7 @@ $ prettydump -h or --help   or -hm for more
 Usage: prettydump [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [indent]
    or: prettydump <topics|[qbf]:queueName|tq:topics> [indent]  for "shortcut" mode
 
- - Default protocol "tcp://"; for TLS use "tcps://"; or "ws://" or "wss://" for WebSocket
+ - Default protocol TCP; for TLS use "tcps://"; or "ws://" or "wss://" for WebSocket
  - Default parameters will be: localhost:55555 default foo bar '#noexport/>' 2
  - Subscribing options (arg 5, or shortcut mode arg 1), one of:
     • Comma-separated list of Direct topic subscriptions
@@ -111,14 +111,14 @@ Usage: prettydump [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [i
     • q:queueName to consume from queue
     • b:queueName to browse a queue (all messages, or range by MsgSpoolID or RGMID)
     • f:queueName to browse/dump only first oldest message on a queue
-    • tq:topics   to provision a tempQ with optional topics  (can use NOT '!' topics)
- - Optional indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode
- - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume default broker
+    • tq:topics   provision a tempQ with optional topics  (can use NOT '!' topics)
+ - Indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode
+ - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume defaults
     • Or if first arg parses as integer, select as indent, rest default options
  - Additional non-ordered args: --count, --filter, --selector, --trim
  - Environment variables for decoding charset and colour mode
  
-prettydump -hm for more help on indent, count, Seletors, Filters, charsets, and colour mode
+prettydump -hm for more help on indent, count, Seletor, Filter, charsets, and colours
 ```
 
 
@@ -282,7 +282,7 @@ UTF-8 charset, JSON Object:
 
 ^^^^^^^^^^^^^^^^^^^^^^ End Message #8 ^^^^^^^^^^^^^^^^^^^^^^
 ^^^^^^^^^^^^^^^^^^^^^ Start Message #9 ^^^^^^^^^^^^^^^^^^^^^
-Destination:                            Topic 'abcld/df/d/frd'
+Destination:                            Topic 'POST/bin/zip'
 Priority:                               4
 Class Of Service:                       USER_COS_1
 DeliveryMode:                           DIRECT
