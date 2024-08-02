@@ -73,18 +73,22 @@ $ prettydump demo.messaging.solace.cloud demo-vpn user pw q:q1
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'demo-vpn' on broker 'demo.messaging.solace.cloud'.
+
 Attempting to bind to queue 'q1' on the broker... success!
 ```
 
 #### Shorcut mode: localhost broker, wildcard topics, and one-line output
 ```
-$ prettydump "solace/>" -30
+$ prettydump "solace/>" -30 --trim
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'default' on broker 'localhost'.
+
+Indent=-30 (one-line mode, topic width=30, auto-trim payload)
 Subscribed to Direct topic: 'solace/>'
 
-solace/samples/testing       This is a text payload.
+solace/samples/testing           This is a short text payload.
+solace/samples/long/topic/name…  This is a longer text payload that will get tri…
 ```
 
 
@@ -93,41 +97,27 @@ solace/samples/testing       This is a text payload.
 ## Command-line parameters
 
 ```
-$ prettydump -h   or  --help  or  -hm
+$ prettydump -h or --help   or -hm for more
 
-Usage: prettydump [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [indent] [count]
-   or: prettydump <topics|[qbf]:queueName|tq:topics> [indent] [count]  for "shortcut" mode
+Usage: prettydump [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [indent]
+   or: prettydump <topics|[qbf]:queueName|tq:topics> [indent]  for "shortcut" mode
 
  - Default protocol "tcp://"; for TLS use "tcps://"; or "ws://" or "wss://" for WebSocket
- - Default parameters will be: localhost:55555 default foo bar "#noexport/>" 2
+ - Default parameters will be: localhost:55555 default foo bar '#noexport/>' 2
  - Subscribing options (param 5, or shortcut mode param 1), one of:
-    - Comma-separated list of Direct topic subscriptions
-       - Strongly consider prefixing with '#noexport/' if using DMR or MNR
-    - q:queueName to consume from queue
-    - b:queueName to browse a queue (all messages, or range of messages by ID)
-    - f:queueName to browse/dump only first oldest message on a queue
-    - tq:topics   to provision a tempQ with topics subscribed (can use NOT '!' topics)
- - Optional indent: integer, default==2 spaces; specifying 0 compresses payload formatting
-    - No payload mode: use indent '00' to only show headers and props, or '000' for compressed
-    - One-line mode: use negative indent value (trim topic length) for topic & payload only
-       - Or use -1 for auto column width adjustment, or -2 for two-line mode
-       - Use negative zero -0 for topic only, no payload
- - Optional count: stop after receiving 'count' number of messages
- - Shortcut mode: first argument contains '>', '*', or starts '[qbf]:', assume default broker
-    - e.g. prettydump 'logs/>' -1  ~or~  prettydump q:q1  ~or~  prettydump b:dmq -0
-    - Or if first argument parses as integer, select as indent, rest default options
- - Runtime options:
-    - Press "t[ENTER]" to toggle payload trim to terminal width in one-line mode
-    - Press "+[ENTER]" to enable topic level spacing/alignment ("-[ENTER]" to revert)
-    - Press "[1-9][ENTER]" to highlight a particular topic level ("0[ENTER]" to revert)
-Environment variable options:
- - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=ISO-8859-1
- - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever
-    - Choose: "standard" (default), "vivid", "light", "minimal", "matrix", "off"
- - Selector for Queue consume and browse: export PRETTY_SELECTOR="what like 'ever%'"
- - Client-side filtering on any received message: export PRETTY_FILTER="ID:123abc"
-    - Or use --selector="what like 'ever%'" and --filter="ID:123abc" in command line args
-SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to " | prettydump wrap" to prettify
+    • Comma-separated list of Direct topic subscriptions
+       - Strongly consider prefixing with "#noexport/" if using DMR or MNR
+    • q:queueName to consume from queue
+    • b:queueName to browse a queue (all messages, or range by MsgSpoolID or RGMID)
+    • f:queueName to browse/dump only first oldest message on a queue
+    • tq:topics   to provision a tempQ with optional topics  (can use NOT '!' topics)
+ - Optional indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode
+ - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume default broker
+    • Or if first arg parses as integer, select as indent, rest default options
+ - Additional non-ordered args: --count, --filter, --selector, --trim
+ - Environment variables for decoding charset and colour mode
+
+prettydump -hm for more help on indent, count, Seletors, Filters, charsets, and colour mode
 ```
 
 

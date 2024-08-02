@@ -102,15 +102,17 @@ public class PrettyDump {
 
 	private static void printHelpIndent() {
 
-		System.out.println("    - 1..8      normal mode, pretty-printed and indented n spaces");
-		System.out.println("    - 0         normal mode, payload and user properties compressed to one line");
-		System.out.println("    - 00        no payload mode, user properties still pretty-printed");
-		System.out.println("    - 000       no payload mode, user properties each compressed to one line");
-		System.out.println("    - 0000      no payload mode, no user properties, headers only");
-		System.out.println("    - ±250..±3  one-line mode, topic and payload only, compressed, fixed indent");
-		System.out.println("    - ±2        two-line mode, topic and payload on two lines");
-		System.out.println("    - ±1        one-line mode, automatic variable payload indentation");
-		System.out.println("    - ±0        one-line mode, topic only, with/without topic spacing");
+		System.out.println("    • 1..8      normal mode, pretty-printed and indented n spaces");
+		System.out.println("    • 0         normal mode, payload and user properties compressed to one line");
+		System.out.println("    • 00        no payload mode, user properties still pretty-printed");
+		System.out.println("    • 000       no payload mode, user properties each compressed to one line");
+		System.out.println("    • 0000      no payload mode, no user properties, headers only");
+		System.out.println("    • -250..-3  one-line mode, topic and payload only, compressed, fixed indent");
+		System.out.println("    • -2        two-line mode, topic and payload on two lines");
+		System.out.println("    • -1        one-line mode, automatic variable payload indentation");
+		System.out.println("    • -0        one-line mode, topic only, with/without topic spacing");
+        System.out.println("    • For one-line modes, change '-' to '+' to enable topic level alignment");
+//		System.out.println("    - ±0        one-line mode, topic only, with/without topic spacing");
 		//		System.out.println("Runtime: press 't'[ENTER] (or argument '--trim') to auto-trim payload to screen width");
 		//		System.out.println("Runtime: press '+' or '-'[ENTER] to toggle topic level spacing during runtime");
 		////		System.out.println("Runtime: press \"t[ENTER]\" to toggle payload trim to terminal width (or argument --trim)");
@@ -123,7 +125,8 @@ public class PrettyDump {
 
 
 	private static void printHelpMoreText() {
-		printHelpText();
+		printHelpText(false);
+		System.out.println("    • e.g. prettydump 'logs/>' -1  ~or~  prettydump q:q1  ~or~  prettydump b:dmq -0");
 		System.out.println(" - Optional indent: integer, valid values:");
 		printHelpIndent();
 		//		System.out.println(" - Optional indent: integer, default==2 spaces; specifying 0 compresses payload formatting");
@@ -132,57 +135,61 @@ public class PrettyDump {
 		//		System.out.println("       - Or use -1 for auto column width adjustment, or -2 for two-line mode");
 		//		System.out.println("       - Use negative zero -0 for topic only, no payload");
 		//		System.out.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
-		System.out.println(" - Shortcut mode: first argument contains '>', '*', or starts '[qbf]:', assume default broker");
-		System.out.println("    - e.g. prettydump 'logs/>' -1  ~or~  prettydump q:q1  ~or~  prettydump b:dmq -0");
-		System.out.println("    - Or if first argument parses as integer, select as indent, rest default options");
 
-		//                System.out.println("    - e.g. bin/prettydump \"logs/>\" -1   ~or~   bin/prettydump q:q1");
-		//                System.out.println("    - Or queues as well: e.g. ./bin/prettydump q:q1   ~or~   ./bin/prettydump b:dmq -1");
-		//                System.out.println("    - If zero parameters, assume localhost default broker and subscribe to \"#noexport/>\"");
-		System.out.println(" - One-Line Runtime options:");
-		System.out.println("    - Press \"t[ENTER]\" to toggle payload trim to terminal width (or argument --trim)");
-		System.out.println("    - Press \"+ or -[ENTER]\" to toggle topic level spacing/alignment (or argument \"+indent\")");
-		System.out.println("    - Press \"[1-n][ENTER]\" to highlight a particular topic level (\"0[ENTER]\" to revert)");
+		System.out.println(" - Additional non-ordered arguments: for more advanced capabilities");
+		System.out.println("    • --selector=\"mi like 'hello%world'\"  Selector for Queue consume and browse");
+		System.out.println("    • --filter=\"ABC123\"  client-side REGEX Filtering on any received message");
+		System.out.println("    • --count=n  stop after receiving n number of msgs; or if < 0, only show last n msgs");
+		System.out.println("    • --trim  enable paylaod trim for one-line (and two-line) modes");
+		System.out.println(" - One-Line runtime options: type the following into the console while the app is running");
+		System.out.println("    • Press \"t\" ENTER to toggle payload trim to terminal width (or argument --trim)");
+		System.out.println("    • Press \"+\" or \"-\" ENTER to toggle topic level spacing/alignment (or argument \"+indent\")");
+		System.out.println("    • Press \"[1-n]\" ENTER to highlight a particular topic level (\"0\" ENTER to revert)");
+		System.out.println("    • Type \"c[svlmo]\" ENTER\" to change colour modes: Standard, Vivid, Light, Minimal, Off");
 		System.out.println("Environment variable options:");
 		System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=ISO-8859-1");
 		//		System.out.println("    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or \"set\" on Windows)");
 		System.out.println(" - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever");
-		System.out.println("    - Choose: \"standard\" (default), \"vivid\", \"light\", \"minimal\", \"matrix\", \"off\"");
-		System.out.println(" - Selector for Queue consume and browse: --selector=\"what like 'ever%'\"");
-		System.out.println(" - Client-side regex Filtering on any received message: --filter=\"ID:123abc\"");
-		System.out.println("SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to \" | prettydump wrap\" to prettify");
-		//		System.out.println(" - Note: add the 'bin' directory to your path to make it easier");
+		System.out.println("    • Choose: \"standard\" (default), \"vivid\", \"light\", \"minimal\", \"matrix\", \"off\"");
 		System.out.println();
-
+		System.out.println("SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to \" | prettydump wrap\" to prettify");
+		System.out.println();
+		System.out.println("See the README.md for more explanations of every feature and capability");
+		System.out.println("https://github.com/SolaceLabs/solace-pretty-dump");
+		System.out.println("https://solace.community/discussion/3238/sdkperf-but-pretty-for-json-and-xml");
+		System.out.println();
 
 
 	}
 
-	private static void printHelpText() {
-		printUsageText();
+	private static void printHelpText(boolean full) {
+		printUsageText(false);
 		System.out.println(" - Default protocol \"tcp://\"; for TLS use \"tcps://\"; or \"ws://\" or \"wss://\" for WebSocket");
 		System.out.println(" - Default parameters will be: localhost:55555 default foo bar '#noexport/>' 2");
 		System.out.println(" - Subscribing options (param 5, or shortcut mode param 1), one of:");
-		System.out.println("    - Comma-separated list of Direct topic subscriptions");
+		System.out.println("    • Comma-separated list of Direct topic subscriptions");
 		System.out.println("       - Strongly consider prefixing with \"#noexport/\" if using DMR or MNR");
-		System.out.println("    - q:queueName to consume from queue");
-		System.out.println("    - b:queueName to browse a queue (all messages, or range by MsgSpoolID or RGMID)");
-		System.out.println("    - f:queueName to browse/dump only first oldest message on a queue");
-		System.out.println("    - tq:topics   to provision a tempQ with optional topics  (can use NOT '!' topics)");
-		System.out.println(" - Optional indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode");
+		System.out.println("    • q:queueName to consume from queue");
+		System.out.println("    • b:queueName to browse a queue (all messages, or range by MsgSpoolID or RGMID)");
+		System.out.println("    • f:queueName to browse/dump only first oldest message on a queue");
+		System.out.println("    • tq:topics   to provision a tempQ with optional topics  (can use NOT '!' topics)");
+		if (full) System.out.println(" - Optional indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode");
 		//		System.out.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
 		System.out.println(" - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume default broker");
-		System.out.println("    - Or if first arg parses as integer, select as indent, rest default options");
-		System.out.println(" - Additional non-ordered args: --count, --filter, --selector, --trim");
-		System.out.println(" - Environment variables for decoding charset and colour mode");
-		System.out.println();
-		System.out.println(" - See -hm for more details on indent, count, Seletors, Filters, charsets, and color mode");
+		System.out.println("    • Or if first arg parses as integer, select as indent, rest default options");
+		if (full) System.out.println(" - Additional non-ordered args: --count, --filter, --selector, --trim");
+		if (full) System.out.println(" - Environment variables for decoding charset and colour mode");
+		if (full) System.out.println();
+		if (full) System.out.println("prettydump -hm for more help on indent, count, Seletors, Filters, charsets, and colour mode");
+		if (full) System.out.println();
 	}
 
-	private static void printUsageText() {
+	private static void printUsageText(boolean full) {
 		System.out.printf("Usage: %s [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [indent]%n", APP_NAME.toLowerCase());
 		System.out.printf("   or: %s <topics|[qbf]:queueName|tq:topics> [indent]  for \"shortcut\" mode%n", APP_NAME.toLowerCase());
 		System.out.println();
+		if (full) System.out.println("prettydump -h or -hm for help on available arguments and environment variables.");
+		if (full) System.out.println();
 	}
 
 	private static void printParamsInfo(String indentStr, String countStr) {
@@ -257,8 +264,8 @@ public class PrettyDump {
 		//		
 		for (String arg : args) {
 			if (arg.equals("-h") || arg.startsWith("--h") || arg.equals("-?") || arg.startsWith("--?") || arg.contains("-help")) {
-				printHelpText();
-				System.out.println("Use -hm  for more help");
+				printHelpText(true);
+//				System.out.println("Use -hm  for more help");
 				System.exit(0);
 			} else if (arg.equals("-hm") || arg.startsWith("--hm") || arg.equals("-??") || arg.contains("helpmore")) {
 				printHelpMoreText();
@@ -290,7 +297,7 @@ public class PrettyDump {
 					selector = arg.substring("--selector=".length());
 				} catch (StringIndexOutOfBoundsException e) {
 					System.out.println(AaAnsi.n().invalid(String.format("Must specify a value for Selector.")));
-					printHelpText();
+					printHelpMoreText();
 					System.out.println("See README.md for more detailed help.");
 					System.exit(1);
 				}
@@ -299,7 +306,7 @@ public class PrettyDump {
 					contentFilter = arg.substring("--filter=".length());
 				} catch (StringIndexOutOfBoundsException e) {
 					System.out.println(AaAnsi.n().invalid(String.format("Must specify a regex for Filter.")));
-					printHelpText();
+					printHelpMoreText();
 					System.out.println("See README.md for more detailed help.");
 				}
 			} else if (arg.equals("--trim")) {
@@ -320,8 +327,7 @@ public class PrettyDump {
 					}
 				} catch (NumberFormatException | StringIndexOutOfBoundsException e) {
 					System.out.println(AaAnsi.n().invalid(String.format("Invalid value for count: '%s'. > 0 to stop after n msgs; < 0 to display last n msgs.", argVal)));
-					printUsageText();
-					System.out.println("See README.md for more detailed help.");
+					printHelpMoreText();
 					System.exit(1);
 				}
 
@@ -354,6 +360,7 @@ public class PrettyDump {
 			String arg0 = argsList.get(0);
 			boolean shortcut = false;
 			if ((arg0.contains("/") && !arg0.contains("//"))
+					|| arg0.contains(">")
 					|| arg0.contains("*")
 					|| arg0.contains("#")
 					|| arg0.startsWith("tq:")) {  // shortcut MODE

@@ -32,7 +32,6 @@ LABEL version=1.1.0
 LABEL author="Aaron @ Solace"
 LABEL repo="https://github.com/SolaceLabs/solace-pretty-dump"
 
-
 FROM amazoncorretto:22-alpine as corretto-jdk
 #FROM amazoncorretto:17-alpine as corretto-jdk
 
