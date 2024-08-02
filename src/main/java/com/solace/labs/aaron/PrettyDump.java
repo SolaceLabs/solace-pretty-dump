@@ -166,7 +166,7 @@ public class PrettyDump {
 		printUsageText(false);
 		System.out.println(" - Default protocol \"tcp://\"; for TLS use \"tcps://\"; or \"ws://\" or \"wss://\" for WebSocket");
 		System.out.println(" - Default parameters will be: localhost:55555 default foo bar '#noexport/>' 2");
-		System.out.println(" - Subscribing options (param 5, or shortcut mode param 1), one of:");
+		System.out.println(" - Subscribing options (arg 5, or shortcut mode arg 1), one of:");
 		System.out.println("    • Comma-separated list of Direct topic subscriptions");
 		System.out.println("       - Strongly consider prefixing with \"#noexport/\" if using DMR or MNR");
 		System.out.println("    • q:queueName to consume from queue");

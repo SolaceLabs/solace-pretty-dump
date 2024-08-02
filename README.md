@@ -9,9 +9,9 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 - [Running](#running)
 - [Command-line parameters](#command-line-parameters)
 - Subscribing options: [Direct topic subscriptions](#direct-subscriptions), [Queue consume](#queue-consume), [Browsing a queue](#browsing-a-queue), [TempQ with subs](#temporary-queue-with-subscriptions)
-- [Output Indent options](#output-indent-options---the-6th-argument) ([One-line Mode](#one-line-indent--0))
+- [Output Indent options](#output-indent-options---the-6th-argument) ([One-line Mode](#one-line-mode-indent--0))
+- [Count, Selectors and Filtering](#count-selectors-and-filtering)
 - [One-line Mode: Runtime options](#one-line-mode-runtime-options)
-- [Selectors and Filtering](#selectors-and-filtering)
 - [Charset Encoding](#charset-encoding)
 - [Error Checking](#error-checking)
 - [Protobuf Stuff](#protobuf-stuff) & Distributed Trace
@@ -50,6 +50,7 @@ $ prettydump
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'default' on broker 'localhost'.
+
 Subscribed to Direct topic: '#noexport/>'
 
 Starting. Press Ctrl-C to quit.
@@ -88,7 +89,7 @@ Indent=-30 (one-line mode, topic width=30, auto-trim payload)
 Subscribed to Direct topic: 'solace/>'
 
 solace/samples/testing           This is a short text payload.
-solace/samples/long/topic/name…  This is a longer text payload that will get tri…
+solace/test/long/topic/truncat…  Longer text payload that will get trimmed to terminal wid…
 ```
 
 
@@ -104,7 +105,7 @@ Usage: prettydump [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [i
 
  - Default protocol "tcp://"; for TLS use "tcps://"; or "ws://" or "wss://" for WebSocket
  - Default parameters will be: localhost:55555 default foo bar '#noexport/>' 2
- - Subscribing options (param 5, or shortcut mode param 1), one of:
+ - Subscribing options (arg 5, or shortcut mode arg 1), one of:
     • Comma-separated list of Direct topic subscriptions
        - Strongly consider prefixing with "#noexport/" if using DMR or MNR
     • q:queueName to consume from queue
@@ -116,8 +117,6 @@ Usage: prettydump [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [i
     • Or if first arg parses as integer, select as indent, rest default options
  - Additional non-ordered args: --count, --filter, --selector, --trim
  - Environment variables for decoding charset and colour mode
-
-prettydump -hm for more help on indent, count, Seletors, Filters, charsets, and colour mode
 ```
 
 
@@ -299,18 +298,21 @@ Binary Attachment:                      len=159, UTF-8 charset, JSON Object
 ```
 
 
-### No Payload: indent = '00' or '000'
+### No Payload: indent = '00', '000', or '0000'
 
-These two modes will still parse the payloads (for validation and possible filtering) but not display them.
+These modes will still parse the payloads (for validation and possible filtering) but not display them.
  - `00` will still pretty-print the User Properties
  - `000` will compact the User Properties onto the same line
+ - `0000` will not display the User Properties at all (just a count)
+
+Note: when portions of the message, payload, etc. are not displayed, they are still parsed and searched when using regex Filter `--filter` option.
 
 
 
 ### One-Line Mode: indent < 0
 
 Removes the majority of SdkPerf-like message metadata printing, only showing the topic and payload per-line.
-Valid values are between -1 and -250, and specify how many chars of the topic are displayed.  indent = -36 in this example.
+Valid values are between -1 and -250, and specify how many chars of the topic are displayed.  indent = -34 in this example.
 
 ```
 pq-demo/stats/pq/sub-pq_3-c222      {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0}
@@ -324,9 +326,10 @@ pq-demo/stats/pq/pub-44e7           {"prob":0,"paused":false,"delay":0,"nacks":0
 pq/3/pub-44e7/e7-0/0/_              <EMPTY> Raw BytesMessage
 ```
 
-Use `-1` for "auto-indenting", where the amount of indent will vary dynamically with topic length.
-Use `-2` for two-line mode, topic on one line, payload on another.
-`-3` .. `-250` will trim the topic length to that amount.
+ - Use `-1` for "auto-indenting", where the amount of indent will vary dynamically with topic length.
+ - Use `-2` for two-line mode, topic on one line, payload on another.
+ - `-3` .. `-250` will trim the topic length to that amount.
+ - Change `-` to `+` in the argument to enable topic level alignment.
 
 
 ### One-Line, Topic only: indent = "-0"
@@ -344,11 +347,56 @@ bus_trak/door/v1/005B/01464/close
 ```
 
 
+
+
+
+
+## Count, Selectors and Filtering
+
+PrettyDump now supports Selectors (broker-side) when consuming or browsing a queue, and also client-side Filtering which you specify as a regex against the entire message contents.  As well as a Count feature to minimize the number of messages dumped to the console.
+
+
+
+### Count
+
+
+
+### Selectors
+
+Selectors can be very useful if you wish to filter the messages at the broker based on certain header metadata or user properties.  Selectors are specified using an SQL-92 like syntax.  Solace doesn't recommend them for general runtime usage due to performance considerations and the fact our topic routing capability is far superior to other JMS brokers.  However, they can certainly come in handy when browsing queues for certain messages.
+
+A Selector is specified by the command line argument `--selector="blah"` when runnning PrettyDump.  This argument can appear anywhere in the arguments, and won't impact the other ones.  Note that Selectors don't work with Direct topic subscriptions, but does with queue consume, queue browsing, and temporary queues with subscriptions.  However!  Selectors are performed on the egress Flow, which means that any messages not matching the Selector will be left on the queue.  For example, a tempQ subscribed to `>` but with a very narrow Selector could fill up quickly.
+
+Use "first message" browse mode `f:queueName` to stop after the first message that matches the Selector.  Or browse with count option `b:queueName --cout=10` to dump the first 10 messages that match the Selector.
+
+
+### Client-side Filtering
+
+As requested by a user, PrettyDump supports the ability to search/filter for specific words or patterns occuring within the entire message output, and only display messages that match this Filter.  This is far less performant than using a Selector (broker-side) as it has to pull down the message first and parse it before it can apply the Filter (client-side).  However, Filters can be used with Direct messages, and can be used in conjunction with Selectors.
+
+Currently, the Filter is treated as a regular expression / regex, and the entire message contents (headers, properties, payload(s)) are evaluated against it.  So a filter of `Aaron` will search each message looking for the case-sensitive word "Aaron".  A filter of `(?i)Aaron.*Singapore` will look for the case-insensitive word "aaron" followed somewhere by "singapore".
+
+A Filter is specified by the command line argument `--filter="blah"` when runnning PrettyDump.  This argument can appear anywhere in the arguments, and won't impact the other ones.
+
+```
+^^^^^^^^^^^^^^^^^^^^ End Message #26710 ^^^^^^^^^^^^^^^^^^^
+🔎 Msg filtered. Recv'd=33808, Filtered=33805, Printed=3
+```
+
+
+### A word on performance
+
+I filled up a queue with > 1M messages in it.  I used a browser and Selector to find a message I knew was at the back of the queue (looking for its Application Message ID / JMS Message ID).  It literally took a few seconds.  I ran the same test, using a client-side Filter, set to something equivalient: `^AppMessageID: +aaron123$`
+
+
+
+
 ## One-Line mode: runtime options
 
 When using one-line mode, you can do some extra stuff:
 
  - press 't' [ENTER] to enable trim for message payloads... will cause the payload to get truncated at the terminal width
+ - this can also be enabled with arg `--trim` when starting
 ```
 bus_trak/gps/v2/022A/01228/001.32266/0103.69693/21/OK      {"psgrCap":0.75,"heading":176,"busNum"…
 bus_trak/gps/v2/036X/01431/001.37858/0103.92294/32/STOPPED {"psgrCap":0.5,"heading":288,"busNum":…
@@ -356,8 +404,10 @@ bus_trak/gps/v2/012A/01271/001.38968/0103.76101/31/STOPPED {"psgrCap":0,"heading
 bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK      {"psgrCap":0.75,"heading":272,"busNum"…
 ```
 
+
  - press '+' [ENTER] to add spacing to the topic hierarchy display, more of a "column" view of the topic levels
-    - press '-' [ENTER] to go back to regular (compressed) topic display
+ - press '-' [ENTER] to go back to regular (compressed) topic display
+ - this can also be enabled with by changing indent argument from `-` to `+` when starting
 ```
 #STATS...../VPN..../sgdemo1.../aaron.............../vpn_stats
 #STATS...../SYSTEM./sgdemo1.../stats_client_detail
@@ -367,36 +417,12 @@ bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK      {"psgrCap":0.75,"head
 #STATSPUMP./STATS../sg3501vmr./poller-stats......../show-msg-spool
 ```
 
- - press '[1-9]' [ENTER] to highlight a specific level of the topic hierarchy
-    - press '0' [ENTER] to go back to regular full-topic highlighting
+ - press '1..n' [ENTER] to highlight a specific level of the topic hierarchy
+ - press '0' [ENTER] to go back to regular full-topic highlighting
+ - obviously you need a colour mode enabled to see this
 
 
 
-## Selectors and Filtering
-
-PrettyDump now supports Selectors (broker-side) when consuming or browsing a queue, and also client-side Filtering which you specify as a regex against the entire message contents.
-
-### Selectors
-
-Selectors can be very useful if you wish to filter the messages at the broker based on certain header metadata or user properties.  Selectors are specified using an SQL-92 like syntax.  Solace doesn't recommend them for general runtime usage due to performance considerations and the fact our topic routing capability is far superior to other JMS brokers.  However, they can certainly come in handy when browsing queues for certain messages.
-
-A Selector is specified either by the environment variable `PRETTY_SELECTOR="blah"` or using the command line argument `--selector="blah"` when runnning PrettyDump.  Note that Selectors don't work with Direct topic subscriptions, but does with queue consume, queue browsing, and temporary queues with subscriptions.  However!  Selectors are performed on the egress Flow, which means that any messages not matching the Selector will be left on the queue.  For example, a tempQ subscribed to `>` but with a very narrow Selector could fill up quickly.
-
-Use "first message" browse mode `f:queueName` to stop after the first message that matches the Selector.  Or browse with count option `b:queueName 2 10` to dump the first 10 messages that match the Selector, with an indent of 2.
-
-
-### Client-side Filtering
-
-As requested by a user, PrettyDump supports the ability to search/filter for specific words or patterns occuring within the entire message output, and only display messages that match this Filter.  This is far less performant than using a Selector (broker-side) as it has to pull down the message first and parse it before it can apply the Filter (client-side).  However, Filters can be used with Direct messages, and can be used in conjunction with Selectors.
-
-Currently, the Filter is treated as a regular expression / regex, and the entire message contents (headers, properties, payload(s)) are evaluated against it.  So a filter of `Aaron` will search each message looking for the case-sensitive word "Aaron".  A filter of `(?i)Aaron.*Singapore` will look for the case-insensitive word "aaron" followed somewhere by "singapore".
-
-A Filter is specified either by the environment variable `PRETTY_FILTER="blah"` or using the command line argument `--filter="blah"` when runnning PrettyDump.
-
-```
-^^^^^^^^^^^^^^^^^^^^^^ End Message #16 ^^^^^^^^^^^^^^^^^^^^^
-🔎Skipping filtered msg #17
-```
 
 
 
