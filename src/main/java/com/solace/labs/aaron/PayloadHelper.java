@@ -302,7 +302,6 @@ public enum PayloadHelper {
         CharBuffer cb;
 		try {
 			// won't throw since the decoder is "REPLACE" and not "REPORT"
-//			cb = mapOfDecoders.get(charset).decode(ByteBuffer.wrap(bytes));
 			cb = decoder.decode(ByteBuffer.wrap(bytes));
 			return cb.toString();
 		} catch (CharacterCodingException e) {
@@ -314,7 +313,6 @@ public enum PayloadHelper {
 	public String decodeToString(ByteBuffer buffer) { 
 		try {
 			// won't throw since the decoder is "REPLACE" and not "REPORT"
-//			CharBuffer cb = mapOfDecoders.get(charset).decode(buffer);
 			CharBuffer cb = decoder.decode(buffer);
 			return cb.toString();
 		} catch (CharacterCodingException e) {
@@ -323,24 +321,6 @@ public enum PayloadHelper {
 		}
 	}
 
-
-//	public String parseAsJson(String s) {
-//		return "";
-//	}
-	
-	
-	
-/*
-	public class PayloadSection2 {
-		
-		private String type = null;  // might initialize later if JSON or XML
-		private String formatted = "<UNINITIALIZED>";  // to ensure gets overwritten
-		
-		private String rawString = null;
-		private byte[] rawBytes = null;
-		
-	}
-	*/
 
 	/** Only used by PrettyWrap */
 	public PayloadSection buildPayloadSection(ByteBuffer payloadContents) {

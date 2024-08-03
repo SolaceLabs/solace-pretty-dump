@@ -255,7 +255,7 @@ public enum Elem {
 	}
 
 //	static final int[] MATRIX_COLORS = new int[] { /* 22, */ 28, 34, 40, 46, /* 83, 120, */ 157 }; 
-	static final int[] MATRIX_COLORS = new int[] { /* 22, */ 28, 34, 40, 47, 120, 157 }; 
+	static final int[] MATRIX_COLORS = new int[] { /* 22, */ 28, 34, 40, 46, 120, 157 }; 
 
 	Col getCurrentColor() {
 		if (AaAnsi.getColorMode() == ColorMode.MATRIX) {

@@ -110,7 +110,7 @@ public class PrettyDump {
 		System.out.println("    • -250..-3  one-line mode, topic and payload only, compressed, fixed indent");
 		System.out.println("    • -2        two-line mode, topic and payload on two lines");
 		System.out.println("    • -1        one-line mode, automatic variable payload indentation");
-		System.out.println("    • -0        one-line mode, topic only, with/without topic spacing");
+		System.out.println("    • -0        one-line mode, topic only");
         System.out.println("    • For one-line modes, change '-' to '+' to enable topic level alignment");
 //		System.out.println("    - ±0        one-line mode, topic only, with/without topic spacing");
 		//		System.out.println("Runtime: press 't'[ENTER] (or argument '--trim') to auto-trim payload to screen width");
@@ -145,7 +145,7 @@ public class PrettyDump {
 		System.out.println("    • Press \"t\" ENTER to toggle payload trim to terminal width (or argument --trim)");
 		System.out.println("    • Press \"+\" or \"-\" ENTER to toggle topic level spacing/alignment (or argument \"+indent\")");
 		System.out.println("    • Press \"[1-n]\" ENTER to highlight a particular topic level (\"0\" ENTER to revert)");
-		System.out.println("    • Type \"c[svlmo]\" ENTER\" to change colour modes: Standard, Vivid, Light, Minimal, Off");
+		System.out.println("    • Type \"c[svlmo]\" ENTER\" to change colour modes: standard, vivid, light, minimal, off");
 		System.out.println("Environment variable options:");
 		System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=ISO-8859-1");
 		//		System.out.println("    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or \"set\" on Windows)");
@@ -173,12 +173,12 @@ public class PrettyDump {
 		System.out.println("    • tq:topics   provision a tempQ with optional topics  (can use NOT '!' topics)");
 		if (full) System.out.println(" - Indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode");
 		//		System.out.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
-		System.out.println(" - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume default broker");
+		System.out.println(" - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume defaults");
 		System.out.println("    • Or if first arg parses as integer, select as indent, rest default options");
 		if (full) System.out.println(" - Additional non-ordered args: --count, --filter, --selector, --trim");
 		if (full) System.out.println(" - Environment variables for decoding charset and colour mode");
 		if (full) System.out.println();
-		if (full) System.out.println("prettydump -hm for more help on indent, count, Seletor, Filter, charsets, and colours");
+		if (full) System.out.println("prettydump -hm for more help on indent, count, Selector, Filter, charsets, and colours");
 		if (full) System.out.println();
 	}
 

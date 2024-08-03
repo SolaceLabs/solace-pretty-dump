@@ -3,9 +3,9 @@
 #
 # To RUN:
 #
-#     docker run -it --rm -e "TERM=xterm-256color" solace-pretty-dump:latest broker.messaging.solace.cloud vpn-name user pw ">" -1
+#     docker run -it --rm solace-pretty-dump:latest broker.messaging.solace.cloud vpn-name user pw ">" -1
 #
-# or make an alias: pretty='docker run -it --rm -e "TERM=xterm-256color" solace-pretty-dump:latest'
+# or make an alias: pretty='docker run -it --rm solace-pretty-dump:latest'
 #
 #
 # To RUN in "wrap" mode around SdkPerf:  (can't use -t pseudo-TTY mode since pipe | doesn't work
