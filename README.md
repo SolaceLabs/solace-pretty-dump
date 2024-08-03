@@ -20,7 +20,6 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 - [Tips and Tricks](#tips-and-tricks)
 
 
-
 ## Requirements
 
 - Java 8+  or  Docker
@@ -43,7 +42,7 @@ For Docker container usage, read the comments in [the Dockerfile](Dockerfile).
 
 ## Running
 
-**N.B.** for those using Windows PowerShell or Command Prompt, see [Tips and Tricks](#tips-and-tricks) at the bottom.
+**N.B.** for those using Windows PowerShell or Command Prompt, see [Tips and Tricks](#windows) at the bottom.
 
 #### No args, default broker options
 ```
@@ -617,6 +616,8 @@ See: https://docs.solace.com/Messaging/Guaranteed-Msg/System-Level-Subscription-
 
 
 ### Browse the end of a Queue
+
+**Don't need to do this anymore!  Use `-count=-100` argument instead!**
 
 Using SEMP, you can query the broker for details of the last _n_ messages sitting on a queue, and use those values to tell PrettyDump to skip all the messages before that (note: PrettyDump still needs to pull all the messages off the queue to evaluate them).
 ```
