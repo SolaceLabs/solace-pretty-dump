@@ -439,7 +439,17 @@ public class PrettyDump {
 		properties.setProperty(JCSMPProperties.USERNAME, username);      // client-username
 		properties.setProperty(JCSMPProperties.PASSWORD, password);  // client-password
 		properties.setProperty(JCSMPProperties.REAPPLY_SUBSCRIPTIONS, true);  // subscribe Direct subs after reconnect
-		properties.setProperty(JCSMPProperties.SUB_ACK_WINDOW_SIZE, 20);  // moderate performance
+		if (System.getenv("PRETTY_SUB_ACK_WINDOW_SIZE") != null && !System.getenv("PRETTY_SUB_ACK_WINDOW_SIZE").isEmpty()) {
+			try {
+				int win = Integer.parseInt(System.getenv("PRETTY_SUB_ACK_WINDOW_SIZE"));
+				properties.setProperty(JCSMPProperties.SUB_ACK_WINDOW_SIZE, win);
+				System.out.println(AaAnsi.n().a("Custom AD window size detected: ").fg(Elem.NUMBER).a(win).reset());
+			} catch (NumberFormatException e) {
+				throw e;
+			}
+		} else {
+			properties.setProperty(JCSMPProperties.SUB_ACK_WINDOW_SIZE, 20);  // moderate performance
+		}
 		//		properties.setProperty(JCSMPProperties.GENERATE_RCV_TIMESTAMPS, true);  // turn on receive timestamping
 		JCSMPChannelProperties channelProps = new JCSMPChannelProperties();
 		channelProps.setConnectRetries(0);

@@ -16,6 +16,7 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 - [Error Checking](#error-checking)
 - [Protobuf Stuff](#protobuf-stuff) & Distributed Trace
 - [SdkPerf Wrap Mode](#sdkperf-wrap-mode)
+- [Miscellaneous](#miscellaneous)
 - [Tips and Tricks](#tips-and-tricks)
 
 
@@ -592,13 +593,20 @@ PUB MR(5s)=10004↑, SUB MR(5s)=10023↓, CPU=0
 ```
 
 
+## Miscellaneous
+
+Default subscriber window size is set to 20.  This provides moderate performance.  Override this with environment variable `PRETTY_SUB_ACK_WINDOW_SIZE`, range 1..255.  Note that consumer ACKs are asynchronous, and the API will only send them once a second (by default) unless the ACK window has closed 60% (by default).  Setting the window size to 1 means that ACKs will be flushed immediately, which is quicker but might incur a performance penalty at higher message rates due to chattier comms.  However, when looking at Open Telemetry distributed trace logs, the broker `send` span will complete significantly faster.
+
+
+
+
 
 ## Tips and Tricks
 
 
 ### Negative Subscriptions
 
-Solace has the concept of negative subscriptions or subscription exceptions, but only for Guaranteed consumers (that is, subscriptions on Endpoints)... it doesn't work for Direct consumers.  If you want to see all the traffic on your broker _except_ for some specified topics, then use a temporary queue `tq:` and add subscriptions such as:
+Solace has the concept of negative subscriptions (or subscription exceptions), but only for Guaranteed consumers (that is, subscriptions on Endpoints)... it doesn't work for Direct consumers.  If you want to see all the traffic on your broker _except_ for some specified topics, then use a temporary queue `tq:` and add subscriptions such as:
 ```
 $ prettydump 'tq:>, !bus/> !stats/>'
 ```

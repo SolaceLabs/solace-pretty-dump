@@ -627,7 +627,7 @@ public class UsefulUtils {
     		aa.a(SaxHandler.guessAndFormatChars(keyValPair[1], keyValPair[0], 0));
     		if (it.hasNext()) aa.reset().a(',');
     	}
-    	return aa.fg(Elem.BRACE).a('}').toString();
+    	return aa.fg(Elem.BRACE).a('}').reset().toString();
     }
     
     public static String capitalizeFirst(String s) {
