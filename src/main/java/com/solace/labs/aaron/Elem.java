@@ -75,7 +75,7 @@ public enum Elem {
 		map.put(BYTES_CHARS, new Col(6));
 		map.put(BRACE, new Col(-1));
 		map.put(DESTINATION, new Col(14));
-		map.put(TOPIC_SEPARATOR, new Col(-1));
+		map.put(TOPIC_SEPARATOR, new Col(6));
 		map.put(MSG_BREAK, new Col(-1,true));
 		map.put(WARN, new Col(208));
 		map.put(ERROR, new Col(9));
@@ -255,7 +255,7 @@ public enum Elem {
 	}
 
 //	static final int[] MATRIX_COLORS = new int[] { /* 22, */ 28, 34, 40, 46, /* 83, 120, */ 157 }; 
-	static final int[] MATRIX_COLORS = new int[] { /* 22, */ 28, 34, 40, 46, 120, 157 }; 
+	static final int[] MATRIX_COLORS = new int[] { /* 22, */ 28, 34, 40, 46, 120, /* 157 */ }; 
 
 	Col getCurrentColor() {
 		if (AaAnsi.getColorMode() == ColorMode.MATRIX) {

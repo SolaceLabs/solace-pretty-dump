@@ -665,13 +665,13 @@ Note that the copied messages are _new_ messages, and as such will have differen
 
 ### One-Line Dump w/dynamically spaced topics
 
-One of the most common ways I run this when developing an app and just want to sniff the broker is to use one-line mode, auto indent `+1` with spacing, and hit `t [ENTER]` (for trim) as soon as it starts running.  You can always press `+` or `-` `[ENTER]` during runtime to toggle between spacing modes.
+One of the most common ways I run this when developing an app and just want to sniff the broker is to use one-line mode, auto indent `+1` with spacing, and enable payload trim with argument `--trim`.  You can always press `+` or `-` `[ENTER]` during runtime to toggle between spacing modes, or `t` `[ENTER]` to toggle payload trim.
 ```
-pq-demo/proc..../pq12/sub-pq12-4049/8f-7/0/_ <EMPTY> Raw BytesMessage
-pq-demo/stats.../pq../sub-pq12-4049          {"red":0,"oos":0,"queueName":"pq12","slow":0,"r…
-pq12.../pub-dc8f/8f-4/0............/_        <EMPTY> Raw BytesMessage
-pq-demo/proc..../pq12/sub-pq12-4049/8f-4/0/_ <EMPTY> Raw BytesMessage
-pq-demo/stats.../pq../pub-dc8f               {"prob":0,"paused":false,"delay":0,"nacks":0,"r…
+pq-demo/proc..../pq12/sub-pq12-4049/8f-7/0/_  <EMPTY> Raw BytesMessage
+pq-demo/stats.../pq../sub-pq12-4049           {"red":0,"oos":0,"queueName":"pq12","slow":0,"r…
+pq12.../pub-dc8f/8f-4/0............/_         <EMPTY> Raw BytesMessage
+pq-demo/proc..../pq12/sub-pq12-4049/8f-4/0/_  <EMPTY> Raw BytesMessage
+pq-demo/stats.../pq../pub-dc8f                {"prob":0,"paused":false,"delay":0,"nacks":0,"r…
 ```
 
 And use "vivid" colour mode `export PRETTY_COLORS=vivid` for nice rainbow topic level colouring.
@@ -681,11 +681,12 @@ And use "vivid" colour mode `export PRETTY_COLORS=vivid` for nice rainbow topic 
 
 ### Windows
 
-If running on Windows PowerShell or Command Prompt, make sure you enable UTF-8 charset / code point encoding to see all the emojis!  Windows _still_ uses its default (and ancient) `Windows-1252` encoding.
+If running on Windows PowerShell or Command Prompt, make sure you enable UTF-8 charset / code point encoding to see all the emojis!  Windows _still_ uses its default (and ancient) `Windows-1252` encoding.  Also enable full 256 colour output!
 ```
 C:\> chcp 65001
 C:\> set PRETTYDUMP_OPTS=-Dsun.stdout.encoding=utf-8
-C>\> prettydump
+C:\> set TERM=xterm-256color
+C:\> prettydump
 
  ~or~
 
@@ -696,6 +697,7 @@ PS C:\> prettydump
 ```
 
 See: https://en.wikipedia.org/wiki/Windows-1252
+
 
 
 
