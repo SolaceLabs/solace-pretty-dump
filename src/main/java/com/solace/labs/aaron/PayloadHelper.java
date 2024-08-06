@@ -899,6 +899,10 @@ public enum PayloadHelper {
 	public void stop() {
 		isStopped = true;
 	}
+	
+	public boolean isStopped() {
+		return isStopped;
+	}
 
     public void dealWithMessage(BytesXMLMessage message) {
     	if (isStopped) return;
@@ -980,17 +984,29 @@ public enum PayloadHelper {
 			            	if (message.getAttachmentByteBuffer() != null) {  // should be impossible since content length > 0
 			            		byte[] bytes = message.getAttachmentByteBuffer().array();
 			            		if ("gzip".equals(message.getHTTPContentEncoding())) {
+			            			GZIPInputStream gzip = null;
+			            			ByteArrayOutputStream os = new ByteArrayOutputStream();
 			            			try {
-										GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(bytes));
-										ByteArrayOutputStream os = new ByteArrayOutputStream();
-										gzip.transferTo(os);
+			            				gzip = new GZIPInputStream(new ByteArrayInputStream(bytes));
+										int len = 0;
+										byte[] buffer = new byte[1024];
+										while ((len = gzip.read(buffer)) > 0) {
+										    os.write(buffer, 0, len);
+										}
 										bytes = os.toByteArray();
 										ms.msgType = "GZIPed " + ms.msgType;
 									} catch (IOException e) {
 										logger.warn("Had a message marked as 'gzip' but wasn't");
 										logger.warn(message.dump());
 										System.out.println(AaAnsi.n().ex("Had a message marked as 'gzip' but wasn't", e).toString());
+									} finally {
+										try {
+											if (gzip != null) gzip.close();
+											os.close();
+										} catch (IOException e2) {
+										}
 									}
+			            			
 			            		}
 	
 			            		// Protobuf stuff...
@@ -1076,6 +1092,10 @@ public enum PayloadHelper {
             	if (ThinkingAnsiHelper.isFilteringOn()) ThinkingAnsiHelper.filteringOff();
                 SystemOutHelper systemOut = ms.printMessage();
             	System.out.print(systemOut);
+            	if (filterRegexPattern != null) {  // there is some filtering
+					ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringPrinted("",
+							getMessageCount(), getFilteredCount(), getMessageCount()-getFilteredCount()));
+            	}
             }
         } catch (RuntimeException e) {  // really shouldn't happen!!
         	System.out.println(MessageHelper.printMessageStart());

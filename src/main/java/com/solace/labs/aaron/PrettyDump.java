@@ -813,8 +813,8 @@ public class PrettyDump {
 		if (PayloadHelper.Helper.isLastNMessagesEnabled()) {
 			ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered(null, 0, 0, 0, PayloadHelper.Helper.getLastNMessagesCapacity()));
 			//			ThinkingAnsiHelper.tick(String.format("%d messages gathered, # messages received = ", PayloadHelper.Helper.getLastNMessagesSize()));
+//		} else if (PayloadHelper.Helper.) {
 		}
-
 		final Thread shutdownThread = new Thread(new Runnable() {
 			public void run() {
 				PayloadHelper.Helper.stop();
@@ -822,10 +822,10 @@ public class PrettyDump {
 				System.out.print(AaAnsi.n());
 				System.out.println("\nShutdown hook triggered, quitting...");
 				isShutdown = true;
-				if (isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
-					if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
-					if (directConsumer != null) directConsumer.close();
-				}
+//				if (isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
+//					if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
+//					if (directConsumer != null) directConsumer.close();
+//				}
 				try {
 					Thread.sleep(200);
 					session.closeSession();
@@ -1041,6 +1041,7 @@ public class PrettyDump {
 
 		@Override
 		public void onReceive(BytesXMLMessage message) {
+			if (PayloadHelper.Helper.isStopped()) return;  // we're done, don't do anything with this
 			PayloadHelper.Helper.dealWithMessage(message);
 			if (!ThinkingAnsiHelper.isFilteringOn()) msgCountRemaining--;  // payload helper would turn it off
 			// if we're not browsing, and it's not a Direct message (doesn't matter if we ACK a Direct message anyhow)
@@ -1048,9 +1049,10 @@ public class PrettyDump {
 			if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
 			if (msgCountRemaining == 0) {
 				System.out.println("\n" + AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(origMsgCount + " messages received. Quitting.").reset());
+				PayloadHelper.Helper.stop();
 				isShutdown = true;
-				if (flowQueueReceiver != null) flowQueueReceiver.close();
-				if (directConsumer != null) directConsumer.close();
+//				if (flowQueueReceiver != null) flowQueueReceiver.close();
+//				if (directConsumer != null) directConsumer.close();
 			}
 		}
 

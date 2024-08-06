@@ -619,7 +619,7 @@ See: https://docs.solace.com/Messaging/Guaranteed-Msg/System-Level-Subscription-
 
 **Don't need to do this anymore!  Use `-count=-100` argument instead!**
 
-Using SEMP, you can query the broker for details of the last _n_ messages sitting on a queue, and use those values to tell PrettyDump to skip all the messages before that (note: PrettyDump still needs to pull all the messages off the queue to evaluate them).
+Using SEMP, you can query the broker for details of the last _n_ messages sitting on a queue, and use those values to tell PrettyDump to skip all the messages before that (note: PrettyDump still needs to pull all the messages off the queue to evaluate them).  Check out the `show-last-nth-msg-spool-id.sh` script in the `scripts` directory to do this.
 ```
 curl -u admin:admin http://localhost:8080/SEMP -d '<rpc><show><queue><name>q1</name><vpn-name>default</vpn-name><messages/><newest/><count/><num-elements>100</num-elements></queue></show></rpc>'
 
@@ -642,16 +642,14 @@ curl -u admin:admin http://localhost:8080/SEMP -d '<rpc><show><queue><name>q1</n
               </spooled-message>
 ...
 ```
-I think there may also be a SEMPv2 equivalent command for this?
 
-This will dump out the Message Spool IDs of the last 100 messages on the queue, sorted **newest first**.  Change `<num-elements>` to 1000 or whatever if want more.  Then use one of these numbers when you browse `b:` to skip all messages until you get here, e.g.:  (note the trailing `-` for "start range")
+Then use one of the Message Spool ID when you browse `b:` to skip all messages until you get here, e.g.:  (note the trailing `-` for "start range")
 ```
-$ prettydump b:q1 
+$ prettydump b:q1
 
 Browse all messages -> press [ENTER],
- or enter specific Message Spool ID, or to/from range of IDs
- (e.g. "106259-110261" or "98517-" or "-103345"),
- or start at RGMID (e.g. "rmid1:3477f-a5ce52..."): 1043984-    <--
+ or to/from or range of MsgSpoolIDs (e.g. "10659-11061" or "9817-" or "-10845"),
+ or to/from RGMID (e.g. "-rmid1:3477f-a5ce52..."): 1043984-    <--
 ```
 
 
@@ -668,10 +666,10 @@ Note that the copied messages are _new_ messages, and as such will have differen
 One of the most common ways I run this when developing an app and just want to sniff the broker is to use one-line mode, auto indent `+1` with spacing, and enable payload trim with argument `--trim`.  You can always press `+` or `-` `[ENTER]` during runtime to toggle between spacing modes, or `t` `[ENTER]` to toggle payload trim.
 ```
 pq-demo/proc..../pq12/sub-pq12-4049/8f-7/0/_  <EMPTY> Raw BytesMessage
-pq-demo/stats.../pq../sub-pq12-4049           {"red":0,"oos":0,"queueName":"pq12","slow":0,"r…
+pq-demo/stats.../pq../sub-pq12-4049           {"red":0,"oos":0,"queueName":"pq12","slow":0,"r…(len=189)
 pq12.../pub-dc8f/8f-4/0............/_         <EMPTY> Raw BytesMessage
 pq-demo/proc..../pq12/sub-pq12-4049/8f-4/0/_  <EMPTY> Raw BytesMessage
-pq-demo/stats.../pq../pub-dc8f                {"prob":0,"paused":false,"delay":0,"nacks":0,"r…
+pq-demo/stats.../pq../pub-dc8f                {"prob":0,"paused":false,"delay":0,"nacks":0,"re…(len=85)
 ```
 
 And use "vivid" colour mode `export PRETTY_COLORS=vivid` for nice rainbow topic level colouring.
