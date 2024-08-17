@@ -88,6 +88,7 @@ dependencies {
 
     // versions after 10.22 have about 40 netty deps
     implementation("com.solacesystems:sol-jcsmp:10.+")
+    //implementation("com.solacesystems:sol-jcsmp:10.22.+")
     //runtimeOnly("org.slf4j:slf4j2-log4j12:1.7.6')
     implementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.+")
 

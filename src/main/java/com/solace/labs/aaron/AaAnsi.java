@@ -22,11 +22,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.fusesource.jansi.Ansi;
 import org.fusesource.jansi.Ansi.Attribute;
-import org.fusesource.jansi.AnsiColors;
+import org.fusesource.jansi.AnsiConsole;
 
 import com.solace.labs.aaron.utils.BoundedLinkedList;
-
-import org.fusesource.jansi.AnsiConsole;
 
 /**
  * Kind of a wrapper around the JAnsi library.  Modified for my own uses.
@@ -194,7 +192,7 @@ public class AaAnsi /* implements CharSequence */ {
 			}
 			if (i < levels.length-1) {
 				if (highlight == -1) faintOff();// reset();
-				fg(Elem.TOPIC_SEPARATOR).a('/');  // this does the charCount!  and the rawSb
+				fg(Elem.TOPIC_SEPARATOR, true).a('/');  // this does the charCount!  and the rawSb
 			}
 		}
 		return this;
@@ -321,17 +319,31 @@ public class AaAnsi /* implements CharSequence */ {
 	}
 	
 	private AaAnsi fg(Elem elem, boolean force) {
-		curElem = elem;
 		if (isOn() || force) {
-			Col c = elem.getCurrentColor();
-			if (c.faint) {
-				faintOn().fg(c.value, force);
-			} else if (c.italics) {
-				makeItalics().fg(c.value, force);
-			} else {
-				fg(c.value, force);
+			Col newCol = elem.getCurrentColor();
+//			if (c.faint) {
+//				faintOn().fg(c.value, force);
+//			} else if (c.italics) {
+//				makeItalics().fg(c.value, force);
+//			} else {
+//				fg(c.value, force);
+//			}
+//			if ()
+			if (force || curElem == null || curElem.getCurrentColor().value != newCol.value) fg(newCol.value, force);
+			if (newCol.faint) {
+				faintOn();
+//			} else if (curElem == null || curElem.getCurrentColor().faint) {
+			} else if (curElem != null && curElem.getCurrentColor().faint) {
+				faintOff();
+			}
+			if (newCol.italics) {
+				italicsOn();
+//			} else if (curElem == null || curElem.getCurrentColor().italics) {
+			} else if (curElem != null && curElem.getCurrentColor().italics) {
+				italicsOff();
 			}
 		}
+		curElem = elem;
 		return this;
 	}
 
@@ -355,12 +367,12 @@ public class AaAnsi /* implements CharSequence */ {
 //		return this;
 //	}
 
-	public AaAnsi makeItalics() {
-		if (isOn()) {
-			jansi.a(Attribute.ITALIC);
-		}
-		return this;
-	}
+//	public AaAnsi makeItalics() {
+//		if (isOn()) {
+//			jansi.a(Attribute.ITALIC);
+//		}
+//		return this;
+//	}
 	
 	public AaAnsi italicsOn() {
 		if (isOn()) {
@@ -386,7 +398,7 @@ public class AaAnsi /* implements CharSequence */ {
 	
 	public AaAnsi faintOff() {
 		if (isOn()) {
-			jansi.a(Attribute.INTENSITY_BOLD_OFF);  // doesn't work.  For some reason there is no "faint off" ..!?
+			jansi.a(Attribute.INTENSITY_BOLD_OFF);
 		}
 		return this;
 	}
@@ -713,6 +725,7 @@ public class AaAnsi /* implements CharSequence */ {
 		return this;
 	}
 	
+	/** Even if not "on", used by warn() and invalid() b/c they force colour anyway */
 	private AaAnsi forceReset() {
 		jansi.reset();
 		if (Elem.DEFAULT.getCurrentColor().value != -1) jansi.fg(Elem.DEFAULT.getCurrentColor().value);

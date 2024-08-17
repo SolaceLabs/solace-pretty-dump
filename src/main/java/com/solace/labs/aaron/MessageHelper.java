@@ -43,17 +43,13 @@ public class MessageHelper {
     	} else {  // a Topic
     		if (PayloadHelper.Helper.isOneLineMode()) {  // shouldn't be calling this yet!!?!?!!
         		msgDestNameFormatted = AaAnsi.n().fg(Elem.DESTINATION).a(msgDestName);
+        		throw new AssertionError("we shouldn't be here, this method is not for one-line mode");
     		} else {
-        		msgDestNameFormatted = AaAnsi.n().fg(Elem.DESTINATION).a("Topic '").colorizeTopic(msgDestName, PayloadHelper.Helper.getHighlightedTopicLevel()).a('\'');
+        		msgDestNameFormatted = AaAnsi.n().fg(Elem.DESTINATION).a("Topic '").colorizeTopic(msgDestName, PayloadHelper.Helper.getHighlightedTopicLevel()).fg(Elem.DESTINATION).a('\'');
     		}
     	}
     	msgDestNameFormatted.reset();
     }
-    
-    // make sure this is called before printMessage()
-//    private void prepMessageForPrinting() {
-//    	headerLines = orig.dump(XMLMessage.MSGDUMP_BRIEF).split("\n");
-//    }
     
     public String buildFullStringObject() {
     	StringBuilder sb = new StringBuilder();

@@ -16,6 +16,7 @@
 
 package com.solace.labs.aaron;
 
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -24,6 +25,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import com.solace.labs.aaron.PayloadHelper.PrettyMsgType;
 import com.solacesystems.common.util.ByteArray;
 
 public class UsefulUtils {
@@ -265,8 +267,8 @@ public class UsefulUtils {
 //			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset();  // byte values
 			return new AaAnsi().reset().fg(Elem.BYTES).a(bytesToSpacedHexString(bytes)).reset();  // byte values
 		}
-		if (terminalWidth > 151) return printBytes2(bytes, indent, 32);  // widescreen
-		else return printBytes2(bytes, indent, 16);
+		if (terminalWidth > 151) return printBytes3(bytes, indent, 32);  // widescreen
+		else return printBytes3(bytes, indent, 16);
 	}
 	
 //	static final int WIDTH = 32;
@@ -401,6 +403,46 @@ public class UsefulUtils {
 		return aa;
 	}
 
+	
+	/** this should only be called if we know it's not a UTF-8 (or whatever) string */
+	private static AaAnsi printBytes3(byte[] bytes, int indent, int width) {
+		// width must be either 16 or 32 for wide-screen
+		indent = 2;  // force override, 2 is what SdkPerf does too
+		String hex2 = bytesToLongHexString(bytes);
+		AaAnsi aa = new AaAnsi();
+		int numRows = (int)Math.ceil(bytes.length * 1.0 / width);
+		for (int i=0; i < numRows; i++) {
+			aa.fg(Elem.DATA_TYPE).a(String.format("%04x0   ", i % 4096)).fg(Elem.BYTES);
+			for (int j=0; j<width; j++) {
+				int pos = i * width + j;
+				if (pos < bytes.length) aa.a(hex2.charAt(pos*2)).a(hex2.charAt(pos*2 + 1)).a(' ');
+				else {
+					if (pos == bytes.length) aa.faintOn();  // when we've run out of bytes
+					aa.a('·').a('·').a(' ');//.append("·· ");
+				}
+				if (j % COLS == COLS-1) {
+					aa.a(' ').a(' ');
+				}
+			}
+			aa.a(' ').fg(Elem.BYTES_CHARS);
+			if (i == numRows-1) aa.faintOff();  // last row, might have turned on faint
+//			for (int j=i-(width-1); j<=i; j++) {
+			for (int j=0; j<width; j++) {
+				int pos = i * width + j;
+				if (pos < bytes.length) {
+					aa.a(getSimpleChar2(bytes[pos]));
+//					if (j % 8 == 7 && j != i) aa.a(' ').a(' ');
+					if (j % 8 == 7 && j != width-1) aa.a(' ').a(' ');  // if on a column && not the last column
+				}
+			}
+//			aa.reset();
+			if (i < numRows-1) aa.a('\n');
+//				if (i < bytes.length-1 || indent > 0) ansi.a('\n');
+		}
+		return aa.reset();
+	}
+
+	
 
 	private static final String[] INDENTS = new String[80];
 	static {
@@ -636,6 +678,58 @@ public class UsefulUtils {
     	StringBuilder sb = new StringBuilder();
     	sb.append(s.substring(0, 1).toUpperCase()).append(s.substring(1));
     	return sb.toString();
+    }
+    
+    public static boolean setContainsIgnoreCase(Set<String> set, String string) {
+    	for (String key : set) {
+    		if (key.equalsIgnoreCase(string)) return true;
+    	}
+    	return false;
+    }
+
+    public static String setGetIgnoreCase(Set<String> set, String string) {
+    	for (String key : set) {
+    		if (key.equalsIgnoreCase(string)) return key;
+    	}
+    	return null;
+    }
+    
+    public static String textMessageBytesToString(byte[] bytes) {
+    	if (bytes[bytes.length-1] != 0x00) return null;  // last byte must be null;
+    	int len = bytes.length;
+    	switch (bytes[0]) {
+	    	case 0x1c:
+	        	if (bytes.length < 3) return null;
+	    		if (Byte.toUnsignedInt(bytes[1]) == len) {  // that's good!
+	    			return new String(Arrays.copyOfRange(bytes, 2, len-1), StandardCharsets.UTF_8);
+	    		}
+	    		break;
+	    	case 0x1d: {
+	    		if (bytes.length < 4) return null;
+	    		if (len == (Byte.toUnsignedInt(bytes[1]) << 8) + Byte.toUnsignedInt(bytes[2])) {
+	    			return new String(Arrays.copyOfRange(bytes, 3, len-1), StandardCharsets.UTF_8);
+	    		}
+	    		break;
+	    	}
+	    	case 0x1e: {
+	        	if (bytes.length < 5) return null;
+	    		int check = Byte.toUnsignedInt(bytes[1]) << 16 + Byte.toUnsignedInt(bytes[2]) << 8 + Byte.toUnsignedInt(bytes[3]);
+	    		if (check == len) {
+	    			return new String(Arrays.copyOfRange(bytes, 4, len-1), StandardCharsets.UTF_8);
+	    		}
+	    		break;
+	    	}
+	    	case 0x1f: {
+	        	if (bytes.length < 6) return null;
+	    		int check = Byte.toUnsignedInt(bytes[1]) << 24 + Byte.toUnsignedInt(bytes[2]) << 16;
+	    		check += Byte.toUnsignedInt(bytes[3]) << 8 + Byte.toUnsignedInt(bytes[4]);
+	    		if (check == len) {
+	    			return new String(Arrays.copyOfRange(bytes, 5, len-1), StandardCharsets.UTF_8);
+	    		}
+	    		break;
+	       	}
+    	}
+    	return null;
     }
 
 }

@@ -425,7 +425,7 @@ A Filter is specified by the command line argument `--filter="blah"` when runnni
 
 ### A word on performance
 
-I filled up a queue with > 1M messages in it.  I used a browser and Selector to find a message I knew was at the back of the queue (looking for its Application Message ID / JMS Message ID).  It literally took a few seconds.  I ran the same test, using a client-side Filter, set to something equivalient: `^AppMessageID: +aaron123$`
+I filled up a queue with > 1M messages in it.  I used a browser and Selector to find a message I knew was at the back of the queue (looking for its Application Message ID / JMS Message ID).  It literally took a few seconds.  I ran the same test, using a client-side Filter, set to something equivalient: `^AppMessageID: +aaron123$` and it took maybe a minute or two to scrub through all the messages on the queue.
 
 
 
@@ -594,7 +594,9 @@ PUB MR(5s)=10004↑, SUB MR(5s)=10023↓, CPU=0
 
 ## Miscellaneous
 
-Default subscriber window size is set to 20.  This provides moderate performance.  Override this with environment variable `PRETTY_SUB_ACK_WINDOW_SIZE`, range 1..255.  Note that consumer ACKs are asynchronous, and the API will only send them once a second (by default) unless the ACK window has closed 60% (by default).  Setting the window size to 1 means that ACKs will be flushed immediately, which is quicker but might incur a performance penalty at higher message rates due to chattier comms.  However, when looking at Open Telemetry distributed trace logs, the broker `send` span will complete significantly faster.
+### Subscriber ACK window size
+
+PrettyDUmp sets the subscriber window size to 20.  This provides moderate performance.  Override this with environment variable `PRETTY_SUB_ACK_WINDOW_SIZE`, range 1..255.  Note that consumer ACKs are asynchronous, and the API will only send them once a second (by default) unless the ACK window has closed 60% (by default).  Setting the window size to 1 means that ACKs will be flushed immediately, which is quicker but might incur a performance penalty at higher message rates due to chattier comms.  However, when looking at Open Telemetry distributed trace logs, the broker `send` span will complete significantly faster.
 
 
 

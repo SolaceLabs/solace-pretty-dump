@@ -1,5 +1,7 @@
 package com.solace.labs.aaron;
 
+import org.fusesource.jansi.AnsiConsole;
+
 public class ThinkingAnsiHelper {
 
 	private static boolean isFilteringOn = false;
@@ -9,7 +11,7 @@ public class ThinkingAnsiHelper {
 	private static int lastStringsWidth = 0;
 	private static int charIndex = 0;
 	private static int rainbowIndex = 0;
-	private static final String BACKSPACES = (char)27 + "[200D";
+	private static final String BACKSPACES = (char)27 + "[200D";  // 200 backspace chars
 	static {
 //		Ansi ansi = new Ansi();
 //		for (int i=0; i<BACKSPACES.length; i++) {
@@ -82,7 +84,9 @@ public class ThinkingAnsiHelper {
 			AaAnsi.resetAnsi(System.out);
 		}
 //		clearReset();
-		System.out.print(filterString);
+		if (AnsiConsole.isInstalled()) {
+			System.out.print(filterString);
+		}
 //		System.out.println();  // test
 		lastStringsWidth = filterString.length();
 	}
