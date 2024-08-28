@@ -25,12 +25,12 @@ import java.util.Iterator;
  */
 public class BoundedLinkedList<T> implements Iterable<T> {
 	
-	public static class Comparable<U extends java.lang.Comparable<U>> extends BoundedLinkedList<U> {
+	public static class ComparableList<U extends java.lang.Comparable<U>> extends BoundedLinkedList<U> {
 		
 		protected LinkedNode<U> max = null;
 		protected LinkedNode<U> min = null;
 		
-		public Comparable(int maxSize) {
+		public ComparableList(int maxSize) {
 			super(maxSize);
 		}
 

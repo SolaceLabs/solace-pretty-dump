@@ -14,9 +14,9 @@ public class SystemOutHelper {
 		return this;
 	}
 	
-	public SystemOutHelper print(AaAnsi aa) {
-		col.append(aa.toString());
-		bw.append(aa.toRawString());
+	public SystemOutHelper print(AaAnsi ansi) {
+		col.append(ansi.toString());
+		bw.append(ansi.toRawString());
 		return this;
 	}
 	
@@ -32,9 +32,9 @@ public class SystemOutHelper {
 		return this;
 	}
 	
-	public SystemOutHelper println(AaAnsi aa) {
-		col.append(aa.toString()).append('\n');
-		bw.append(aa.toRawString()).append('\n');
+	public SystemOutHelper println(AaAnsi ansi) {
+		col.append(ansi.toString()).append('\n');
+		bw.append(ansi.toRawString()).append('\n');
 		return this;
 	}
 	

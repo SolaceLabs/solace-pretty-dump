@@ -6,12 +6,27 @@ public class ThinkingAnsiHelper {
 
 	private static boolean isFilteringOn = false;
 	
-	private static final char[] LOOPS = new char[] { '━', '\\', '|', '/' };
+//	private static final char[] LOOPS = new char[] { '━', '\\', '|', '/' };
 
 	private static int lastStringsWidth = 0;
-	private static int charIndex = 0;
-	private static int rainbowIndex = 0;
-	private static final String BACKSPACES = (char)27 + "[200D";  // 200 backspace chars
+	private static final boolean isEnabled;
+//	private static int charIndex = 0;
+//	private static int rainbowIndex = 0;
+	private static final String BACKSPACES;
+	static {
+		if (AnsiConsole.getTerminalWidth() == 0) {  // happens when running inside Eclipse
+			isEnabled = false;
+//			StringBuilder sb = new StringBuilder();
+//			for (int i=0; i<200; i++) {
+//				sb.append((char)8);  // a backspace char
+//			}
+//			BACKSPACES = sb.toString();
+			BACKSPACES = "\n";
+		} else {
+			BACKSPACES = (char)27 + "[200D";  // 200 backspace chars
+			isEnabled = true;
+		}
+	}
 	static {
 //		Ansi ansi = new Ansi();
 //		for (int i=0; i<BACKSPACES.length; i++) {
@@ -27,6 +42,7 @@ public class ThinkingAnsiHelper {
 	}
 	
 	private static void clearReset() {
+		if (!isEnabled) return;
 //		if (screenPosX < BACKSPACES.length) System.out.print(BACKSPACES[screenPosX]);  // hardcoded
 //		else System.out.print(UsefulUtils.pad(screenPosX, (char)8));
 //		if (rainbowIndex == 0) charIndex = (charIndex + 1) % 4;
@@ -83,31 +99,8 @@ public class ThinkingAnsiHelper {
 			isFilteringOn = true;
 			AaAnsi.resetAnsi(System.out);
 		}
-//		clearReset();
-		if (AnsiConsole.isInstalled()) {
-			System.out.print(filterString);
-		}
-//		System.out.println();  // test
-		lastStringsWidth = filterString.length();
+		if (!isEnabled) return;  // don't print anything
+		System.out.print(filterString);
+		lastStringsWidth = filterString.length();  // so we can blank out the line when resetting
 	}
-
-	private static void tick(String filterString) {
-		if (!isFilteringOn) {
-			isFilteringOn = true;
-			AaAnsi.resetAnsi(System.out);
-		}
-//		clearReset();
-		String m = new StringBuilder("🔎 ").append(filterString).append("<counthere>").append("              ").toString();
-		assert m.length() < 80;
-//		screenPosX = m.length();
-		System.out.print(m);
-		System.out.print(BACKSPACES);
-	}
-	
-
-	/** Default value of "Skipping filtered msg #" */
-//	public static void tick() {
-//		tick("Skipping filtered msg #");
-//	}
-	
 }

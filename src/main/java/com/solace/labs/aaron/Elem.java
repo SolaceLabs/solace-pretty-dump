@@ -149,7 +149,7 @@ public enum Elem {
 		map.put(ERROR, new Col(9));
 		map.put(UNKNOWN, new Col(196, false, true));
 //		defaults.put(DEFAULT, new Col(66));
-		map.put(DEFAULT, new Col(102));
+		map.put(DEFAULT, new Col(245));
 
 		colorMap.put(AaAnsi.ColorMode.LIGHT, new HashMap<>());
 		map = colorMap.get(AaAnsi.ColorMode.LIGHT);
@@ -260,7 +260,7 @@ public enum Elem {
 	Col getCurrentColor() {
 		if (AaAnsi.getColorMode() == ColorMode.MATRIX) {
 			return new Col(MATRIX_COLORS[(int)(Math.random() * MATRIX_COLORS.length)]);
-			// if you comment this out, check: public AaAnsi a(AaAnsi aa)
+			// if you comment this out, check: public AaAnsi aa(AaAnsi aa)
 		}
 		// else...
 		return lookup.get(this);

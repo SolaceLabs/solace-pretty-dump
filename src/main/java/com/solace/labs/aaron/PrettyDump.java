@@ -44,6 +44,7 @@ import com.solacesystems.jcsmp.AccessDeniedException;
 import com.solacesystems.jcsmp.Browser;
 import com.solacesystems.jcsmp.BrowserProperties;
 import com.solacesystems.jcsmp.BytesXMLMessage;
+import com.solacesystems.jcsmp.CapabilityType;
 import com.solacesystems.jcsmp.ConsumerFlowProperties;
 import com.solacesystems.jcsmp.DeliveryMode;
 import com.solacesystems.jcsmp.EndpointProperties;
@@ -81,33 +82,35 @@ public class PrettyDump {
 	static {
 		logger.info("### Starting PrettyDump!");
 	}
+	private static final String DEFAULT_TOPIC = "#noexport/>";
+	
 	private static final JCSMPFactory f = JCSMPFactory.onlyInstance();
-	private static final JCSMPProperties properties = new JCSMPProperties();
-	private static JCSMPSession session;
+	private final JCSMPProperties properties = new JCSMPProperties();
+	private JCSMPSession session;
 	//	private static PayloadHelper payloadHelper;
 
-	private static volatile boolean isShutdown = false;          // are we done yet?
-	private static volatile boolean isConnected = false;
-	private static volatile boolean isFlowActive = false;
-	private static final String DEFAULT_TOPIC = "#noexport/>";
-	private static String[] topics = new String[] { DEFAULT_TOPIC };  // default starting topic
-	private static Queue queue = null;  // might be temp/non-durable, or regular
-	private static Browser browser = null;  // in case we need it, can't do async, is a blocking/looping pull
-	private static long origMsgCount = Long.MAX_VALUE;
-	private static long msgCountRemaining = Long.MAX_VALUE;
-	private static long skipMsgCount = 0;
-	private static long skipMsgCountOrig = 0;
-	private static String selector = null;
-	private static String contentFilter = null;
-	//    private static Queue tempQueue = null;
-	private static long browseFrom = -1;
-	private static long browseTo = Long.MAX_VALUE;
-	private static ReplicationGroupMessageId browseToRGMID = null;
-	private static ReplicationGroupMessageId browseFromRGMID = null;
+	private String[] topics = new String[] { DEFAULT_TOPIC };  // default starting topic
+	private Queue queue = null;  // might be temp/non-durable, or regular
+	private Browser browser = null;  // in case we need it, can't do async, is a blocking/looping pull
+	private FlowReceiver flowQueueReceiver = null;  // for queues and tempQueue
+	private XMLMessageConsumer directConsumer = null;  // for Direct
 
-	private static FlowReceiver flowQueueReceiver = null;  // for queues and tempQueue
-	private static XMLMessageConsumer directConsumer = null;  // for Direct
+	final private PayloadHelper ph;
+	final private ConfigState config = new ConfigState();
+	private long origMsgCount = Long.MAX_VALUE;
+	private long msgCountRemaining = Long.MAX_VALUE;
+//	private long skipMsgCount = 0;
+//	private long skipMsgCountOrig = 0;
+	private String selector = null;
+	private String contentFilter = null;
+	private long browseFrom = -1;
+	private long browseTo = Long.MAX_VALUE;
+	private ReplicationGroupMessageId browseToRGMID = null;
+	private ReplicationGroupMessageId browseFromRGMID = null;
 
+	private PrettyDump() {
+		this.ph = new PayloadHelper(config);
+	}
 
 	private static void printHelpIndent() {
 
@@ -149,7 +152,7 @@ public class PrettyDump {
 		System.out.println("    • --selector=\"mi like 'hello%world'\"  Selector for Queue consume and browse");
 		System.out.println("    • --filter=\"ABC123\"  client-side REGEX content filter on any received message");
 		System.out.println("    • --count=n   stop after receiving n number of msgs; or if < 0, only show last n msgs");
-		System.out.println("    • --skip=n    skip the first n messages received");
+//		System.out.println("    • --skip=n    skip the first n messages received");
 		System.out.println("    • --trim      enable paylaod trim for one-line (and two-line) modes");
 		System.out.println("    • --defaults  show all possible JCSMP Session properties to set/override");
 		System.out.println(" - One-Line runtime options: type the following into the console while the app is running");
@@ -163,6 +166,9 @@ public class PrettyDump {
 		System.out.println(" - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever");
 		System.out.println("    • Choose: \"standard\" (default), \"vivid\", \"light\", \"minimal\", \"matrix\", \"off\"");
 		System.out.println();
+//		System.out.println("Runtime commands, type these + [ENTER] while running:");
+//		System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=ISO-8859-1");
+//		System.out.println();
 		System.out.println("SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to \" | prettydump wrap\" to prettify");
 		System.out.println();
 		System.out.println("See the README.md for more explanations of every feature and capability");
@@ -186,7 +192,7 @@ public class PrettyDump {
 		//		System.out.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
 		System.out.println(" - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume defaults");
 		System.out.println("    • Or if first arg parses as integer, select as indent, rest default options");
-		if (full) System.out.println(" - Additional non-ordered args: --count, --skip, --filter, --selector, --trim");
+		if (full) System.out.println(" - Additional non-ordered args: --count,  --filter, --selector, --trim");
 		if (full) System.out.println(" - Any JCSMP Session property (use --defaults to see all)");
 		if (full) System.out.println(" - Environment variables for decoding charset and colour mode");
 		if (full) System.out.println();
@@ -202,70 +208,75 @@ public class PrettyDump {
 		if (full) System.out.println();
 	}
 
-	private static void printParamsInfo(String indentStr, String countStr) {
+	private void printParamsInfo(String indentStr, String countStr) {
 		//    	if (indentStr.isEmpty()) indentStr = "2";
 		//    	String countStr = Long.toString(count);
 		//    	System.out.println(countStr);
 		int pad = Math.max(indentStr.length(), countStr.length());
-		AaAnsi aa = AaAnsi.n();
+		AaAnsi ansi = AaAnsi.n();
 		if (!indentStr.isEmpty()) {
-			aa.a("Indent=").fg(Elem.NUMBER).a(String.format("%"+pad+"s",indentStr)).reset().a(" (");
-			if (PayloadHelper.Helper.isOneLineMode()) {
-				if (PayloadHelper.Helper.isNoPayload()) {
-					aa.a("topic-only mode");
-				} else if (PayloadHelper.Helper.getCurrentIndent() == 2) {
-					aa.a("two-line mode");
+			ansi.a("Indent=").fg(Elem.NUMBER).a(String.format("%"+pad+"s",indentStr)).reset().a(" (");
+			if (config.isOneLineMode()) {
+				if (config.isNoPayload()) {
+					ansi.a("topic-only mode");
+				} else if (config.getCurrentIndent() == 2) {
+					ansi.a("two-line mode");
 				} else {
-					aa.a("one-line mode");
-					if (PayloadHelper.Helper.isAutoResizeIndent()) {
-						aa.a(", auto-indent");
+					ansi.a("one-line mode");
+					if (config.isAutoResizeIndent()) {
+						ansi.a(", auto-indent");
 					} else {
-						aa.a(", topic width=").a(PayloadHelper.Helper.getCurrentIndent()-2);
+						ansi.a(", topic width=").a(config.getCurrentIndent()-2);
 					}
 				}
-				if (PayloadHelper.Helper.isAutoSpaceTopicLevelsEnabled()) {
-					aa.a(", aligned topic levels");
+				if (config.isAutoSpaceTopicLevelsEnabled()) {
+					ansi.a(", aligned topic levels");
 				} else {
 				}
-				if (!PayloadHelper.Helper.isNoPayload()) {
-					if (PayloadHelper.Helper.isAutoTrimPayload()) {
-						aa.a(", auto-trim payload");
+				if (!config.isNoPayload()) {
+					if (config.isAutoTrimPayload()) {
+						ansi.a(", auto-trim payload");
 					} else {
-						aa.a(", full payload");
+						ansi.a(", full payload");
 					}
 				}
 			} else {
-				if (PayloadHelper.Helper.isNoPayload()) {
-					aa.a("no-payload mode");//normal mode, indent=").a(PayloadHelper.Helper.getCurrentIndent());
+				if (config.isNoPayload()) {
+					ansi.a("no-payload mode");//normal mode, indent=").a(config.getCurrentIndent());
 				} else {
-					aa.a("normal mode");
-					if (PayloadHelper.Helper.getCurrentIndent() > 0) aa.a(", indent=").a(PayloadHelper.Helper.getCurrentIndent());
+					ansi.a("normal mode");
+					if (config.getCurrentIndent() > 0) ansi.a(", indent=").a(config.getCurrentIndent());
 				}
-				if (PayloadHelper.Helper.getCurrentIndent() == 0) {
-					aa.a(", compressed");
-					if (PayloadHelper.Helper.isAutoTrimPayload()) aa.a(", hide User Props");
+				if (config.getCurrentIndent() == 0) {
+					ansi.a(", compressed");
+					if (config.isAutoTrimPayload()) ansi.a(", hide User Props");
 				}
 			}
-			aa.a(')');
+			ansi.a(')');
 		}
 		if (!countStr.isEmpty()) {  // normal mode
-			if (aa.length() > 0) aa.a("\n Count=");
-			else aa.a("Count=");
-			aa.fg(Elem.NUMBER).a(String.format("%"+pad+"s", countStr)).reset();
+			if (ansi.length() > 0) ansi.a("\n Count=");
+			else ansi.a("Count=");
+			ansi.fg(Elem.NUMBER).a(String.format("%"+pad+"s", countStr)).reset();
 			if (origMsgCount == Long.MAX_VALUE) {
-				assert PayloadHelper.Helper.isLastNMessagesEnabled();
-				aa.a(" (only dump last " + PayloadHelper.Helper.getLastNMessagesCapacity());
+				assert config.isLastNMessagesEnabled();
+				ansi.a(" (only dump last " + config.getLastNMessagesCapacity());
 			} else {
-				aa.a(" (stop after " + countStr);
+				ansi.a(" (stop after " + countStr);
 			}
-			aa.a(" messages)");
+			ansi.a(" messages)");
 		}
 		//    	}
-		System.out.println(aa);
+		System.out.println(ansi);
+	}
+	
+	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
+		PrettyDump dump = new PrettyDump();
+		dump.run(args);
 	}
 
 	@SuppressWarnings("deprecation")  // this is for our use of Message ID for the browser
-	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
+	public void run(String... args) throws JCSMPException, IOException, InterruptedException {
 		
 		//		
 		//		ReplicationGroupMessageId one = f.createReplicationGroupMessageId("rmid1:3477f-a5ce520f5ec-00000000-000f89e2");
@@ -287,7 +298,7 @@ public class PrettyDump {
 			PrettyWrap.main(new String[0]);
 			System.exit(0);
 		}
-		PayloadHelper.init(CHARSET);
+		config.setCharset(CHARSET);
 		if (System.getenv("PRETTY_SELECTOR") != null && !System.getenv("PRETTY_SELECTOR").isEmpty()) {
 			System.out.println(AaAnsi.n().invalid(String.format("Env var PRETTY_SELECTOR deprecated, use argument --selector=\"%s\" instead.%n", System.getenv("PRETTY_SELECTOR"))));
 			System.exit(1);
@@ -306,89 +317,6 @@ public class PrettyDump {
 			if (arg.startsWith("--")) specialArgsList.add(arg);
 			else regArgsList.add(arg);
 		}
-		//		ArrayList<String>
-/*		for (String arg : args) {
-			if (arg.startsWith("--selector")) {
-				try {
-					selector = arg.substring("--selector=".length());
-				} catch (StringIndexOutOfBoundsException e) {
-					System.out.println(AaAnsi.n().invalid(String.format("Must specify a value for Selector.")));
-					printHelpMoreText();
-					System.out.println("See README.md for more detailed help.");
-					System.exit(1);
-				}
-			} else if (arg.startsWith("--filter")) {
-				try {
-					contentFilter = arg.substring("--filter=".length());
-				} catch (StringIndexOutOfBoundsException e) {
-					System.out.println(AaAnsi.n().invalid(String.format("Must specify a regex for Filter.")));
-					printHelpMoreText();
-					System.out.println("See README.md for more detailed help.");
-				}
-			} else if (arg.equals("--trim")) {
-				PayloadHelper.Helper.setAutoTrimPayload(true);
-			} else if (arg.startsWith("--count")) {
-				String argVal = "?";
-				try {
-					argVal = arg.substring("--count=".length());
-					//				System.out.println(argVal);
-					long count = Long.parseLong(argVal);
-					if (count > 0) {
-						msgCountRemaining = count;
-						origMsgCount = count;
-					} else if (count < 0) {  // keep the last N messages
-						PayloadHelper.Helper.enableLastNMessage(Math.abs((int)count));
-					} else {
-						throw new NumberFormatException();
-					}
-				} catch (NumberFormatException | StringIndexOutOfBoundsException e) {
-					System.out.println(AaAnsi.n().invalid(String.format("Invalid value for count: '%s'. > 0 to stop after n msgs; < 0 to display last n msgs.", argVal)));
-					printHelpMoreText();
-					System.exit(1);
-				}
-
-			} else if (arg.startsWith("--") && arg.length() > 2 && arg.contains("=") && UsefulUtils.setContainsIgnoreCase(properties.propertyNames(), arg.substring(2, arg.indexOf('=')))) {
-				String key = arg.substring(2, arg.indexOf('='));
-				String propName = UsefulUtils.setGetIgnoreCase(properties.propertyNames(), key);
-				String val = arg.substring(arg.indexOf('=')+1);
-				if (val.isEmpty()) {
-					throw new IllegalArgumentException("Must provide JCSMPProperty name = value");
-				}
-				Object o = properties.getProperty(propName);
-				if (o instanceof Integer) {
-					System.out.println("YES Integer TO " + propName + "=" + val);
-					properties.setProperty(propName, Integer.parseInt(val));
-					System.out.println("YES Integer TO " + propName + "=" + properties.getProperty(propName));
-				} else if (o instanceof Boolean) {
-					System.out.println("YES Boolean TO " + propName + "=" + val);
-					properties.setProperty(propName, Boolean.parseBoolean(val));
-					System.out.println("YES Boolean TO " + propName + "=" + properties.getProperty(propName));
-				} else {  // assume String!
-					System.out.println("YES String TO " + propName + "=" + val);
-					properties.setProperty(propName, val);
-					System.out.println("YES String TO " + propName + "=" + properties.getProperty(propName));
-				}
-			} else {
-				argsList.add(arg);  // add argument normally
-			}
-		}
-		*/
-		//		args = args2.toArray(new String[0]);
-
-		
-//		if (selector != null && !selector.isEmpty()) {
-//			if (selector.length() > 2000) {
-//				System.out.println(AaAnsi.n().invalid("Selector length greater than 2000 character limit!"));
-//				System.out.println("Quitting! 💀");
-//				System.exit(1);
-//			}
-//		}
-//		if (contentFilter != null && !contentFilter.isEmpty()) {
-//			// compiling might throw an exception
-//			Pattern p = Pattern.compile(contentFilter, Pattern.MULTILINE | Pattern.DOTALL);//| Pattern.CASE_INSENSITIVE);
-//			PayloadHelper.Helper.setRegexFilterPattern(p);
-//			//			System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Filter detected: \"%s\"", contentFilter)));
-//		}
 
 		// let's do the regular arguments now
 		String host = "localhost";
@@ -399,7 +327,7 @@ public class PrettyDump {
 		if (regArgsList.size() > 0 && regArgsList.size() <= 2) {  // can only have topic+indent in shortcut mode
 			String arg0 = regArgsList.get(0);
 			boolean shortcut = false;
-			if ((arg0.contains("/") && !arg0.contains("//"))
+			if ((arg0.contains("/") && !arg0.contains("//"))  // hosts can't have any of these "topic-looking" chars
 					|| arg0.contains(">")
 					|| arg0.contains("*")
 					|| arg0.contains("#")
@@ -412,7 +340,7 @@ public class PrettyDump {
 			} else if (regArgsList.size() == 1) {  // just one param, maybe its indent?
 				// see if it's an integer, we'll use for indent
 				try {
-					PayloadHelper.Helper.dealWithIndentParam(arg0);
+					config.dealWithIndentParam(arg0);
 					// if nothing thrown, then it's a valid indent, so assume shortcut mode
 					shortcut = true;
 					regArgsList.add(0, DEFAULT_TOPIC);  // stick the default topic in front of this arg
@@ -451,7 +379,7 @@ public class PrettyDump {
 		if (regArgsList.size() > 5) {
 			String indentStr = regArgsList.get(5);  // grab the correct command-line argument
 			try {
-				PayloadHelper.Helper.dealWithIndentParam(indentStr);
+				config.dealWithIndentParam(indentStr);
 			} catch (IllegalArgumentException e) {
 				System.out.println(AaAnsi.n().invalid(String.format("Invalid value for indent: '%s'.  ", indentStr)));
 				System.out.println();
@@ -465,13 +393,13 @@ public class PrettyDump {
 			printHelpMoreText();
 			throw new IllegalArgumentException("Too many arguments");
 		}
-		
+		// we'll handle the special -- args down below
 		
 		AnsiConsole.systemInstall();
 		if (AnsiConsole.getTerminalWidth() >= 80) System.out.print(Banner.printBanner(Which.DUMP));
 		else System.out.println();
 		System.out.println(APP_NAME + " initializing...");
-		PayloadHelper.Helper.setProtobufCallbacks(ProtoBufUtils.loadProtobufDefinitions());
+		ph.setProtobufCallbacks(ProtoBufUtils.loadProtobufDefinitions());
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		// now let's get on with it!
 //		final JCSMPProperties properties = new JCSMPProperties();
@@ -507,25 +435,25 @@ public class PrettyDump {
 					return o1.compareTo(o2);
 				}
 			});
-			AaAnsi aa = AaAnsi.n();
+			AaAnsi ansi = AaAnsi.n();
 			for (String key : upperProps) {
 				Object o = properties.getProperty(propsMap.get(key));
 //				aa.fg(Elem.KEY).a(key).reset().a('=');
 				if (o instanceof Integer) {
-					aa.fg(Elem.KEY).a('-').a('-').a(key).reset().a('=');
-					aa.fg(Elem.NUMBER).a(o.toString()).a('\n');
+					ansi.fg(Elem.KEY).a('-').a('-').a(key).reset().a('=');
+					ansi.fg(Elem.NUMBER).a(o.toString()).a('\n');
 				} else if (o instanceof Boolean) {
-					aa.fg(Elem.KEY).a('-').a('-').a(key).reset().a('=');
-					aa.fg(Elem.BOOLEAN).a(o.toString()).a('\n');
+					ansi.fg(Elem.KEY).a('-').a('-').a(key).reset().a('=');
+					ansi.fg(Elem.BOOLEAN).a(o.toString()).a('\n');
 				} else if (o instanceof String) {
-					aa.fg(Elem.KEY).a('-').a('-').a(key).reset().a('=');
-					aa.fg(Elem.STRING).a(o.toString()).a('\n');
+					ansi.fg(Elem.KEY).a('-').a('-').a(key).reset().a('=');
+					ansi.fg(Elem.STRING).a(o.toString()).a('\n');
 				} else {  //skip this one
 //					aa.fg(Elem.KEY).a(key).reset().a('=');
 //					aa.fg(Elem.DATA_TYPE).a(o.getClass().getSimpleName()).a(' ').a(o.toString());
 				}
 			}
-			System.out.println(aa.reset());
+			System.out.println(ansi.reset());
 			System.out.print("For JCSMPProperties descriptions, see Javadocs here: ");
 			System.out.println(new Ansi().fg(4).a(Attribute.UNDERLINE).a("https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html").reset());
 			System.exit(0);
@@ -553,7 +481,7 @@ public class PrettyDump {
 					if (contentFilter != null && !contentFilter.isEmpty()) {
 						// compiling might throw an exception
 						Pattern p = Pattern.compile(contentFilter, Pattern.MULTILINE | Pattern.DOTALL);//| Pattern.CASE_INSENSITIVE);
-						PayloadHelper.Helper.setRegexFilterPattern(p);
+						config.setRegexFilterPattern(p);
 					}
 				} catch (StringIndexOutOfBoundsException e) {
 					System.out.println(AaAnsi.n().invalid(String.format("Must specify a regex for Filter.")));
@@ -561,7 +489,7 @@ public class PrettyDump {
 					System.out.println("See README.md for more detailed help.");
 				}
 			} else if (arg.equals("--trim")) {
-				PayloadHelper.Helper.setAutoTrimPayload(true);
+				config.setAutoTrimPayload(true);
 			} else if (arg.startsWith("--count")) {
 				String argVal = "?";
 				try {
@@ -572,7 +500,7 @@ public class PrettyDump {
 						msgCountRemaining = count;
 						origMsgCount = count;
 					} else if (count < 0) {  // keep the last N messages
-						PayloadHelper.Helper.enableLastNMessage(Math.abs((int)count));
+						config.enableLastNMessage(Math.abs((int)count));
 					} else {
 						throw new NumberFormatException();
 					}
@@ -581,7 +509,7 @@ public class PrettyDump {
 					printHelpMoreText();
 					System.exit(1);
 				}
-			} else if (arg.startsWith("--skip")) {
+/*			} else if (arg.startsWith("--skip")) {
 				String argVal = "?";
 				try {
 					argVal = arg.substring("--skip=".length());
@@ -591,7 +519,7 @@ public class PrettyDump {
 						skipMsgCount = skip;
 						skipMsgCountOrig = skip;
 //					} else if (count < 0) {  // keep the last N messages
-//						PayloadHelper.Helper.enableLastNMessage(Math.abs((int)count));
+//						config.enableLastNMessage(Math.abs((int)count));
 					} else {
 						throw new NumberFormatException();
 					}
@@ -599,7 +527,7 @@ public class PrettyDump {
 					System.out.println(AaAnsi.n().invalid(String.format("Invalid value for skip: '%s'. n > 0 to skip first n msgs.", argVal)));
 					printHelpMoreText();
 					System.exit(1);
-				}
+				}*/
 			} else if (arg.startsWith("--") && arg.length() > 2 && arg.contains("=") && UsefulUtils.setContainsIgnoreCase(properties.propertyNames(), arg.substring(2, arg.indexOf('=')))) {
 				String key = arg.substring(2, arg.indexOf('='));
 				String propName = UsefulUtils.setGetIgnoreCase(properties.propertyNames(), key);
@@ -608,41 +536,39 @@ public class PrettyDump {
 					throw new IllegalArgumentException("Must provide JCSMPProperty name = value");
 				}
 				Object o = properties.getProperty(propName);
-				AaAnsi aa = AaAnsi.n().a(jcscmpPropCount == 0 ? "Overriding " : "           ").fg(Elem.KEY).a("JCSMPProperties.").a(propName.toUpperCase()).reset().a(": ");
+				AaAnsi ansi = AaAnsi.n().a(jcscmpPropCount == 0 ? "Overriding " : "           ").fg(Elem.KEY).a("JCSMPProperties.").a(propName.toUpperCase()).reset().a(": ");
 				if (o instanceof Integer) {
 					int oldVal = (int)o;
 					properties.setProperty(propName, Integer.parseInt(val));
-					aa.fg(Elem.NUMBER).a(oldVal).reset().a(" → ").fg(Elem.NUMBER).a(properties.getProperty(propName).toString());
+					ansi.fg(Elem.NUMBER).a(oldVal).reset().a(" → ").fg(Elem.NUMBER).a(properties.getProperty(propName).toString());
 				} else if (o instanceof Boolean) {
 					boolean oldVal = (boolean)o;
 					properties.setProperty(propName, Boolean.parseBoolean(val));
-					aa.fg(Elem.BOOLEAN).a(oldVal).reset().a(" → ").fg(Elem.BOOLEAN).a(properties.getProperty(propName).toString());
+					ansi.fg(Elem.BOOLEAN).a(oldVal).reset().a(" → ").fg(Elem.BOOLEAN).a(properties.getProperty(propName).toString());
 				} else {  // assume String!
 					String oldVal = (String)o;
 //					if (oldVal.isEmpty()) oldVal = "\"\"";
 					properties.setProperty(propName, val);
 					if (oldVal.isEmpty()) {
-						aa.fg(Elem.STRING).faintOn().a("<EMPTY>").reset();
+						ansi.fg(Elem.STRING).faintOn().a("<EMPTY>").reset();
 					} else {
-						aa.fg(Elem.STRING).a(oldVal).reset();
+						ansi.fg(Elem.STRING).a(oldVal).reset();
 					}
-					aa.a(" → ").fg(Elem.STRING).a(properties.getProperty(propName).toString());
+					ansi.a(" → ").fg(Elem.STRING).a(properties.getProperty(propName).toString());
 				}
 //				System.out.println("Overriding JCSMPProperties." + propName + "=" + properties.getProperty(propName));
-				System.out.println(aa.reset());
+				System.out.println(ansi.reset());
 				jcscmpPropCount++;
 			}
 		}
-		
-		
 		
 		session = f.createSession(properties, null, new SessionEventHandler() {
 			@Override
 			public void handleEvent(SessionEventArgs event) {  // could be reconnecting, connection lost, etc.
 				//        		System.out.println(" > " + event.getEvent());
 				if (event.getEvent() == SessionEvent.RECONNECTING) {
-					if (isConnected) {  // first time
-						isConnected = false;
+					if (config.isConnected) {  // first time
+						config.isConnected = false;
 						//						System.out.print(AaAnsi.n().invalid("Connection lost!") + "\n > RECONNECTING...");
 						System.out.println(AaAnsi.n().warn("TCP Connection lost!"));
 						System.out.print(" > SESSION RECONNECTING...");
@@ -659,36 +585,34 @@ public class PrettyDump {
 					}
 				} else if (event.getEvent() == SessionEvent.RECONNECTED) {
 					System.out.println("\n > SESSION RECONNECTED!");
-					isConnected = true;
+					config.isConnected = true;
 				} else {
-					if (!isConnected) System.out.println();  // add a blank line
+					if (!config.isConnected) System.out.println();  // add a blank line
 					System.out.println(" > " + event.getEvent() + ": " + event);
 				}
 			}
 		});
 		session.connect();  // connect to the broker... could throw JCSMPException, so best practice would be to try-catch here..!
-		isConnected = true;
+		config.isConnected = true;
 		session.setProperty(JCSMPProperties.CLIENT_NAME, "PrettyDump_" + session.getProperty(JCSMPProperties.CLIENT_NAME));
-		System.out.printf("%s connected to '%s' VPN on broker '%s'.%n%n", APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE), session.getProperty(JCSMPProperties.HOST));
+		System.out.printf("%s connected to VPN '%s' on broker '%s' v%s.%n%n",
+				APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE),
+				session.getCapability(CapabilityType.PEER_ROUTER_NAME),
+				session.getCapability(CapabilityType.PEER_SOFTWARE_VERSION));
 
 		{  // print out some nice param info
 			String indentStr = "";  // default
 			String countStr = "";
 			if (regArgsList.size() > 5) indentStr = regArgsList.get(5);  // grab the correct command-line argument
 			if (origMsgCount != Long.MAX_VALUE) countStr = Long.toString(origMsgCount);
-			else if (PayloadHelper.Helper.isLastNMessagesEnabled()) countStr = Integer.toString(-PayloadHelper.Helper.getLastNMessagesCapacity());
+			else if (config.isLastNMessagesEnabled()) countStr = Integer.toString(-config.getLastNMessagesCapacity());
 			if (regArgsList.size() > 6) countStr = regArgsList.get(6);
 			if (!indentStr.isEmpty() || !countStr.isEmpty()) printParamsInfo(indentStr, countStr);
 		}		
 
-		//		for (CapabilityType cap : CapabilityType.values()) {
-		//			System.out.println(cap + ": " + session.getCapability(cap));
-		//		}
-
-		//		if (contentFilter != null) {
-		////			System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Client-side Filter detected: \"%s\"", contentFilter)).reset());
-		//			System.out.println(AaAnsi.n().a("🔎 Client-side Filter detected: ").aStyledString(contentFilter).reset());
-		//		}
+//				for (CapabilityType cap : CapabilityType.values()) {
+//					System.out.println(cap + ": " + session.getCapability(cap));
+//				}
 
 		// is it a queue?
 		if (topics.length == 1 && topics[0].startsWith("q:") && topics[0].length() > 2) {  // QUEUE CONSUME!
@@ -708,14 +632,12 @@ public class PrettyDump {
 			flowQueueReceiver = null;
 			final CountDownLatch latch = new CountDownLatch(1);
 			try {
-				//            	if ("1".equals("1")) throw new JCSMPException("blajsdflklskfjd");
-				// see bottom of file for QueueFlowListener class, which receives the messages from the queue
 				flowQueueReceiver = session.createFlow(new PrinterHelper(), flowProps, null, new FlowEventHandler() {
 					@Override
 					public void handleEvent(Object source, FlowEventArgs event) {
 						FlowEvent fe = event.getEvent();
 						// Flow events are usually: active, reconnecting (i.e. unbound), reconnected, active
-						if (fe == FlowEvent.FLOW_RECONNECTING && isConnected) {
+						if (fe == FlowEvent.FLOW_RECONNECTING && config.isConnected) {
 							// flow active here?
 							System.out.println(AaAnsi.n().warn("'"+queueName+"' flow closed! Queue egress probably shutdown at the broker."));
 							System.out.println(" > FLOW RECONNECTING...");
@@ -723,18 +645,18 @@ public class PrettyDump {
 							// flow inactive here?
 							System.out.println(" > FLOW RECONNECTED!");
 						} else if (fe == FlowEvent.FLOW_ACTIVE) {
-							isFlowActive = true;
+							config.isFlowActive = true;
 							if (latch.getCount() == 1) {  // first time here, so skip this notification
-								if (isFlowActive) {
+								if (config.isFlowActive) {
 									// TODO just to hide the warning, but need to probably do something with this?
 								}
 							} else {
-								if (!isConnected) System.out.println();  // connection coming back up
+								if (!config.isConnected) System.out.println();  // connection coming back up
 								System.out.println(" > " + fe);
 							}
 						} else if (fe == FlowEvent.FLOW_INACTIVE) {
-							isFlowActive = false;
-						} else if (!isConnected) {
+							config.isFlowActive = false;
+						} else if (!config.isConnected) {
 							// ignore
 						} else {
 							System.out.println(" > " + fe);
@@ -749,8 +671,8 @@ public class PrettyDump {
 					System.out.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").fg(Elem.STRING).a(contentFilter).reset());
 					System.out.println(AaAnsi.n().warn("Filtered messages that are not displayed will still be ACKed!"));
 				}
-				if (PayloadHelper.Helper.isLastNMessagesEnabled()) {
-					System.out.println(AaAnsi.n().warn(String.format("Only last %d will be displayed, but all received messages will still be ACKed!", PayloadHelper.Helper.getLastNMessagesCapacity())));
+				if (config.isLastNMessagesEnabled()) {
+					System.out.println(AaAnsi.n().warn(String.format("Only last %d will be displayed, but all received messages will still be ACKed!", config.getLastNMessagesCapacity())));
 				}
 				if (selector != null) {
 					System.out.println(AaAnsi.n().a("🔎 Selector detected: ").fg(Elem.STRING).a(selector).reset());
@@ -803,7 +725,7 @@ public class PrettyDump {
 					@Override
 					public void handleEvent(Object source, FlowEventArgs event) {
 						// Flow events are usually: active, reconnecting (i.e. unbound), reconnected, active
-						if (event.getEvent() == FlowEvent.FLOW_RECONNECTING && isConnected) {
+						if (event.getEvent() == FlowEvent.FLOW_RECONNECTING && config.isConnected) {
 							System.out.println(AaAnsi.n().warn("'"+queueName+"' flow closed! Queue egress probably shutdown at the broker."));
 							System.out.print(" > FLOW RECONNECTING...");
 						} else if (event.getEvent() == FlowEvent.FLOW_RECONNECTED) {
@@ -924,10 +846,10 @@ public class PrettyDump {
 										session.addSubscription(queue, t, JCSMPSession.WAIT_FOR_CONFIRM);  // will throw exception if already there
 										if (latch.getCount() == 1) {  // first time doing this
 											//											AaAnsi aa = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '%s'", (topic.startsWith("!") ? "*NOT* " : ""), AaAnsi.n().colorizeTopic(topic)));
-											AaAnsi aa = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '", (topic.startsWith("!") ? "*NOT* " : "")));
-											aa.a(AaAnsi.colorizeTopic(topic));
-											aa.a('\'').reset();
-											System.out.println(aa);
+											AaAnsi ansi = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '", (topic.startsWith("!") ? "*NOT* " : "")));
+											ansi.aa(AaAnsi.colorizeTopic(topic));
+											ansi.a('\'').reset();
+											System.out.println(ansi);
 										} else {
 											// means that we've successfully added a sub to the tempQ on reconnect, which means new tempQ
 											isNewTempQueue = true;
@@ -958,11 +880,6 @@ public class PrettyDump {
 				System.out.println(AaAnsi.n().a("Queue name: ").fg(Elem.KEY).a(flowQueueReceiver.getDestination().getName()).reset());
 				if (topics.length == 0) System.out.println(AaAnsi.n().warn("No subscriptions added, I hope you're copying messages into this queue!").toString());
 				latch.await();  // block here until the subs are added
-				//				for (String topic : topics) {
-				//					Topic t = f.createTopic(topic);
-				//					session.addSubscription(queue, t, JCSMPSession.WAIT_FOR_CONFIRM);
-				//					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '%s'", (topic.startsWith("!") ? "*NOT* " : ""), topic)).reset());
-				//				}
 				flowQueueReceiver.start();
 			} else {
 				// Regular Direct topic consumer, using async / callback to receive
@@ -986,19 +903,19 @@ public class PrettyDump {
 		// DONE!!!!   READY TO ROCK!
 		System.out.println();
 		System.out.println("Starting. Press Ctrl-C to quit.");
-		if (PayloadHelper.Helper.isLastNMessagesEnabled()) {
-			ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered(null, 0, 0, 0, PayloadHelper.Helper.getLastNMessagesCapacity()));
-			//			ThinkingAnsiHelper.tick(String.format("%d messages gathered, # messages received = ", PayloadHelper.Helper.getLastNMessagesSize()));
-//		} else if (PayloadHelper.Helper.) {
+		if (config.isLastNMessagesEnabled()) {
+			ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered(null, 0, 0, 0, config.getLastNMessagesCapacity()));
+			//			ThinkingAnsiHelper.tick(String.format("%d messages gathered, # messages received = ", config.getLastNMessagesSize()));
+//		} else if (config.) {
 		}
 		final Thread shutdownThread = new Thread(new Runnable() {
 			public void run() {
-				PayloadHelper.Helper.stop();
+//				config.stop();
 				ThinkingAnsiHelper.filteringOff();
 				System.out.print(AaAnsi.n());
 				System.out.println("\nShutdown hook triggered, quitting...");
-				isShutdown = true;
-				if (isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
+				config.isShutdown = true;
+				if (config.isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
 					if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
 					if (directConsumer != null) directConsumer.close();
 				}
@@ -1008,8 +925,8 @@ public class PrettyDump {
 					Thread.sleep(300);
 				} catch (InterruptedException e) {  // ignore, we're quitting anyway
 				}
-				if (PayloadHelper.Helper.isLastNMessagesEnabled()) {  // got some messages to dump!
-					for (MessageHelper msg : PayloadHelper.Helper.getLastNMessages()) {
+				if (config.isLastNMessagesEnabled()) {  // got some messages to dump!
+					for (MessageHelper msg : config.getLastNMessages()) {
 						System.out.print(msg.printMessage());
 					}
 					System.out.println();
@@ -1029,7 +946,7 @@ public class PrettyDump {
 			// hasMore() is useless! from JavaDocs: Returns true if there is at least one message available in the Browser's local message buffer. Note: If this method returns false, it does not mean that the queue is empty; subsequent calls to Browser.hasMore() or Browser.getNext() might return true and a message respectively.
 			BytesXMLMessage nextMsg;
 			try {
-				while (!isShutdown && msgCountRemaining > 0) {
+				while (!config.isShutdown && msgCountRemaining > 0) {
 					handleKeyboardInput(reader);
 					nextMsg = browser.getNext(-1);  // don't wait, return immediately
 					if (nextMsg == null) {
@@ -1059,27 +976,27 @@ public class PrettyDump {
 									printer.onReceive(nextMsg);
 									browseFromRGMID = null;  // blank it out and just print everything from now on
 								} else {
-									PayloadHelper.Helper.incMessageCount();
-									PayloadHelper.Helper.incFilteredCount();
+									config.incMessageCount();
+									config.incFilteredCount();
 									//									ThinkingAnsiHelper.tick("RGMID outside of range, skipping msg #");
-									if (PayloadHelper.Helper.isLastNMessagesEnabled()) {  // gathering
+									if (config.isLastNMessagesEnabled()) {  // gathering
 										ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("RGMID outside of range.",
-												PayloadHelper.Helper.getMessageCount(), PayloadHelper.Helper.getFilteredCount(), 0, PayloadHelper.Helper.getLastNMessagesCapacity()));
+												config.getMessageCount(), config.getFilteredCount(), 0, config.getLastNMessagesCapacity()));
 									} else {
 										ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringPrinted("RGMID outside of range.",
-												PayloadHelper.Helper.getMessageCount(), PayloadHelper.Helper.getFilteredCount(), 0));
+												config.getMessageCount(), config.getFilteredCount(), 0));
 									}
 								}
 							} catch (JCSMPNotComparableException e) {  // can't compare, so ignore and keep going
-								PayloadHelper.Helper.incMessageCount();
-								PayloadHelper.Helper.incFilteredCount();
+								config.incMessageCount();
+								config.incFilteredCount();
 								//								ThinkingAnsiHelper.tick("RGMID outside of range, skipping msg #");
-								if (PayloadHelper.Helper.isLastNMessagesEnabled()) {  // gathering
+								if (config.isLastNMessagesEnabled()) {  // gathering
 									ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("RGMID outside of range.",
-											PayloadHelper.Helper.getMessageCount(), PayloadHelper.Helper.getFilteredCount(), 0, PayloadHelper.Helper.getLastNMessagesCapacity()));
+											config.getMessageCount(), config.getFilteredCount(), 0, config.getLastNMessagesCapacity()));
 								} else {
 									ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringPrinted("RGMID outside of range.",
-											PayloadHelper.Helper.getMessageCount(), PayloadHelper.Helper.getFilteredCount(), 0));
+											config.getMessageCount(), config.getFilteredCount(), 0));
 								}
 							}
 						}
@@ -1099,15 +1016,15 @@ public class PrettyDump {
 								System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("%nMessage with ID '%d' received, greater than than browse range '%d'. Done.", msgId, browseTo)).reset());
 								break;  // done!
 							} else if (msgId < browseFrom) {  // haven't got there yet
-								PayloadHelper.Helper.incMessageCount();
-								PayloadHelper.Helper.incFilteredCount();
+								config.incMessageCount();
+								config.incFilteredCount();
 								//								ThinkingAnsiHelper.tick("MsgSpoolId outside of range, skipping msg #");
-								if (PayloadHelper.Helper.isLastNMessagesEnabled()) {  // gathering
+								if (config.isLastNMessagesEnabled()) {  // gathering
 									ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("MsgSpoolId outside of range.",
-											PayloadHelper.Helper.getMessageCount(), PayloadHelper.Helper.getFilteredCount(), 0, PayloadHelper.Helper.getLastNMessagesCapacity()));
+											config.getMessageCount(), config.getFilteredCount(), 0, config.getLastNMessagesCapacity()));
 								} else {
 									ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringPrinted("MsgSpoolId outside of range.",
-											PayloadHelper.Helper.getMessageCount(), PayloadHelper.Helper.getFilteredCount(), 0));
+											config.getMessageCount(), config.getFilteredCount(), 0));
 								}
 							} else {  // normal mode
 								printer.onReceive(nextMsg);
@@ -1122,7 +1039,7 @@ public class PrettyDump {
 			} catch (JCSMPException | AccessDeniedException e) {  // something else went wrong: queue permissions changed? , etc.
 				System.out.println();
 				System.out.println("I'm here inside catch block");
-				if (!isShutdown) {
+				if (!config.isShutdown) {
 					System.out.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s: %s", e.getClass().getSimpleName(), e.getMessage())));
 					System.out.println("Quitting! 💀");
 					System.exit(1);
@@ -1134,7 +1051,7 @@ public class PrettyDump {
 			}
 		} else {  // async receive, either Direct sub or from a queue, so just wait here until Ctrl+C pressed
 			//        	BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
-			while (!isShutdown) {
+			while (!config.isShutdown) {
 				Thread.sleep(50);
 				// blocking receive test code
 				//				BytesXMLMessage msg;
@@ -1144,12 +1061,12 @@ public class PrettyDump {
 				handleKeyboardInput(reader);
 			}
 		}
-		isShutdown = true;
+		config.isShutdown = true;
 		System.out.print(AaAnsi.n());
 		System.out.println("Main thread exiting.");
 	}  // end of main()
 
-	private static void handleKeyboardInput(BufferedReader reader) throws IOException {
+	private void handleKeyboardInput(BufferedReader reader) throws IOException {
 		String userInput = null;
 		if (System.in.available() > 0) {
 			userInput = reader.readLine();
@@ -1159,17 +1076,17 @@ public class PrettyDump {
 				userInput = userInput.toLowerCase();
 				int highlight = Integer.parseInt(userInput);
 				if (highlight >= 0 && highlight < 125) {
-					PayloadHelper.Helper.setHighlightedTopicLevel(highlight - 1);  // so 0 -> -1 (highlight off), 1 -> 0 (level 1), etc.
+					config.setHighlightedTopicLevel(highlight - 1);  // so 0 -> -1 (highlight off), 1 -> 0 (level 1), etc.
 				}
 			} catch (NumberFormatException e) {
 				if ("+".equals(userInput)) {
-					PayloadHelper.Helper.setAutoSpaceTopicLevels(true);
+					config.setAutoSpaceTopicLevels(true);
 				} else if ("-".equals(userInput)) {
-					PayloadHelper.Helper.setAutoSpaceTopicLevels(false);
+					config.setAutoSpaceTopicLevels(false);
 				} else if ("t".equals(userInput)) {
-					PayloadHelper.Helper.toggleAutoTrimPayload();
+					config.toggleAutoTrimPayload();
 				} else if ("q".equals(userInput)) {
-					isShutdown = true;  // quit
+					config.isShutdown = true;  // quit
 				} else if (userInput.charAt(0) == 'c' && userInput.length() == 2) {
 					// assume we're trying to switch colours
 					ColorMode temp = null;
@@ -1213,20 +1130,20 @@ public class PrettyDump {
 
 	// Helper class, for printing message to the console ///////////////////////////////////////
 
-	private static class PrinterHelper implements XMLMessageListener {
+	private class PrinterHelper implements XMLMessageListener {
 
 		@Override
 		public void onReceive(BytesXMLMessage message) {
-			if (PayloadHelper.Helper.isStopped()) return;  // we're done, don't do anything with this
-			PayloadHelper.Helper.dealWithMessage(message);
+			if (config.isShutdown) return;  // we're done, don't do anything with this
+			ph.dealWithMessage(message);
 			if (!ThinkingAnsiHelper.isFilteringOn()) msgCountRemaining--;  // payload helper would turn it off
 			// if we're not browsing, and it's not a Direct message (doesn't matter if we ACK a Direct message anyhow)
 			// NOTE!  You can still ACK a browsed message!!
 			if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
 			if (msgCountRemaining == 0) {
 				System.out.println("\n" + AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(origMsgCount + " messages received. Quitting.").reset());
-				PayloadHelper.Helper.stop();
-				isShutdown = true;
+//				config.stop();
+				config.isShutdown = true;
 //				if (flowQueueReceiver != null) flowQueueReceiver.close();
 //				if (directConsumer != null) directConsumer.close();
 			}
@@ -1237,7 +1154,7 @@ public class PrettyDump {
 			System.out.println(AaAnsi.n().ex(" ### MessageListener's onException()", e).a(" - check ~/.pretty/pretty.log for details. "));
 			logger.warn("Caught in my onExecption() callback", e);
 			if (e instanceof JCSMPTransportException) {  // all reconnect attempts failed (impossible now since we're at -1)
-				isShutdown = true;  // let's quit
+				config.isShutdown = true;  // let's quit
 			}
 		}
 	}

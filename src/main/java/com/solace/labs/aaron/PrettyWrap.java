@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -61,8 +60,8 @@ public class PrettyWrap {
     private static long lineIndentCount = 0;
 //    private static final int[] bgCols = new int[] { 17, 53, 52, 58, 22, 23 };
     
-    private static void wrapPrintln(AaAnsi aa) {
-    	wrapPrintln(aa.toString());
+    private static void wrapPrintln(AaAnsi ansi) {
+    	wrapPrintln(ansi.toString());
     }
     
     private static void wrapPrintln(String s) {
@@ -99,15 +98,8 @@ Destination:                            Topic 'q1/abc'
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
 		
 		AnsiConsole.systemInstall();
-		
-//		String test = "{traceId=de72a50e1dac200c342efe52bfc07746, spanId=93ee944623c1e6a1, sampled=true, traceState=}";
-//		test = "{JMS_Solace_DeliverToOne:false,JMS_Solace_DeadMsgQueueEligible:false,JMS_Solace_ElidingEligible:false,Solace_JMS_Prop_IS_Reply_Message:false,JMSXDeliveryCount:1}";
-//		System.out.println(formatMapLookingThing(test));
-//		System.exit(0);
 //        protobufCallbacks = ProtoBufUtils.loadProtobufDefinitions();
-//    	PayloadHelper payloadHelper = new PayloadHelper(StandardCharsets.UTF_8);
-//    	PayloadHelper payloadHelper;
-    	PayloadHelper.init(StandardCharsets.UTF_8);
+    	PayloadHelper payloadHelper = new PayloadHelper(new ConfigState());  // default stuff
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 		// test code
 		
@@ -133,14 +125,14 @@ Destination:                            Topic 'q1/abc'
 		byte[] perLineArray = new byte[16];  // for reuse
 		ByteBuffer bb = ByteBuffer.allocate(1024 * 1024);  // 1MB, allocate once and reuse!
 		Arrays.fill(perLineArray, (byte)0);
-//		int msgCount = 0;
+		int msgCount = 0;
 		boolean legalPayload = true;
 		boolean ignore = false;
 //		String topic = "";
 		ScheduledExecutorService pool = Executors.newScheduledThreadPool(1);
 		
         System.out.println(Banner.printBanner(Which.WRAP));
-        System.out.print(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(String.format("PrettyDump WRAP mode for SdkPerf enabled... 😎%n%n")).toString());
+        System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("PrettyDump WRAP mode for SdkPerf enabled... 😎%n%n")).toString());
         AaAnsi.resetAnsi(System.out);
 		try {
 			while (!shutdown) {
@@ -166,15 +158,15 @@ Destination:                            Topic 'q1/abc'
 						assert !insideMessage;
 						insideMessage = true;
 //						System.out.println( input);
-//						wrapPrintln(PayloadHelper.printMessageStart(++msgCount));
-						wrapPrintln(MessageHelper.printMessageStart());
+						wrapPrintln(MessageHelper.printMessageStart(++msgCount));
+//						wrapPrintln(MessageHelper.printMessageStart());
 					} else if (input.contains("^^^ End Message ^^^")) {
 						assert insideMessage;
 						assert !insidePayloadSection;
 						insideMessage = false;
 //						System.out.println(input);
-//						wrapPrintln(PayloadHelper.printMessageEnd(msgCount));
-						wrapPrintln(MessageHelper.printMessageEnd());
+						wrapPrintln(MessageHelper.printMessageEnd(msgCount));
+//						wrapPrintln(MessageHelper.printMessageEnd());
 						AaAnsi.resetAnsi(System.out);
 //					} else if (input.matches("^(?:XML:|Binary Attachment:).*len.*")) {
 					} else if (input.startsWith("XML:       ") || input.startsWith("Binary Attachment:  ") || input.startsWith("Binary Attachment String:  ") || input.startsWith("User Data:   ")) {
@@ -195,7 +187,7 @@ Destination:                            Topic 'q1/abc'
 						if (input.startsWith("Dest")) {
 //							topic = extractTopic(input);  // if it is an actual topic, this will return it; otherwise empty string
 						}
-						wrapPrintln(PayloadHelper.colorizeDestination(input));
+						wrapPrintln(PayloadHelper.colorizeDestinationString(input));
 //						System.out.println(new AaAnsi().fg(Elem.DESTINATION).a(input).toString());
 					} else if (input.startsWith("SDT Map:     ") || input.startsWith("SDT Stream:     ")) {  // this is only for JCSMP and derivatives
 						ignore = true;
@@ -213,11 +205,11 @@ Destination:                            Topic 'q1/abc'
 						if (input.isEmpty() || !input.startsWith(" ")) {  // end of payload section!
 							insidePayloadSection = false;
 							bb.flip();  // ready to read!
-							com.solace.labs.aaron.PayloadHelper.PayloadSection payload = PayloadHelper.Helper.buildPayloadSection(bb);
+							PayloadSection payload = payloadHelper.buildPayloadSection(bb);
 							if (payload.getType().contains("Non ") || payload.getType().contains("INVALID")) {
-								wrapPrintln(new AaAnsi().invalid(payload.getType()).toString());
+								wrapPrintln(AaAnsi.n().invalid(payload.getType()).toString());
 							} else {
-								wrapPrintln(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(payload.getType()).toString());
+								wrapPrintln(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(payload.getType()).toString());
 							}
 							wrapPrintln(payload.getFormattedPayload());
 							if (!input.isEmpty()) wrapPrintln(input);
@@ -254,18 +246,18 @@ Destination:                            Topic 'q1/abc'
 								// [PUB MR(5s)][    0][ SUB MR(5s)][    0, CPU][0]
 								String[] sub = pieces[2].split(",");
 								// [PUB MR(5s)][    0][ SUB MR(5s)][    0][ CPU][0]
-								AaAnsi aa = new AaAnsi().a(pieces[0]).a('=').fg(Elem.KEY);
-								if (pub[0].endsWith(" 0")) aa.faintOn();
-								aa.fg(Elem.KEY).a(pub[0]).a('↑').reset().a(',').a(pub[1]).a('=').fg(Elem.STRING);
-								if (sub[0].endsWith(" 0")) aa.faintOn();
-								aa.fg(Elem.STRING).a(sub[0]).a('↓').reset().a(',').a(sub[1]).a('=');
-								if (pieces[3].equals("0")) aa.fg(Elem.MSG_BREAK).a(pieces[3]);
+								AaAnsi ansi = AaAnsi.n().a(pieces[0]).a('=').fg(Elem.KEY);
+								if (pub[0].endsWith(" 0")) ansi.faintOn();
+								ansi.fg(Elem.KEY).a(pub[0]).a('↑').reset().a(',').a(pub[1]).a('=').fg(Elem.STRING);
+								if (sub[0].endsWith(" 0")) ansi.faintOn();
+								ansi.fg(Elem.STRING).a(sub[0]).a('↓').reset().a(',').a(sub[1]).a('=');
+								if (pieces[3].equals("0")) ansi.fg(Elem.MSG_BREAK).a(pieces[3]);
 								else {
-									aa.fg(Elem.FLOAT);
-									if (pieces[3].length() == 1) aa.faintOn();
-									aa.a(pieces[0]);
+									ansi.fg(Elem.FLOAT);
+									if (pieces[3].length() == 1) ansi.faintOn();
+									ansi.a(pieces[0]);
 								}
-								wrapPrintln(aa.reset().toString());
+								wrapPrintln(ansi.reset().toString());
 							} catch (RuntimeException e) {  // oh well!
 								logger.info("Had an issue trying to pretty-print the message rates",e);
 								wrapPrintln(input);

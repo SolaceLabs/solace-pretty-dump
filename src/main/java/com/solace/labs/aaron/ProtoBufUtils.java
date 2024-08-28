@@ -58,7 +58,7 @@ public class ProtoBufUtils {
 		final String appConfigPath = "protobuf.properties";
 		URL url = Thread.currentThread().getContextClassLoader().getResource(appConfigPath);
 		if (url == null) {
-			System.out.println(new AaAnsi().invalid("WARN: could not locate " + appConfigPath + " on classpath").toString());
+			System.out.println(AaAnsi.n().invalid("WARN: could not locate " + appConfigPath + " on classpath").toString());
 			logger.warn("Could not find " + appConfigPath + " on classpath.  Normally inside ./lib/classes/");
 		} else {
 	    	try {
@@ -104,13 +104,13 @@ public class ProtoBufUtils {
 		    		}
 		    	}
 		    	if (issues) {
-		    		System.out.println(new AaAnsi().invalid("WARN: had issues loading Protobuf definitions, check log file").toString());
+		    		System.out.println(AaAnsi.n().invalid("WARN: had issues loading Protobuf definitions, check log file").toString());
 		    	} else {
 		    		logger.info("Successfully loaded all Protobuf definitions");
 		    	}
 	    	} catch (Exception e) {
 	    		logger.warn("Caught while trying to load protobuf definitions", e);
-	    		System.out.println(new AaAnsi().invalid("WARN: had issues loading Protobuf definitions, check log file").toString());
+	    		System.out.println(AaAnsi.n().invalid("WARN: had issues loading Protobuf definitions, check log file").toString());
 	    	}
 		}
 		return protobufCallbacks;
@@ -128,10 +128,10 @@ public class ProtoBufUtils {
 	}
 	
 	private static AaAnsi handleMessage(Map<FieldDescriptor, Object> map, final int indent, final int indentFactor) {
-		AaAnsi ansi = new AaAnsi();
+		AaAnsi ansi = AaAnsi.n();
 		handleMessage(map, ansi, indent, indentFactor);
 //		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('{') + ansi.toString() + new AaAnsi().fg(Elem.BRACE).a('}').reset();
-		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('{').a(ansi).fg(Elem.BRACE).a('}');//.reset();
+		if (indentFactor <= 0) return AaAnsi.n().fg(Elem.BRACE).a('{').aa(ansi).a('}');//.reset();
 		else return ansi;//.reset().toString();
 	}
 	
@@ -308,7 +308,7 @@ public class ProtoBufUtils {
 								if (indentFactor > 0) ansi.a(indent(indent + (indent/2)));
 								ansi.fg(Elem.DATA_TYPE).a("(MESSAGE)").reset();
 								if (indentFactor > 0) ansi.a(":\n");
-								ansi.a(handleMessage(obj.getAllFields(), indent + indentFactor, indentFactor));
+								ansi.aa(handleMessage(obj.getAllFields(), indent + indentFactor, indentFactor));
 								if (listIt.hasNext()) {
 									if (indentFactor > 0) ansi.a('\n');
 									else ansi.reset().a(',');
@@ -318,7 +318,7 @@ public class ProtoBufUtils {
 						}						
 					} else {  // not repeated, just a message
 						if (indentFactor > 0) ansi.a('\n');
-						ansi.a(handleMessage(((AbstractMessage)val).getAllFields(), indent+indentFactor, indentFactor));
+						ansi.aa(handleMessage(((AbstractMessage)val).getAllFields(), indent+indentFactor, indentFactor));
 					}
 					break;
 //				case GROUP:

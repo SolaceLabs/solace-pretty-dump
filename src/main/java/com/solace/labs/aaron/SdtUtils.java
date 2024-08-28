@@ -72,13 +72,10 @@ public class SdtUtils {
 	}
 
 	private static AaAnsi privPrintMap(SDTMap map, final int curIndent, final int indentFactor) throws SDTException {
-		AaAnsi aa = new AaAnsi();
-		privPrintMap(map, curIndent, indentFactor, aa);
-//		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a("{ ") + ansi.toString() + new AaAnsi().fg(Elem.BRACE).a(" }");
-//		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('{') + aa.toString() + new AaAnsi().fg(Elem.BRACE).a('}').reset();
-		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('{').a(aa).fg(Elem.BRACE).a('}');
-		else return aa;
-//		else return ansi.toString() + AaAnsi.n().fg(Elem.BRACE).a(" }").reset();
+		AaAnsi ansi = AaAnsi.n();
+		privPrintMap(map, curIndent, indentFactor, ansi);
+		if (indentFactor <= 0) return AaAnsi.n().fg(Elem.BRACE).a('{').aa(ansi).a('}');
+		else return ansi;
 	}
 	
 	private static void privPrintMap(SDTMap map, final int curIndent, final int indentFactor, AaAnsi ansi) throws SDTException {
@@ -115,17 +112,17 @@ public class SdtUtils {
 					}
 				}
 				if (value instanceof SDTMap) {
-					AaAnsi inner = new AaAnsi();
+					AaAnsi inner = AaAnsi.n();
 					if (indentFactor > 0) inner.a("\n");
 //					else inner.a(" ");
-					inner.a(privPrintMap((SDTMap) value, curIndent + indentFactor, indentFactor));
+					inner.aa(privPrintMap((SDTMap) value, curIndent + indentFactor, indentFactor));
 					ansiValue = inner;
 //					strValue = inner.toString();  // overwrite
 				} else if (value instanceof SDTStream) {
-					AaAnsi inner = new AaAnsi();
+					AaAnsi inner = AaAnsi.n();
 					if (indentFactor > 0) inner.a("\n");
 //					else inner.a(" ");
-					inner.a(privPrintStream((SDTStream) value, curIndent + indentFactor, indentFactor));
+					inner.aa(privPrintStream((SDTStream) value, curIndent + indentFactor, indentFactor));
 					ansiValue = inner;
 //					strValue = inner.toString();  // overwrite
 				} else {  // everything else
@@ -147,14 +144,18 @@ public class SdtUtils {
 //			} else {
 //				ansi.fg(Elem.KEY).a(key).reset();
 //			}
-			ansi.fg(Elem.DATA_TYPE);
-			ansi.a('(').a(type).a(')').reset();
-			if (indentFactor > 0) ansi.a(": ");
-//			else ansi.a(":");
+			if (indentFactor > 0) {
+				ansi.fg(Elem.DATA_TYPE);
+				ansi.a('(').a(type).a(')');
+//			} else {
+//				ansi.reset().a('=');
+			}
+			ansi.reset();
+			if (indentFactor > 0) ansi.a(':').a(' ');
+			else ansi.a('=');
 			if (value instanceof Topic) ansi.colorizeTopic(strValue, -1).reset();
 			else {
-//				Elem guess = Elem.guessByType(value);
-				ansi./* fg(guess). */a(ansiValue).reset();
+				ansi.aa(ansiValue).reset();
 				if (value instanceof Long) {
 					String ts = UsefulUtils.guessIfTimestampLong(key, (long)value);
 					if (ts != null) {
@@ -187,11 +188,11 @@ public class SdtUtils {
 	}
 	
 	private static AaAnsi privPrintStream(SDTStream stream, final int curIndent, final int indentFactor) throws SDTException {
-		AaAnsi aa = new AaAnsi();
-		privPrintStream(stream, curIndent, indentFactor, aa);
+		AaAnsi ansi = AaAnsi.n();
+		privPrintStream(stream, curIndent, indentFactor, ansi);
 //		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('[') + ansi.toString() + new AaAnsi().fg(Elem.BRACE).a(']').reset();
-		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('[').a(aa).fg(Elem.BRACE).a(']');
-		else return aa;
+		if (indentFactor <= 0) return AaAnsi.n().fg(Elem.BRACE).a('[').aa(ansi).a(']');
+		else return ansi;
 	}
 
 	
@@ -222,19 +223,19 @@ public class SdtUtils {
 				}
 //				strValue2 = AaAnsi.n().fg(Elem.guessByType(value)).a(String.valueOf(strValue));  // update
 				if (value instanceof SDTMap) {
-					AaAnsi inner = new AaAnsi();
+					AaAnsi inner = AaAnsi.n();
 					if (indentFactor > 0) inner.a("\n");
 //					else inner.a(" ");
-					inner.a(privPrintMap((SDTMap) value, indent + indentFactor, indentFactor));
+					inner.aa(privPrintMap((SDTMap) value, indent + indentFactor, indentFactor));
 //					else
 //						a.a("{ ").reset().a(privPrintMap((SDTMap) value, indent + indentFactor, indentFactor)).a(" }").reset();
 //					strValue = inner.toString();  // overwrite
 					strValue2 = inner;
 				} else if (value instanceof SDTStream) {
-					AaAnsi inner = new AaAnsi();
+					AaAnsi inner = AaAnsi.n();
 					if (indentFactor > 0) inner.a("\n");
 //					else inner.a(" ");
-					inner.a(privPrintStream((SDTStream) value, indent + indentFactor, indentFactor));
+					inner.aa(privPrintStream((SDTStream) value, indent + indentFactor, indentFactor));
 //					else
 //						inner.fg(Elem.BYTES).a("[ ").reset().a(privPrintStream((SDTStream)value, indent + indentFactor, indentFactor)).reset().a(" ]").reset();
 //					strValue = inner.toString();  // overwrite
@@ -252,7 +253,7 @@ public class SdtUtils {
 				ansi.fg(Elem.DATA_TYPE).a('(').a(type).a(")").reset();
 			}
 			if (value instanceof Topic) ansi.colorizeTopic(strValue, -1).reset();
-			else ansi.a(strValue2).reset();
+			else ansi.aa(strValue2).reset();
 			if (stream.hasRemaining() ) {
 				if (indentFactor > 0) ansi.a("\n");
 				else ansi.a(",");

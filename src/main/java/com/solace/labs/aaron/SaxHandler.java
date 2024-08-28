@@ -31,7 +31,7 @@ import org.xml.sax.helpers.DefaultHandler;
  */
 public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorHandler {
 
-	private AaAnsi ansi = new AaAnsi();
+	private AaAnsi ansi = AaAnsi.n();
 	private final int indent;
 	private int level = 0;
     private StringBuilder characterDataSb = new StringBuilder();   // need StringBuilder for the 'characters' method since SAX can call it multiple times
@@ -68,12 +68,12 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
         characterDataSb.setLength(0);  // start capturing a new bunch of characters after this startTagForLater... re-use to prevent object creation
 		if (previous == Tag.START && startTagForLater != null) {  // if the tag before me was also a start, then need to dump out my saved tag
 //			assert startTagForLater != null;
-			ansi.a(startTagForLater).reset().a('>');
+			ansi.aa(startTagForLater).reset().a('>');
 			if (indent > 0) ansi.a('\n');
 		} else if (previous == Tag.END) {  // aa debug june 25
 			if (indent > 0) ansi.a('\n');
 		}
-		startTagForLater = new AaAnsi();  // reset for new start tag
+		startTagForLater = AaAnsi.n();  // reset for new start tag
 		if (indent > 0 && level > 0) {
 			startTagForLater.a(UsefulUtils.indent(indent * level));
 		}
@@ -98,19 +98,19 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 				if (indent > 0) ts = UsefulUtils.guessIfTimestampLong(key, bi.longValue());
 				if (ts != null) {
 //					ansi.fg(Elem.CHAR).a(ts);
-					return new AaAnsi().fg(Elem.NUMBER).a(val).faintOn().a(ts);
+					return AaAnsi.n().fg(Elem.NUMBER).a(val).faintOn().a(ts);
 				} else {
-					return new AaAnsi().fg(Elem.NUMBER).a(val);  // yup!
+					return AaAnsi.n().fg(Elem.NUMBER).a(val);  // yup!
 				}
 //				return new AaAnsi().fg(Elem.NUMBER).a(val);  // yup!
 			} catch (NumberFormatException e) {
-				return new AaAnsi().fg(Elem.FLOAT).a(val);  // nope!
+				return AaAnsi.n().fg(Elem.FLOAT).a(val);  // nope!
 			}
 		} catch (NumberFormatException e) {  // nope, not a number
 			if (val.equalsIgnoreCase("true") || val.equalsIgnoreCase("false")) {  // is it a Boolean?
-				return new AaAnsi().fg(Elem.BOOLEAN).a(val);
+				return AaAnsi.n().fg(Elem.BOOLEAN).a(val);
 			}
-			return new AaAnsi().fg(Elem.STRING).a(val);  // assume it's a string
+			return AaAnsi.n().fg(Elem.STRING).a(val);  // assume it's a string
 		}
 	}
 
@@ -121,15 +121,15 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 		if (previous == Tag.START) {
 			if (startTagForLater != null) {  // the previous tag is a start tag
 				if (chars.length() > 0) {
-					ansi.a(startTagForLater).reset().a('>').a(guessAndFormatChars(chars, qName, indent)).reset();
+					ansi.aa(startTagForLater).reset().a('>').aa(guessAndFormatChars(chars, qName, indent)).reset();
 					ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');
 				} else {  // closing a startTagForLater tag right away, and no chars, so make it a singleton
-					ansi.a(startTagForLater).reset().a("/>");
+					ansi.aa(startTagForLater).reset().a("/>");
 				}
 				startTagForLater = null;
 			} else {  // already been blanked (maybe by a comment?)
 				if (chars.length() > 0) {
-					ansi.a(guessAndFormatChars(chars, qName, indent)).reset();
+					ansi.aa(guessAndFormatChars(chars, qName, indent)).reset();
 				}
 				ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');
 			}
@@ -138,7 +138,7 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 			if (indent > 0 && level > 0) {
 				ansi.a(UsefulUtils.indent(indent * level));
 			}
-			if (chars.length() > 0) ansi.a(guessAndFormatChars(chars, qName, indent)).reset();
+			if (chars.length() > 0) ansi.aa(guessAndFormatChars(chars, qName, indent)).reset();
 			ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');
 		}
 //		if (indent > 0) ansi.a('\n');  // aaron debug june 25
@@ -150,7 +150,7 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 	public void comment(char[] ch, int start, int length) throws SAXException {
 		if (indent > 0) {  // show if not compact
 			if (startTagForLater != null) {
-				ansi.a(startTagForLater).reset().a('>');
+				ansi.aa(startTagForLater).reset().a('>');
 //				if (indent > 0) ansi.a('\n');
 				startTagForLater = null;
 			}

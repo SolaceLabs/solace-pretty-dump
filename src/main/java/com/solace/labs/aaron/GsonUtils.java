@@ -40,7 +40,7 @@ public class GsonUtils {
 	private static AaAnsi parseJsonObject(String json, int indentFactor, boolean isLenient) throws IOException {
 		JsonReader reader = new JsonReader(new StringReader(json));
 		reader.setLenient(false);
-		AaAnsi ansi = new AaAnsi();
+		AaAnsi ansi = AaAnsi.n();
 		handleObject(reader, ansi, indentFactor, 0);
 //		if (indentFactor > 0) ansi.a('\n');
 		return ansi;
@@ -53,7 +53,7 @@ public class GsonUtils {
 	private static AaAnsi parseJsonArray(String json, int indentFactor, boolean isLenient) throws IOException {
 		JsonReader reader = new JsonReader(new StringReader(json));
 		reader.setLenient(isLenient);
-		AaAnsi ansi = new AaAnsi();
+		AaAnsi ansi = AaAnsi.n();
 		handleArray(reader, ansi, indentFactor, 0);
 		return ansi;
 	}

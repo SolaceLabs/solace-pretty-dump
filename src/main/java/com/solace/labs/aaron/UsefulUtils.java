@@ -265,7 +265,7 @@ public class UsefulUtils {
 		if (indent <= 0) {
 //			return new AaAnsi().reset().a("[").fg(Elem.BYTES_CHARS).a(getSimpleString(bytes)).reset().a("]").toString();  // just a long string of chars
 //			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset();  // byte values
-			return new AaAnsi().reset().fg(Elem.BYTES).a(bytesToSpacedHexString(bytes)).reset();  // byte values
+			return AaAnsi.n().reset().fg(Elem.BYTES).a(bytesToSpacedHexString(bytes)).reset();  // byte values
 		}
 		if (terminalWidth > 151) return printBytes3(bytes, indent, 32);  // widescreen
 		else return printBytes3(bytes, indent, 16);
@@ -274,81 +274,33 @@ public class UsefulUtils {
 //	static final int WIDTH = 32;
 	static final int COLS = 8;
 	
-	/*  Orig SdkPerf dump format:
+	/*  Orig SdkPerf dump format:    (we've added row numbers now)
 	  1d 00 a3 5b 7b 22 6e 61    6d 65 22 3a 22 74 65 73    ...[{"name":"tes
 	  74 20 70 72 6f 64 75 63    74 22 2c 22 71 75 61 6e    t.product","quan
 	  74 69 74 79 22 3a 35 2c    22 70 72 69 63 65 22 3a    tity":5,"price":
 	  31 30 2e 39 39 2c 22 74    6f 74 61 6c 22 3a 35 30    10.99,"total":50
 	  7d 2c 7b 22 6e 61 6d 65    22 3a 22 43 72 65 61 74    },{"name":"Creat
 		 */
-	
-	/** this should only be called if we know it's not a UTF-8 (or whatever) string */
-/*	private static AaAnsi printBytes(byte[] bytes, int indent, int width) {
-		indent = 2;  // force override, 2 is what SdkPerf does too
-//		String[] hex = bytesToHexStringArray(bytes);
-		String hex2 = bytesToLongHexString(bytes);
-		AaAnsi aa = new AaAnsi();
-		for (int i=0; i < bytes.length; i++) {
-			if (i % width == 0) {
-				aa.a(indent(indent)).fg(Elem.BYTES);
-			}
-//			ansi.a(hex[i]).a(" ");
-			aa.a(hex2.substring(i*2, (i*2)+2)).a(" ");
-			if (i % COLS == COLS-1) {
-				aa.a("   ");
-			}
-			if (i % width == width-1) {
-				aa.fg(Elem.BYTES_CHARS);
-				for (int j=i-(width-1); j<=i; j++) {
-					aa.a(getSimpleChar2(bytes[j]));
-					if (j % 8 == 7 && j != i) aa.a("--");
-//					if (j % 16 == 15) ansi.a(" ");
-				}
-				aa.reset().a('\n');
-//				if (i < bytes.length-1 || indent > 0) ansi.a('\n');
-			}
-		}
-		// last trailing bit, if not evenly divisible by WIDTH
-		// works for everthing except 24
-		if (bytes.length % width != 0) {
-			aa.reset();
-			int leftover = bytes.length % width;
-			for (int i=0; i < width - leftover; i++) {
-				aa.a("   ");
-			}
-			int extraGaps = (width - leftover - 1) / COLS;
-			for (int i=0; i <= extraGaps; i++) {
-				aa.a("   ");
-			}
-			aa.fg(Elem.BYTES_CHARS);
-			for (int i= bytes.length - leftover; i<bytes.length; i++) {
-				aa.a(getSimpleChar2(bytes[i]));
-				if (i % 8 == 7) aa.a("  ");
-//				if (i % 16 == 15) ansi.a(" ");
-			}
-			aa.reset();
-//			if (indent > 0) ansi.a('\n');
-		}
-		return aa;
-	}*/
+
 
 	/** this should only be called if we know it's not a UTF-8 (or whatever) string */
+	@SuppressWarnings("unused")
 	private static AaAnsi printBytes2(byte[] bytes, int indent, int width) {
 		// width must be either 16 or 32 for wide-screen
 		indent = 2;  // force override, 2 is what SdkPerf does too
 //		String[] hex = bytesToHexStringArray(bytes);
 		String hex2 = bytesToLongHexString(bytes);
-		AaAnsi aa = new AaAnsi();
+		AaAnsi ansi = AaAnsi.n();
 		int roundedLenghth = (int)(Math.ceil(bytes.length * 1.0 / width) * width);
 		StringBuilder bytesSoFar = new StringBuilder();
 		for (int i=0; i < roundedLenghth; i++) {
 			if (i % width == 0) {
 				// some extra row values to show the complete hex code here
-				aa.fg(Elem.DATA_TYPE).a(String.format("%04x0   ",(i / 16) % (4096))).fg(Elem.BYTES);
+				ansi.fg(Elem.DATA_TYPE).a(String.format("%04x0   ",(i / 16) % (4096))).fg(Elem.BYTES);
 				bytesSoFar.setLength(0);  // reuse
 			}
 //			ansi.a(hex[i]).a(" ");
-			if (i == bytes.length) aa.faintOn();  // when we've run out of bytes
+			if (i == bytes.length) ansi.faintOn();  // when we've run out of bytes
 //			if (i < bytes.length) aa.a(hex2.substring(i*2, (i*2)+2)).a(' ');
 //			else aa.a('·').a('·').a(' ');
 //			if (i % COLS == COLS-1) {
@@ -361,46 +313,46 @@ public class UsefulUtils {
 			}
 
 			if (i % width == width-1) {
-				/* if (i >= bytes.length) */ aa.faintOff();
-				aa.a(bytesSoFar.toString());
+				/* if (i >= bytes.length) */ ansi.faintOff();
+				ansi.a(bytesSoFar.toString());
 				bytesSoFar.setLength(0);  // reuse
-				aa.a(' ').fg(Elem.BYTES_CHARS);
+				ansi.a(' ').fg(Elem.BYTES_CHARS);
 				for (int j=i-(width-1); j<=i; j++) {
 					if (j < bytes.length) {
-						aa.a(getSimpleChar2(bytes[j]));
-						if (j % 8 == 7 && j != i) aa.a(' ').a(' ');
+						ansi.a(getSimpleChar2(bytes[j]));
+						if (j % 8 == 7 && j != i) ansi.a(' ').a(' ');
 					}
 //					if (j % 16 == 15) ansi.a(" ");
 				}
-				aa.reset();
-				if (i < bytes.length-1) aa.a('\n');
+				ansi.reset();
+				if (i < bytes.length-1) ansi.a('\n');
 //				if (i < bytes.length-1 || indent > 0) ansi.a('\n');
 			}
 		}
-		if ("1".equals("1")) return aa;
+		if ("1".equals("1")) return ansi;
 		// last trailing bit, if not evenly divisible by WIDTH
 		// works for everthing except 24
 		if (bytes.length % width != 0) {
-			aa.reset();
+			ansi.reset();
 			int leftover = bytes.length % width;
 			for (int i=0; i < width - leftover; i++) {
-				aa.a(' ').a(' ').a(' ');
+				ansi.a(' ').a(' ').a(' ');
 			}
 			int extraGaps = (width - leftover - 1) / COLS;
 			for (int i=0; i <= extraGaps; i++) {
-				aa.a(' ').a(' ');
+				ansi.a(' ').a(' ');
 			}
-			aa.a(' ');
-			aa.fg(Elem.BYTES_CHARS);
+			ansi.a(' ');
+			ansi.fg(Elem.BYTES_CHARS);
 			for (int i= bytes.length - leftover; i<bytes.length; i++) {
-				aa.a(getSimpleChar2(bytes[i]));
-				if (i % 8 == 7) aa.a(' ').a(' ');
+				ansi.a(getSimpleChar2(bytes[i]));
+				if (i % 8 == 7) ansi.a(' ').a(' ');
 //				if (i % 16 == 15) ansi.a(" ");
 			}
-			aa.reset();
+			ansi.reset();
 //			if (indent > 0) ansi.a('\n');
 		}
-		return aa;
+		return ansi;
 	}
 
 	
@@ -409,37 +361,37 @@ public class UsefulUtils {
 		// width must be either 16 or 32 for wide-screen
 		indent = 2;  // force override, 2 is what SdkPerf does too
 		String hex2 = bytesToLongHexString(bytes);
-		AaAnsi aa = new AaAnsi();
+		AaAnsi ansi = AaAnsi.n();
 		int numRows = (int)Math.ceil(bytes.length * 1.0 / width);
 		for (int i=0; i < numRows; i++) {
-			aa.fg(Elem.DATA_TYPE).a(String.format("%04x0   ", i % 4096)).fg(Elem.BYTES);
+			ansi.fg(Elem.DATA_TYPE).a(String.format("%04x0   ", i % 4096)).fg(Elem.BYTES);
 			for (int j=0; j<width; j++) {
 				int pos = i * width + j;
-				if (pos < bytes.length) aa.a(hex2.charAt(pos*2)).a(hex2.charAt(pos*2 + 1)).a(' ');
+				if (pos < bytes.length) ansi.a(hex2.charAt(pos*2)).a(hex2.charAt(pos*2 + 1)).a(' ');
 				else {
-					if (pos == bytes.length) aa.faintOn();  // when we've run out of bytes
-					aa.a('·').a('·').a(' ');//.append("·· ");
+					if (pos == bytes.length) ansi.faintOn();  // when we've run out of bytes
+					ansi.a('·').a('·').a(' ');//.append("·· ");
 				}
 				if (j % COLS == COLS-1) {
-					aa.a(' ').a(' ');
+					ansi.a(' ').a(' ');
 				}
 			}
-			aa.a(' ').fg(Elem.BYTES_CHARS);
-			if (i == numRows-1) aa.faintOff();  // last row, might have turned on faint
+			ansi.a(' ').fg(Elem.BYTES_CHARS);
+			if (i == numRows-1) ansi.faintOff();  // last row, might have turned on faint
 //			for (int j=i-(width-1); j<=i; j++) {
 			for (int j=0; j<width; j++) {
 				int pos = i * width + j;
 				if (pos < bytes.length) {
-					aa.a(getSimpleChar2(bytes[pos]));
+					ansi.a(getSimpleChar2(bytes[pos]));
 //					if (j % 8 == 7 && j != i) aa.a(' ').a(' ');
-					if (j % 8 == 7 && j != width-1) aa.a(' ').a(' ');  // if on a column && not the last column
+					if (j % 8 == 7 && j != width-1) ansi.a(' ').a(' ');  // if on a column && not the last column
 				}
 			}
 //			aa.reset();
-			if (i < numRows-1) aa.a('\n');
+			if (i < numRows-1) ansi.a('\n');
 //				if (i < bytes.length-1 || indent > 0) ansi.a('\n');
 		}
-		return aa.reset();
+		return ansi.reset();
 	}
 
 	
@@ -466,59 +418,6 @@ public class UsefulUtils {
 		}
 		return sb.toString();
 	}
-	
-	
-	
-	
-	
-/*	static void reflectionUtils(String className) throws IOException {
-		try {
-			Class<?> clazz = Class.forName(className);
-			reflectionUtils(clazz);
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		} finally {
-			
-		}
-	}
-	
-
-	static void reflectionUtils(Class<?> clazz) throws IOException {
-		
-		try {
-			for (Method m : clazz.getMethods()) {
-				System.out.println(m);
-			}
-			Class<?>[] inners = clazz.getClasses();
-			for (Class<?> inner : inners) {
-				System.out.printf("###################%n%s%n",inner.getName());
-//				System.in.read();
-//				reflectionUtils(inner);
-			}
-			reflectionListInners(clazz);
-		} catch (SecurityException e) {
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			e.printStackTrace();
-		}
-	}
-
-	
-	static void reflectionListInners(Class<?> clazz) throws IOException {
-		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-		try {
-			Class<?>[] inners = clazz.getClasses();
-			for (Class<?> inner : inners) {
-				System.out.println(inner.getName());
-//				reader.readLine();
-				if (inner.getName().startsWith(clazz.getName())) reflectionListInners(inner);
-			}
-		} catch (SecurityException e) {
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			e.printStackTrace();
-		}
-	}*/
 
 
 	// 5 year range around whatever today is
@@ -646,7 +545,7 @@ public class UsefulUtils {
     	assert s.startsWith("{");
     	assert s.endsWith("}");
     	s = s.substring(1, s.length()-1);
-    	AaAnsi aa = AaAnsi.n().fg(Elem.BRACE).a('{');
+    	AaAnsi ansi = AaAnsi.n().fg(Elem.BRACE).a('{');
     	String[] tokens = s.split(SPLIT_ON_COMMAS);  //,-1);
     	boolean validForColons = true;
     	boolean validForEquals = true;
@@ -657,7 +556,7 @@ public class UsefulUtils {
         	if (splitOnEquals.length != 2) validForEquals = false;
     	}
     	if (!(validForColons ^ validForEquals)) {  // either both true, or both false
-    		return aa.reset().a(s).fg(Elem.BRACE).a('}').toString();  // don't know which to split on, so bail out
+    		return ansi.reset().a(s).fg(Elem.BRACE).a('}').toString();  // don't know which to split on, so bail out
     	}
     	final String whichSplit = validForColons ? SPLIT_ON_COLONS : SPLIT_ON_EQUALS;
     	final char separator = validForColons ? ':' : '=';
@@ -665,11 +564,11 @@ public class UsefulUtils {
     	while (it.hasNext()) {
     		String[] keyValPair = it.next().split(whichSplit, -1);
 //    		aa.fg(Elem.KEY).a('\'').a(keyValPair[0]).a('\'').reset().a(separator);
-    		aa.fg(Elem.KEY).a(keyValPair[0]).reset().a(separator);
-    		aa.a(SaxHandler.guessAndFormatChars(keyValPair[1], keyValPair[0], 0));
-    		if (it.hasNext()) aa.reset().a(',');
+    		ansi.fg(Elem.KEY).a(keyValPair[0]).reset().a(separator);
+    		ansi.aa(SaxHandler.guessAndFormatChars(keyValPair[1], keyValPair[0], 0));
+    		if (it.hasNext()) ansi.reset().a(',');
     	}
-    	return aa.fg(Elem.BRACE).a('}').reset().toString();
+    	return ansi.fg(Elem.BRACE).a('}').reset().toString();
     }
     
     public static String capitalizeFirst(String s) {
