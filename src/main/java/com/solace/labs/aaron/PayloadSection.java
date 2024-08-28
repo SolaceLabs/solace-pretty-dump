@@ -60,7 +60,7 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
 	void formatString(final String text, final byte[] bytes, String contentType) {
 		if (contentType == null) contentType = "";  // empty string, for easier matching later
 		size = bytes.length;
-		if (text == null) {
+		if (text == null) {  // that shouldn't happen?
 			formatted = AaAnsi.n();
 			type = "<NULL>";
 			return;
@@ -125,7 +125,7 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
 		String parsed = DecoderUtils.decodeToString(config.decoder, bytes);
 //		boolean malformed = parsed.contains("\ufffd");
 		formatString(parsed, bytes, contentType);  // call the String version
-		if (!type.startsWith("non")) {
+		if (!type.startsWith("non") && size > 0) {
 			type = "valid " + type;
 		}
 	}	

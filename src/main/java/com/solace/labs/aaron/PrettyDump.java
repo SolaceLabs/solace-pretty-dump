@@ -120,7 +120,7 @@ public class PrettyDump {
 		System.out.println("    • 000       no payload mode, user properties each compressed to one line");
 		System.out.println("    • 0000      no payload mode, no user properties, headers only");
 		System.out.println("    • -250..-3  one-line mode, topic and payload only, compressed, fixed indent");
-		System.out.println("    • -2        two-line mode, topic and payload on two lines");
+		System.out.println("    • -2        two-line mode, topic and payload on two lines (try 'minimal' color mode)");
 		System.out.println("    • -1        one-line mode, automatic variable payload indentation");
 		System.out.println("    • -0        one-line mode, topic only");
         System.out.println("    • For one-line modes, change '-' to '+' to enable topic level alignment");
@@ -154,12 +154,13 @@ public class PrettyDump {
 		System.out.println("    • --count=n   stop after receiving n number of msgs; or if < 0, only show last n msgs");
 //		System.out.println("    • --skip=n    skip the first n messages received");
 		System.out.println("    • --trim      enable paylaod trim for one-line (and two-line) modes");
+		System.out.println("    • --ts        enable timestamp printing for received messages");
 		System.out.println("    • --defaults  show all possible JCSMP Session properties to set/override");
 		System.out.println(" - One-Line runtime options: type the following into the console while the app is running");
 		System.out.println("    • Press \"t\" ENTER to toggle payload trim to terminal width (or argument --trim)");
 		System.out.println("    • Press \"+\" or \"-\" ENTER to toggle topic level spacing/alignment (or argument \"+indent\")");
 		System.out.println("    • Press \"[1-n]\" ENTER to highlight a particular topic level (\"0\" ENTER to revert)");
-		System.out.println("    • Type \"c[svlmo]\" ENTER\" to change colour modes: standard, vivid, light, minimal, off");
+		System.out.println("    • Type \"c[svlmxo]\" ENTER\" to set colour mode: standard, vivid, light, minimal, matrix, off");
 		System.out.println("Environment variable options:");
 		System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=ISO-8859-1");
 		//		System.out.println("    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or \"set\" on Windows)");
@@ -192,7 +193,7 @@ public class PrettyDump {
 		//		System.out.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
 		System.out.println(" - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume defaults");
 		System.out.println("    • Or if first arg parses as integer, select as indent, rest default options");
-		if (full) System.out.println(" - Additional non-ordered args: --count,  --filter, --selector, --trim");
+		if (full) System.out.println(" - Additional non-ordered args: --count, --filter, --selector, --trim, --ts");
 		if (full) System.out.println(" - Any JCSMP Session property (use --defaults to see all)");
 		if (full) System.out.println(" - Environment variables for decoding charset and colour mode");
 		if (full) System.out.println();
@@ -490,6 +491,8 @@ public class PrettyDump {
 				}
 			} else if (arg.equals("--trim")) {
 				config.setAutoTrimPayload(true);
+			} else if (arg.equals("--ts")) {
+				config.includeTimestamp = true;
 			} else if (arg.startsWith("--count")) {
 				String argVal = "?";
 				try {
@@ -559,6 +562,10 @@ public class PrettyDump {
 //				System.out.println("Overriding JCSMPProperties." + propName + "=" + properties.getProperty(propName));
 				System.out.println(ansi.reset());
 				jcscmpPropCount++;
+			} else {
+				System.out.println(AaAnsi.n().invalid("Don't recognize this argument '" + arg + "'!"));
+				System.out.println("Quitting! 💀");
+				System.exit(1);
 			}
 		}
 		
@@ -1096,11 +1103,14 @@ public class PrettyDump {
 					case 'm': temp = ColorMode.MINIMAL; break;
 					case 'l': temp = ColorMode.LIGHT; break;
 					case 'o': temp = ColorMode.OFF; break;
+					case 'x': temp = ColorMode.MATRIX; break;
 					}
 					if (temp != null) {
 						Elem.updateColors(temp);
 						AaAnsi.MODE = temp;
 					}
+				} else if ("ts".equals(userInput)) {
+					config.includeTimestamp = !config.includeTimestamp;
 				}
 			}
 		}

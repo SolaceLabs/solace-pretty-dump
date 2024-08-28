@@ -108,34 +108,6 @@ public class PayloadHelper {
 	}
 
 	
-	public void handlePayloadSection(String line, PayloadSection ps, AaAnsi ansi) {
-		boolean invalid = ps.type != null && (ps.type.contains("non") || ps.type.contains("INVALID"));
-		if (config.getFormattingIndent() == 0 || config.noPayload) {  // so compressed and/or no payload
-    		if (ps.type != null) {
-    			ansi.a(',').a(' ');
-    			if (invalid) ansi.invalid(ps.type);
-    			else ansi.fg(Elem.PAYLOAD_TYPE).a(ps.type).reset();
-    		}
-//    		if (!noPayload) aa.a(": ").a(ps.formatted);
-    		if (!config.noPayload) ansi.a('\n').aa(ps.formatted);
-		} else {
-			ansi.a('\n');
-    		if (ps.type != null) {
-    			if (invalid) ansi.invalid(UsefulUtils.capitalizeFirst(ps.type));
-    			else ansi.fg(Elem.PAYLOAD_TYPE).a(UsefulUtils.capitalizeFirst(ps.type));//.reset();
-        		if (!ps.type.contains("EMPTY")) ansi.a(':');
-        		ansi.a('\n');
-    		}
-        	if (!config.noPayload && (ps.type == null || !ps.type.contains("EMPTY"))) {
-        		ansi.aa(ps.formatted).a('\n');
-        	}
-		}
-	}
-
-//	public void stop() {
-//		isStopped = true;
-//	}
-	
 	public boolean isStopped() {
 		return config.isShutdown;
 	}
@@ -233,39 +205,22 @@ public class PayloadHelper {
     public void dealWithMessage(BytesXMLMessage message) {
     	if (isStopped()) return;
     	config.currentMsgCount++;
-//    	currentScreenWidth = AnsiConsole.getTerminalWidth();
-//    	if (currentScreenWidth == 0) currentScreenWidth = 80;  // for running in eclipse or others that don't return a good value
-    	MessageHelper ms = new MessageHelper(this, message, config.currentMsgCount);
-        // if doing topic only, or if there's no payload in compressed (<0) MODE, then just print the topic
-    	// can't do this anymore here b/c we have filtering now
-//    	if (INDENT == Integer.MIN_VALUE || (INDENT < 0 && !message.hasContent() && !message.hasAttachment())) {
-//    		System.out.println(ms.msgDestNameFormatted);
-//            return;
-//    	}
-//    	if (noPayload && oneLineMode && filterRegexPattern == null) {  // just dumping topic, let's optimize here
-//            ms.updateTopicSpacing();  // now that we've determined if we're gonna filter this message, do the topic stuff
-//            System.out.println(ms.msgDestNameFormatted);
-//            return;
-//    	}
-    	
+    	MessageHelper ms = new MessageHelper(this.config, message, config.currentMsgCount);
     	if (message instanceof XMLContentMessage) {
         	ms.msgType = PrettyMsgType.XML.toString();
-        } else {
-	        if (message instanceof MapMessage) {
-	        	ms.msgType = PrettyMsgType.MAP.toString();
-	        } else if (message instanceof StreamMessage) {
-	        	ms.msgType = PrettyMsgType.STREAM.toString();
-	        } else if (message instanceof TextMessage) {
-				ms.msgType = /* "<EMPTY> " + */ PrettyMsgType.TEXT.toString();
-	        } else if (message instanceof BytesMessage) {
+        } else if (message instanceof MapMessage) {
+        	ms.msgType = PrettyMsgType.MAP.toString();
+        } else if (message instanceof StreamMessage) {
+        	ms.msgType = PrettyMsgType.STREAM.toString();
+        } else if (message instanceof TextMessage) {
+			ms.msgType = /* "<EMPTY> " + */ PrettyMsgType.TEXT.toString();
+        } else if (message instanceof BytesMessage) {
 //	        	if (message.hasAttachment() && message.getAttachmentContentLength() > 0) ms.msgType = PrettyMsgType.BYTES.toString();
 //	        	else ms.msgType = "<EMPTY> " + PrettyMsgType.BYTES.toString();
-	        	ms.msgType = PrettyMsgType.BYTES.toString();
-	        } else {  // shouldn't be anything else..?
-	        	// leave as Impl class
-	        }
+        	ms.msgType = PrettyMsgType.BYTES.toString();
+        } else {  // shouldn't be anything else..?   Even JMS ObjectMessage arrives to JCSMP as BytesMessage & no way to check that payload bit/type
+        	// leave as Impl class
         }
-    	
     	
     	// so at this point we know we know we will need the payload, so might as well try to parse it now
         try {  // want to catch SDT exceptions from the map and stream; payload string encoding issues now caught in format()
@@ -320,12 +275,12 @@ public class PayloadHelper {
         	}
             if (message.getProperties() != null && !message.getProperties().isEmpty()) {
             	ms.userProps = new PayloadSection(config);
-            	ms.userProps.formatted = SdtUtils.printMap(message.getProperties(), config.getFormattingIndent());
+            	if (!config.isOneLineMode()) ms.userProps.formatted = SdtUtils.printMap(message.getProperties(), config.getFormattingIndent());
             	ms.userProps.numElements = SdtUtils.countElements(message.getProperties());
             }
             if (message.getUserData() != null && message.getUserData().length > 0) {
             	ms.userData = new PayloadSection(config);
-            	ms.userData.formatBytes(message.getUserData(), null);
+            	if (!config.isOneLineMode()) ms.userData.formatBytes(message.getUserData(), null);
             	ms.userData.type = null;
             }
             

@@ -21,7 +21,7 @@ public class ConfigState {
 	boolean isShutdown = false;          // are we done yet?
 	boolean isConnected = false;
 	boolean isFlowActive = false;
-	boolean includeTimestamp = true;
+	boolean includeTimestamp = false;
 
     int highlightTopicLevel = -1;
     int INDENT = 2;  // default starting value, keeping it all-caps for retro v0.0.1 value
@@ -42,7 +42,7 @@ public class ConfigState {
 	CharsetDecoder decoder = charset.newDecoder().onMalformedInput(CodingErrorAction.REPLACE).onUnmappableCharacter(CodingErrorAction.REPLACE);
 
 	
-	private static String DTF_FORMAT = "HH:mm:ss.S ";
+	private static String DTF_FORMAT = "HH:mm:ss.SS ";
 	private static DateTimeFormatter DTF = DateTimeFormatter.ofPattern(DTF_FORMAT);  
 
 	public void setAutoTrimPayload(boolean trim) {
@@ -241,7 +241,7 @@ public class ConfigState {
 
 	
 	/** used when calculating one-line indent values, includes a space at the end of the timestamp */
-	public int getTimestampIndent() {
+	public int getTimestampIndentIfEnabled() {
 		if (includeTimestamp) return DTF_FORMAT.length();
 		else return 0;
 	}

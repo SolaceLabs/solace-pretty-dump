@@ -26,12 +26,10 @@ public class MessageHelper {
     PayloadSection userProps = null;
     PayloadSection userData = null;
     
-    private final PayloadHelper ph;
     private final ConfigState config;
             
-    public MessageHelper(PayloadHelper ph, BytesXMLMessage message, long msgCountNumber) {
-    	this.ph = ph;
-    	this.config = ph.getConfigState();
+    public MessageHelper(ConfigState config, BytesXMLMessage message, long msgCountNumber) {
+    	this.config = config;
     	orig = message;
     	this.lockedMsgCountNumber = msgCountNumber;
 //    	this.msgCountNumber = config.;
@@ -92,11 +90,11 @@ public class MessageHelper {
         		ansiDest.colorizeTopic(msgDestName, config.getHighlightedTopicLevel());
         	}
     	}
-    	if (config.isOneLineMode() && config.includeTimestamp) {
-    		msgDestNameFormatted = AaAnsi.n().a(config.getTimestamp()).a(' ').aa(ansiDest).reset();
-    	} else {
+//    	if (config.isOneLineMode() && config.includeTimestamp) {
+//    		msgDestNameFormatted = AaAnsi.n().a(config.getTimestamp()).a(' ').aa(ansiDest).reset();
+//    	} else {
     		msgDestNameFormatted = ansiDest.reset();
-    	}
+//    	}
     	config.updateTopicIndentValue(msgDestNameFormatted.length());
 //    	if (autoResizeIndent) updateTopicIndentValue(msgDestName.length());        	
     }
@@ -123,27 +121,60 @@ public class MessageHelper {
         return AaAnsi.n().fg(Elem.MSG_BREAK).a(headPre).a(header).a(headPost).reset();
 	}
 	
-	static AaAnsi printMessageStart(long num) {
-        return printMessageBoundary(String.format(" Start Message #%d ", num));
-	}
-	
-	static AaAnsi printMessageEnd(long num) {
-        return printMessageBoundary(String.format(" End Message #%d ", num));
-	}
-
 	AaAnsi printMessageStart() {
-        return printMessageStart(config.getMessageCount());
+		if (config.includeTimestamp) {
+			return printMessageBoundary(String.format(" %s- Start Message #%d ",config.getTimestamp(), lockedMsgCountNumber));
+		} else {
+            return printMessageBoundary(String.format(" Start Message #%d ", lockedMsgCountNumber));
+		}
 	}
 	
 	AaAnsi printMessageEnd() {
-        return printMessageEnd(config.getMessageCount());
+		if (config.includeTimestamp) {
+			return printMessageBoundary(String.format(" %s- End Message #%d ",config.getTimestamp(), lockedMsgCountNumber));
+		} else {
+            return printMessageBoundary(String.format(" End Message #%d ", lockedMsgCountNumber));
+		}
 	}
+
+	static AaAnsi printMessageStart(int num) {
+		return printMessageBoundary(String.format(" %s- Start Message #%d ",new ConfigState().getTimestamp(), num));
+	}
+	
+	static AaAnsi printMessageEnd(int num) {
+		return printMessageBoundary(String.format(" %s- End Message #%d ",new ConfigState().getTimestamp(), num));
+	}
+	
+	private void handlePayloadSection(PayloadSection ps, AaAnsi ansi) {
+		boolean invalid = ps.type != null && (ps.type.contains("non") || ps.type.contains("INVALID"));
+		if (config.getFormattingIndent() == 0 || config.noPayload) {  // so compressed and/or no payload
+    		if (ps.type != null) {
+    			ansi.a(',').a(' ');
+    			if (invalid) ansi.invalid(ps.type);
+    			else ansi.fg(Elem.PAYLOAD_TYPE).a(ps.type).reset();
+    		}
+    		if (!config.noPayload) ansi.a('\n').aa(ps.formatted);
+		} else {
+			ansi.a('\n');
+    		if (ps.type != null) {
+    			if (invalid) ansi.invalid(UsefulUtils.capitalizeFirst(ps.type));
+    			else ansi.fg(Elem.PAYLOAD_TYPE).a(UsefulUtils.capitalizeFirst(ps.type));//.reset();
+        		if (!ps.type.contains("EMPTY")) ansi.a(':');
+        		ansi.a('\n');
+    		}
+        	if (!config.noPayload && (ps.type == null || !ps.type.contains("EMPTY"))) {
+        		ansi.aa(ps.formatted).a('\n');
+        	}
+		}
+	}
+
+
 
     SystemOutHelper printMessage() {
         // now it's time to try printing it!
         SystemOutHelper systemOut = new SystemOutHelper();
         if (!config.isOneLineMode()) {
-            systemOut.println(printMessageStart(lockedMsgCountNumber));
+            systemOut.println(printMessageStart());
             for (String line : headerLines) {
             	if (line.isEmpty() || line.matches("\\s*")) continue;  // testing 
 				if (line.startsWith("User Property Map:") && userProps != null) {
@@ -178,14 +209,14 @@ public class MessageHelper {
 //            		assert binary != null;
                 	printMsgTypeIfRequired(systemOut);
                 	AaAnsi payloadText = AaAnsi.n().a(line).a(" bytes");
-                	if (binary != null) ph.handlePayloadSection(line, binary, payloadText);
+                	if (binary != null) handlePayloadSection(binary, payloadText);
                 	systemOut.println(payloadText);
             	} else if (line.startsWith("XML:")) {
 //            		assert xml != null;
                 	printMsgTypeIfRequired(systemOut);
                 	AaAnsi payloadText = AaAnsi.n().fg(Elem.WARN).a("XML Payload section:           ").reset();
                 	payloadText.a("         ").a(line.substring(40)).a(" bytes").reset();
-                	if (xml != null) ph.handlePayloadSection(line, xml, payloadText);
+                	if (xml != null) handlePayloadSection(xml, payloadText);
                 	systemOut.println(payloadText);
             	} else if (line.startsWith("Destination:           ")) {
             		systemOut.print("Destination:                            ");
@@ -208,35 +239,34 @@ public class MessageHelper {
             	systemOut.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a("<EMPTY PAYLOAD>").reset().toString());
             	
             }
-			if (config.getFormattingIndent() > 0) systemOut.println(printMessageEnd(lockedMsgCountNumber));
+			if (config.getFormattingIndent() > 0) systemOut.println(printMessageEnd());
     	} else {  // one-line mode!
             updateTopicSpacing();  // now that we've determined if we're gonna filter this message, do the topic stuff
     		String payloadSizeString;
     		if (binary != null && xml != null) {
     			// that's not great for one-line printing!  but probably pretty rare!!!!
-    			systemOut.println("Message contains both binary and XML payloads! Dunno which one to show for one-line mode.");
+    			systemOut.println(AaAnsi.n().warn("Message contains both binary and XML payloads! Dunno which one to show for one-line mode."));
     			systemOut.println(orig.dump().trim());  // raw JCSMP full dump
     		} else if (config.isNoPayload()) {  // "-0" mode
-//    			if (config.includeTimestamp) {
-//				   LocalDateTime now = LocalDateTime.now();  
-//				   systemOut.print(DTF.format(now)).print(" ");  
-//    			}
+    	    	if (config.includeTimestamp) {
+    	    		systemOut.print(config.getTimestamp());
+    	    	}
 				systemOut.println(msgDestNameFormatted);
     		} else {  // one payload section defined, or empty
 				AaAnsi payload = null;
-				if (binary != null) {
+				if (binary != null && !"<EMPTY>".equals(binary.type)) {
 					payload = binary.formatted;
-					payloadSizeString = binary.getSizeString();
+					payloadSizeString = binary.getSizeString();  // like: (bytes=2345)
 				}
-				else if (xml != null) {
+				else if (xml != null && !"<EMPTY>".equals(xml.type)) {
 					payload = xml.formatted;
 					payloadSizeString = xml.getSizeString();
 				}
 				else {
-					payload = AaAnsi.n().faintOn().a("<EMPTY> ").a(msgType).reset();  // hopefully an EMPTY message
+//					payload = AaAnsi.n().faintOn().a("<EMPTY> ").a(msgType).reset();  // hopefully an EMPTY message
+					payload = AaAnsi.n().faintOn().a("<EMPTY>").reset();  // hopefully an EMPTY message
 					payloadSizeString = "";  // empty payload is already the payload
 				}
-//				int minPayloadStringSizeLength = payloadSizeString.length();
 				minLengthPayloadLength.add(payloadSizeString.length());
 				if (userProps != null) {
 					if (userProps.numElements == 0) maxLengthUserPropsList.add(0);
@@ -257,18 +287,16 @@ public class MessageHelper {
 					} else {
 						props.faintOn().a("- UserProps").reset();
 					}
-					int spaceToAdd = currentScreenWidth - msgDestNameFormatted.length() - props.length();// - (config.includeTimestamp ? DTF_FORMAT.length()+1 : 0);
+					int spaceToAdd = currentScreenWidth - msgDestNameFormatted.length() - props.length() - config.getTimestampIndentIfEnabled();
 					if (spaceToAdd < 0) {
-//		    			if (config.includeTimestamp) {
-//		 				   LocalDateTime now = LocalDateTime.now();  
-//		 				   systemOut.print(DTF.format(now)).print(" ");  
-//		     			}
+		    	    	if (config.includeTimestamp) {
+		    	    		systemOut.print(config.getTimestamp());
+		    	    	}
 	    				systemOut.print(msgDestNameFormatted.trim(msgDestNameFormatted.length() + spaceToAdd - 1)).print(" ");
 					} else {
-//		    			if (config.includeTimestamp) {
-//		 				   LocalDateTime now = LocalDateTime.now();  
-//		 				   systemOut.print(DTF.format(now)).print(" ");  
-//		     			}
+		    	    	if (config.includeTimestamp) {
+		    	    		systemOut.print(config.getTimestamp());
+		    	    	}
 	    				systemOut.print(msgDestNameFormatted);
 	    				systemOut.print(UsefulUtils.pad(spaceToAdd, ' '));
 					}
@@ -288,22 +316,29 @@ public class MessageHelper {
     				}
 				} else {  // proper one-line mode!
 					final int PADDING_CORRECTION = 1;
+					// what is the smallest we can trim the payload portion to?
     				int minPayloadLength = minLengthPayloadLength.getMax();
+    				// if we haven't seen any user props in a long time, don't need to add any space for them; otherwise add some space
     				if (maxLengthUserPropsList.getMax() > 0) minPayloadLength += maxLengthUserPropsList.getMax() + 2 - PADDING_CORRECTION;  // user prop spacing + 1 + 1 for blackspace
+    				// need some more padding if ts is enabled
+    				minPayloadLength += config.getTimestampIndentIfEnabled();
     				int effectiveIndent = config.getCurrentIndent();
 //    				System.out.printf("minPayloadLength=%d, maxLengthUserProps=%d%n", minLengthPayloadLength.getMax(), maxLengthUserPropsList.getMax());
     				if (config.isAutoResizeIndent()) {  // mode -1
-    					if (config.getCurrentIndent() > currentScreenWidth - minPayloadLength - 1) {  // need to trim the topic!   minPL = 11
+    					if (config.isAutoTrimPayload() && config.getCurrentIndent() > currentScreenWidth - minPayloadLength - 1) {  // need to trim the topic!   minPL = 11
     						effectiveIndent = currentScreenWidth - minPayloadLength - 1;
+    						if (config.includeTimestamp) systemOut.print(config.getTimestamp());
     						systemOut.print(msgDestNameFormatted.trim(effectiveIndent-1));
     						int spaceToAdd = effectiveIndent - Math.min(msgDestNameFormatted.length(), effectiveIndent-1);
     						systemOut.print(UsefulUtils.pad(spaceToAdd + PADDING_CORRECTION, ' '));
     					} else {
+    						if (config.includeTimestamp) systemOut.print(config.getTimestamp());
     						systemOut.print(msgDestNameFormatted);
     						int spaceToAdd = config.getCurrentIndent() - msgDestNameFormatted.length();
     						systemOut.print(UsefulUtils.pad(spaceToAdd + PADDING_CORRECTION, ' '));
     					}
     				} else {
+						if (config.includeTimestamp) systemOut.print(config.getTimestamp());
     					systemOut.print(msgDestNameFormatted.trim(config.getCurrentIndent()-1));
     					int spaceToAdd = config.getCurrentIndent() - Math.min(msgDestNameFormatted.length(), config.getCurrentIndent()-1);
     					systemOut.print(UsefulUtils.pad(spaceToAdd + PADDING_CORRECTION, ' '));
@@ -320,9 +355,9 @@ public class MessageHelper {
 					}
 					systemOut.print(props.reset());
 					if (config.isAutoTrimPayload()) {
-						int trimLength = currentScreenWidth - effectiveIndent - PADDING_CORRECTION - props.length();// - payloadSizeString.length();
+						int trimLength = currentScreenWidth - effectiveIndent - PADDING_CORRECTION - props.length() - config.getTimestampIndentIfEnabled();
 						if (payload.length() <= trimLength) {
-							systemOut.println(payload);
+							systemOut.println(payload.reset());
 						} else {
 //							System.out.printf("w=%d,in=%d,efIn=%d,MXpay=%d,len=%d,trim=%d%n", currentScreenWidth, getCurrentIndent(), effectiveIndent, minLengthPayloadLength.getMax(), payloadSizeString.length(), trimLength);
 							systemOut.print(payload.trim(trimLength - payloadSizeString.length())).println(payloadSizeString);
@@ -331,7 +366,7 @@ public class MessageHelper {
 					else {
 						systemOut.println(payload.reset());  // need the reset b/c a (fancy) string payload won't have the reset() at the end
 //					System.out.printf("charCount=%d, calcLength=%d, width=%d, size=%d%n", binary.formatted.getCharCount(), AaAnsi.length(binary.formatted.toString()),currentScreenWidth,Math.abs(INDENT)+binary.formatted.getCharCount());
-						if (config.getCurrentIndent() + payload.getTotalCharCount() > currentScreenWidth) systemOut.println();
+						if (config.getTimestampIndentIfEnabled() + config.getCurrentIndent() + payload.getTotalCharCount() > currentScreenWidth) systemOut.println();
 					}
 				}
     		}
