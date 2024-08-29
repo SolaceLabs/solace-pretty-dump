@@ -18,6 +18,9 @@ package com.solace.labs.aaron;
 
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
@@ -630,5 +633,21 @@ public class UsefulUtils {
     	}
     	return null;
     }
+    
+    
+	private static DateTimeFormatter DTF = DateTimeFormatter.ofPattern(ConfigState.DTF_FORMAT);  
+
+	/** returns something that looks like "HH:mm:ss.S " (one space at end of timestamp) */
+	public static String getCurrentTimestamp() {
+		return DTF.format(LocalDateTime.now());
+	}
+
+	/** returns something that looks like "HH:mm:ss.S " (one space at end of timestamp) */
+	public static String getTimestamp(long epochMillis) {
+		return DTF.format(Instant.ofEpochMilli(epochMillis));
+	}
+
+
+	
 
 }

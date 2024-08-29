@@ -340,18 +340,18 @@ These modes will still parse the payloads (for validation and possible filtering
 ### One-Line Mode: indent < 0
 
 Removes the majority of SdkPerf-like message metadata printing, only showing the topic and payload per-line.
-Valid values are between -1 and -250, and specify how many chars of the topic are displayed.  indent = -34 in this example.
+Valid values are between -1 and -250, and specify how many chars of the topic are displayed.  indent = -35 in this example.
 
 ```
-pq-demo/stats/pq/sub-pq_3-c222      {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0}
-pq/3/pub-44e7/e7-7/0/_              <EMPTY> Raw BytesMessage
-pq-demo/stats/pq/pub-44e7           {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2}
-pq/3/pub-44e7/e7-5/0/_              <EMPTY> Raw BytesMessage
-pq-demo/stats/pq/sub-pq_3-c222      {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0}
-solace/samples/jcsmp/hello/aaron    {probability(Float)0.4,from(String)"aaron",where(Topic)a/b/c}
-pq/3/pub-44e7/e7-3/0/_              <EMPTY> Raw BytesMessage
-pq-demo/stats/pq/pub-44e7           {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2}
-pq/3/pub-44e7/e7-0/0/_              <EMPTY> Raw BytesMessage
+pq-demo/stats/pq/sub-pq_3-c222       {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0}
+pq/3/pub-44e7/e7-7/0/_               <EMPTY> Raw BytesMessage
+pq-demo/stats/pq/pub-44e7            {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2}
+pq/3/pub-44e7/e7-5/0/_               <EMPTY> Raw BytesMessage
+pq-demo/stats/pq/sub-pq_3-c222       {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0}
+solace/samples/jcsmp/hello/aaron     {probability(Float)0.4,from(String)"aaron",where(Topic)a/b/c}
+pq/3/pub-44e7/e7-3/0/_               <EMPTY> Raw BytesMessage
+pq-demo/stats/pq/pub-44e7            {"prob":0,"paused":false,"delay":0,"nacks":0,"rate":2}
+pq/3/pub-44e7/e7-0/0/_               <EMPTY> Raw BytesMessage
 ```
 
  - Use `-1` for "auto-indenting", where the amount of indent will vary dynamically with topic length
@@ -437,10 +437,10 @@ When using one-line mode, you can do some extra stuff:
  - press 't' [ENTER] to enable trim for message payloads... will cause the payload to get truncated at the terminal width
  - this can also be enabled with arg `--trim` when starting
 ```
-bus_trak/gps/v2/022A/01228/001.32266/0103.69693/21/OK      {"psgrCap":0.75,"heading":176,"busNum"…
-bus_trak/gps/v2/036X/01431/001.37858/0103.92294/32/STOPPED {"psgrCap":0.5,"heading":288,"busNum":…
-bus_trak/gps/v2/012A/01271/001.38968/0103.76101/31/STOPPED {"psgrCap":0,"heading":254,"busNum":12…
-bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK      {"psgrCap":0.75,"heading":272,"busNum"…
+bus_trak/gps/v2/022A/01228/001.32266/0103.69693/21/OK       {"psgrCap":0.75,"heading":176,"busNu…(len=178)
+bus_trak/gps/v2/036X/01431/001.37858/0103.92294/32/STOPPED  {"psgrCap":0.5,"heading":288,"busNum…(len=175)
+bus_trak/gps/v2/012A/01271/001.38968/0103.76101/31/STOPPED  {"psgrCap":0,"heading":254,"busNum":…(len=181)
+bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK       {"psgrCap":0.75,"heading":272,"busNu…(len=177)
 ```
 
 

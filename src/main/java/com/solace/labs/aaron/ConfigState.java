@@ -4,6 +4,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -42,8 +43,7 @@ public class ConfigState {
 	CharsetDecoder decoder = charset.newDecoder().onMalformedInput(CodingErrorAction.REPLACE).onUnmappableCharacter(CodingErrorAction.REPLACE);
 
 	
-	private static String DTF_FORMAT = "HH:mm:ss.SS ";
-	private static DateTimeFormatter DTF = DateTimeFormatter.ofPattern(DTF_FORMAT);  
+	static String DTF_FORMAT = "HH:mm:ss.SS ";
 
 	public void setAutoTrimPayload(boolean trim) {
 		autoTrimPayload = trim;
@@ -246,11 +246,6 @@ public class ConfigState {
 		else return 0;
 	}
 	
-	/** returns something that looks like "HH:mm:ss.S " (one space at end of timestamp) */
-	public String getTimestamp() {
-		return DTF.format(LocalDateTime.now());
-	}
-
 	public void setCharset(Charset charset) {
 		this.charset = charset;
 		// I think replace is the default action anyhow?  This must be leftover from when I was erroring?

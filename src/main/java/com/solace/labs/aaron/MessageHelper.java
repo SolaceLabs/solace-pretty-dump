@@ -15,6 +15,7 @@ public class MessageHelper {
 
 	final BytesXMLMessage orig;
 	final long lockedMsgCountNumber;
+	final String lockedTimestamp;
 	final String[] headerLines;
 //	final String msgDestName;  // this would only be used in the 1-line version
 	AaAnsi msgDestNameFormatted;
@@ -32,6 +33,7 @@ public class MessageHelper {
     	this.config = config;
     	orig = message;
     	this.lockedMsgCountNumber = msgCountNumber;
+    	this.lockedTimestamp = UsefulUtils.getCurrentTimestamp();
 //    	this.msgCountNumber = config.;
 //    	this.msgDestName = message.getDestination().getName();
     	headerLines = orig.dump(XMLMessage.MSGDUMP_BRIEF).split("\n");
@@ -54,7 +56,8 @@ public class MessageHelper {
     	msgDestNameFormatted.reset();
     }
     
-    public String buildFullStringObject() {
+    /** this is for the regex filtering, need to construct the whole payload */
+    String buildFullStringObject() {
     	StringBuilder sb = new StringBuilder();
     	for (String line : headerLines) {
     		if (line.startsWith("User Data") && userData != null) {
@@ -101,7 +104,9 @@ public class MessageHelper {
     
     AaAnsi getMessageTypeLine() {
     	AaAnsi ansi = AaAnsi.n().a("Message Type:                           ");
-		ansi.fg(Elem.PAYLOAD_TYPE).a(msgType).reset();
+		ansi.fg(Elem.PAYLOAD_TYPE);
+//		if (includeEmpty) ansi.a("<EMPTY> ");
+		ansi.a(msgType).reset();
 		return ansi;
     }
 
@@ -123,7 +128,7 @@ public class MessageHelper {
 	
 	AaAnsi printMessageStart() {
 		if (config.includeTimestamp) {
-			return printMessageBoundary(String.format(" %s- Start Message #%d ",config.getTimestamp(), lockedMsgCountNumber));
+			return printMessageBoundary(String.format(" %s- Start Message #%d ", lockedTimestamp, lockedMsgCountNumber));
 		} else {
             return printMessageBoundary(String.format(" Start Message #%d ", lockedMsgCountNumber));
 		}
@@ -131,18 +136,18 @@ public class MessageHelper {
 	
 	AaAnsi printMessageEnd() {
 		if (config.includeTimestamp) {
-			return printMessageBoundary(String.format(" %s- End Message #%d ",config.getTimestamp(), lockedMsgCountNumber));
+			return printMessageBoundary(String.format(" %s- End Message #%d ", lockedTimestamp, lockedMsgCountNumber));
 		} else {
             return printMessageBoundary(String.format(" End Message #%d ", lockedMsgCountNumber));
 		}
 	}
 
 	static AaAnsi printMessageStart(int num) {
-		return printMessageBoundary(String.format(" %s- Start Message #%d ",new ConfigState().getTimestamp(), num));
+		return printMessageBoundary(String.format(" %s- Start Message #%d ", UsefulUtils.getCurrentTimestamp(), num));
 	}
 	
 	static AaAnsi printMessageEnd(int num) {
-		return printMessageBoundary(String.format(" %s- End Message #%d ",new ConfigState().getTimestamp(), num));
+		return printMessageBoundary(String.format(" %s- End Message #%d ", UsefulUtils.getCurrentTimestamp(), num));
 	}
 	
 	private void handlePayloadSection(PayloadSection ps, AaAnsi ansi) {
@@ -249,7 +254,7 @@ public class MessageHelper {
     			systemOut.println(orig.dump().trim());  // raw JCSMP full dump
     		} else if (config.isNoPayload()) {  // "-0" mode
     	    	if (config.includeTimestamp) {
-    	    		systemOut.print(config.getTimestamp());
+    	    		systemOut.print(lockedTimestamp);
     	    	}
 				systemOut.println(msgDestNameFormatted);
     		} else {  // one payload section defined, or empty
@@ -290,12 +295,12 @@ public class MessageHelper {
 					int spaceToAdd = currentScreenWidth - msgDestNameFormatted.length() - props.length() - config.getTimestampIndentIfEnabled();
 					if (spaceToAdd < 0) {
 		    	    	if (config.includeTimestamp) {
-		    	    		systemOut.print(config.getTimestamp());
+		    	    		systemOut.print(lockedTimestamp);
 		    	    	}
 	    				systemOut.print(msgDestNameFormatted.trim(msgDestNameFormatted.length() + spaceToAdd - 1)).print(" ");
 					} else {
 		    	    	if (config.includeTimestamp) {
-		    	    		systemOut.print(config.getTimestamp());
+		    	    		systemOut.print(lockedTimestamp);
 		    	    	}
 	    				systemOut.print(msgDestNameFormatted);
 	    				systemOut.print(UsefulUtils.pad(spaceToAdd, ' '));
@@ -327,18 +332,18 @@ public class MessageHelper {
     				if (config.isAutoResizeIndent()) {  // mode -1
     					if (config.isAutoTrimPayload() && config.getCurrentIndent() > currentScreenWidth - minPayloadLength - 1) {  // need to trim the topic!   minPL = 11
     						effectiveIndent = currentScreenWidth - minPayloadLength - 1;
-    						if (config.includeTimestamp) systemOut.print(config.getTimestamp());
+    						if (config.includeTimestamp) systemOut.print(lockedTimestamp);
     						systemOut.print(msgDestNameFormatted.trim(effectiveIndent-1));
     						int spaceToAdd = effectiveIndent - Math.min(msgDestNameFormatted.length(), effectiveIndent-1);
     						systemOut.print(UsefulUtils.pad(spaceToAdd + PADDING_CORRECTION, ' '));
     					} else {
-    						if (config.includeTimestamp) systemOut.print(config.getTimestamp());
+    						if (config.includeTimestamp) systemOut.print(lockedTimestamp);
     						systemOut.print(msgDestNameFormatted);
     						int spaceToAdd = config.getCurrentIndent() - msgDestNameFormatted.length();
     						systemOut.print(UsefulUtils.pad(spaceToAdd + PADDING_CORRECTION, ' '));
     					}
     				} else {
-						if (config.includeTimestamp) systemOut.print(config.getTimestamp());
+						if (config.includeTimestamp) systemOut.print(lockedTimestamp);
     					systemOut.print(msgDestNameFormatted.trim(config.getCurrentIndent()-1));
     					int spaceToAdd = config.getCurrentIndent() - Math.min(msgDestNameFormatted.length(), config.getCurrentIndent()-1);
     					systemOut.print(UsefulUtils.pad(spaceToAdd + PADDING_CORRECTION, ' '));

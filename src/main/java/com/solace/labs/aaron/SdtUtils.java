@@ -191,7 +191,7 @@ public class SdtUtils {
 		AaAnsi ansi = AaAnsi.n();
 		privPrintStream(stream, curIndent, indentFactor, ansi);
 //		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('[') + ansi.toString() + new AaAnsi().fg(Elem.BRACE).a(']').reset();
-		if (indentFactor <= 0) return AaAnsi.n().fg(Elem.BRACE).a('[').aa(ansi).a(']');
+		if (indentFactor <= 0) return AaAnsi.n().fg(Elem.BRACE).a('[').a(' ').aa(ansi).a(' ').a(']');
 		else return ansi;
 	}
 
@@ -250,7 +250,7 @@ public class SdtUtils {
 			if (indentFactor > 0) {
 				ansi.fg(Elem.DATA_TYPE).a('(').a(type).a(")").reset().a(": ");
 			} else {
-				ansi.fg(Elem.DATA_TYPE).a('(').a(type).a(")").reset();
+//				ansi.fg(Elem.DATA_TYPE).a('(').a(type).a(")").reset();
 			}
 			if (value instanceof Topic) ansi.colorizeTopic(strValue, -1).reset();
 			else ansi.aa(strValue2).reset();
