@@ -34,12 +34,12 @@ public class BoundedLinkedList<T> implements Iterable<T> {
 			super(maxSize);
 		}
 
-		public U getMax() {
+		public U max() {
 			if (max == null) return null;
 			return max.item;
 		}
 		
-		public U getMin() {
+		public U min() {
 			if (min == null) return null;
 			return min.item;
 		}

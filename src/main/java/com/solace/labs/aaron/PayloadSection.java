@@ -126,10 +126,32 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
 //		boolean malformed = parsed.contains("\ufffd");
 		formatString(parsed, bytes, contentType);  // call the String version
 		if (!type.startsWith("non") && size > 0) {
-			type = "valid " + type;
+			if (formatted.getControlCharsCount() > 0) type = "technically valid " + type;
+			else type = "valid " + type;
 		}
-	}	
-
+//		if (bytes[0] == 0x1c || bytes[0] == 0x1c || bytes[0] == 0x1c || bytes[0] == 0x1c || bytes[0] == 0x1c || bytes[0] == 0x1c || )
+//		formatByteBufferFromWrapMode(ByteBuffer.wrap(bytes));
+	}
+	
+/*	private boolean checkIfSdtMap(byte[] bytes) {
+		// check the size matches correctly:
+		int size = buffer.getInt();  // next 4 bytes
+//		System.out.println("size bytes ("+size+") and buffer limit ("+buffer.limit()+")!");
+		if (buffer.limit() == size) {  // looks correct!  otherwise maybe just a regular binary msg
+			byte[] copy = null;
+			copy = Arrays.copyOfRange(buffer.array(), 0, buffer.limit());
+			MapTLVBuffer buf = new MapTLVBuffer(copy);  // sneaky hidden but public methods
+			MapImpl map = new MapImpl(buf);
+//			String test = SdtUtils.printMap(map, 3).toString();
+			formatted = SdtUtils.printMap(map, config.getFormattingIndent());
+        	type = PrettyMsgType.MAP.toString();  // hack, should be in the msg helper object
+			return;
+		} else {
+			buffer.rewind();  // put back to beginning
+		}
+	}
+*/
+	
 	void formatByteBufferFromWrapMode(ByteBuffer buffer) {
 		byte[] copy = null;
 		String tempType = null;
@@ -164,7 +186,7 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
 			int size = buffer.getInt();  // next 4 bytes
 //			System.out.println("size bytes ("+size+") and buffer limit ("+buffer.limit()+")!");
 			if (buffer.limit() == size) {  // looks correct!  otherwise maybe just a regular binary msg
-				copy = Arrays.copyOfRange(buffer.array(), 0, buffer.limit());
+				copy = Arrays.copyOfRange(buffer.array(), 0, buffer.limit());  // need to do this to copy out the whole bytes!
 				MapTLVBuffer buf = new MapTLVBuffer(copy);  // sneaky hidden but public methods
 				MapImpl map = new MapImpl(buf);
 //				String test = SdtUtils.printMap(map, 3).toString();

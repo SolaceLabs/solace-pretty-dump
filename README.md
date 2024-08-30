@@ -9,7 +9,7 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 - [Running](#running)
 - [Command-line parameters](#command-line-parameters)
 - Subscribing options: [Direct topic subscriptions](#direct-subscriptions), [Queue consume](#queue-consume), [Browsing a queue](#browsing-a-queue), [TempQ with subs](#temporary-queue-with-subscriptions)
-- [Output Indent options](#output-indent-options--the-6th-argument) ([One-line Mode](#one-line-mode-indent--0))
+- [Output Indent options](#output-indent-options-the-6th-argument) ([One-line Mode](#one-line-mode-indent--0))
 - [Count, Selectors and Filtering](#count-selectors-and-filtering)
 - [One-line Mode: Runtime options](#one-line-mode-runtime-options)
 - [Charset Encoding](#charset-encoding)

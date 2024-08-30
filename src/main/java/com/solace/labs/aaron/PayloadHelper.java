@@ -275,7 +275,7 @@ public class PayloadHelper {
         	}
             if (message.getProperties() != null && !message.getProperties().isEmpty()) {
             	ms.userProps = new PayloadSection(config);
-            	if (!config.isOneLineMode()) ms.userProps.formatted = SdtUtils.printMap(message.getProperties(), config.getFormattingIndent());
+				ms.userProps.formatted = SdtUtils.printMap(message.getProperties(), config.getFormattingIndent());
             	ms.userProps.numElements = SdtUtils.countElements(message.getProperties());
             }
             if (message.getUserData() != null && message.getUserData().length > 0) {

@@ -159,6 +159,7 @@ public class MessageHelper {
     			else ansi.fg(Elem.PAYLOAD_TYPE).a(ps.type).reset();
     		}
     		if (!config.noPayload) ansi.a('\n').aa(ps.formatted);
+    		else ansi.a('\n');
 		} else {
 			ansi.a('\n');
     		if (ps.type != null) {
@@ -214,7 +215,8 @@ public class MessageHelper {
 //            		assert binary != null;
                 	printMsgTypeIfRequired(systemOut);
                 	AaAnsi payloadText = AaAnsi.n().a(line).a(" bytes");
-                	if (binary != null) handlePayloadSection(binary, payloadText);
+                	if (binary != null) handlePayloadSection(binary, payloadText);  // in no payload mode, with no filter, we won't even parse the payload
+                	else if (config.getFormattingIndent() > 0) payloadText.a('\n');  // still add a carriage return for '00' indent mode
                 	systemOut.println(payloadText);
             	} else if (line.startsWith("XML:")) {
 //            		assert xml != null;
@@ -259,11 +261,11 @@ public class MessageHelper {
 				systemOut.println(msgDestNameFormatted);
     		} else {  // one payload section defined, or empty
 				AaAnsi payload = null;
-				if (binary != null && !"<EMPTY>".equals(binary.type)) {
+				if (binary != null && binary.type != null && !binary.type.startsWith("<EMPTY")) {
 					payload = binary.formatted;
 					payloadSizeString = binary.getSizeString();  // like: (bytes=2345)
 				}
-				else if (xml != null && !"<EMPTY>".equals(xml.type)) {
+				else if (xml != null && xml.type != null && !xml.type.startsWith("<EMPTY")) {
 					payload = xml.formatted;
 					payloadSizeString = xml.getSizeString();
 				}
@@ -273,58 +275,78 @@ public class MessageHelper {
 					payloadSizeString = "";  // empty payload is already the payload
 				}
 				minLengthPayloadLength.add(payloadSizeString.length());
-				if (userProps != null) {
-					if (userProps.numElements == 0) maxLengthUserPropsList.add(0);
-					if (userProps.numElements < 10) maxLengthUserPropsList.add(1);
-					else if (userProps.numElements < 100) maxLengthUserPropsList.add(2);
-					else if (userProps.numElements < 100) maxLengthUserPropsList.add(3);  // assume 999 is the most!
-				}
-				else  maxLengthUserPropsList.add(0);
 				int currentScreenWidth = AnsiConsole.getTerminalWidth();
 				if (currentScreenWidth == 0) currentScreenWidth = 80;  // force
 				// we need all that in case we're in -1 mode and we need to trim
 				
+				if (userProps != null) {
+					if (userProps.numElements == 0) maxLengthUserPropsList.add(0);
+					if (userProps.numElements < 10) maxLengthUserPropsList.add(1);
+					else if (userProps.numElements < 100) maxLengthUserPropsList.add(2);
+					else if (userProps.numElements < 1000) maxLengthUserPropsList.add(3);
+					else maxLengthUserPropsList.add(4);  // assume 9999 is the most!
+				}
+				else  maxLengthUserPropsList.add(0);
 				if (config.getCurrentIndent() == 2) {  // two-line mode
-					AaAnsi props = AaAnsi.n().fg(Elem.PAYLOAD_TYPE);
+//					AaAnsi props = AaAnsi.n();//.fg(Elem.PAYLOAD_TYPE);
+					AaAnsi minProps = AaAnsi.n();
 					if (userProps != null) {
-						props.a(userProps.numElements + (userProps.numElements == 1 ? " UserProp " : " UserProps")).reset();
-//						props.a(userProps.numElements + " UserProps").reset();
+						minProps.a('(').fg(Elem.PAYLOAD_TYPE).a(userProps.numElements).reset().a(" prop" + (userProps.numElements == 1 ? ")" : "s)")).reset();
 					} else {
-						props.faintOn().a("- UserProps").reset();
+						minProps.faintOn().a('-').reset();
+//						props = minProps;
 					}
-					int spaceToAdd = currentScreenWidth - msgDestNameFormatted.length() - props.length() - config.getTimestampIndentIfEnabled();
-					if (spaceToAdd < 0) {
-		    	    	if (config.includeTimestamp) {
-		    	    		systemOut.print(lockedTimestamp);
+					if (config.includeTimestamp) {
+						systemOut.print(AaAnsi.n().fg(Elem.MSG_BREAK).a(lockedTimestamp));
+					}
+					int spaceToAdd = currentScreenWidth - msgDestNameFormatted.length() - (maxLengthUserPropsList.max() > 0 ? (userProps != null ? userProps.formatted.length() : 1)+2 : 0) - config.getTimestampIndentIfEnabled();  // -1 for extra space between topic and user props
+					if (spaceToAdd < 0) {  // need to trim!  something.  Trim User Props first, then maybe trim again?
+		    	    	// what if we just include the minProps string (e.g. "3 UserProps"
+		    	    	int spaceToAdd2 = currentScreenWidth - msgDestNameFormatted.length() - (maxLengthUserPropsList.max() > 0 ? minProps.length()+2 : 0) - config.getTimestampIndentIfEnabled();
+		    	    	if (spaceToAdd2 < 0) {  // ok, so definitely need to trim the topic
+//		    	    		System.out.println("topic trim " + maxLengthUserPropsList.max());
+		    	    		systemOut.print(msgDestNameFormatted.trim(msgDestNameFormatted.length() + spaceToAdd2));
+		    	    		if (maxLengthUserPropsList.max() > 0) systemOut.print("  ").print(minProps);
+		    	    	} else {  // can leave topic alone, but need to trim props
+//		    	    		System.out.printf("props trim, maxUP=%d, sta=%d, sta2=%d%n", maxLengthUserPropsList.max(), spaceToAdd, spaceToAdd2);
+		    	    		systemOut.print(msgDestNameFormatted);
+		    	    		if (maxLengthUserPropsList.max() > 0) {
+		    	    			systemOut.print("  ");
+			    	    		if (spaceToAdd2 == 0 || userProps == null) systemOut.print(minProps);
+			    	    		// shouldn't be able to make it into this block if userProps == null
+			    	    		else systemOut.print(AaAnsi.n().a(userProps.formatted.toRawString().substring(0, spaceToAdd2-1)).a('…').aa(minProps));
+		    	    		}
 		    	    	}
-	    				systemOut.print(msgDestNameFormatted.trim(msgDestNameFormatted.length() + spaceToAdd - 1)).print(" ");
-					} else {
-		    	    	if (config.includeTimestamp) {
-		    	    		systemOut.print(lockedTimestamp);
-		    	    	}
+					} else {  // no trimming needed!
+//	    	    		System.out.println("no trim");
 	    				systemOut.print(msgDestNameFormatted);
-	    				systemOut.print(UsefulUtils.pad(spaceToAdd, ' '));
+	    				if (maxLengthUserPropsList.max() > 0) {
+		    				systemOut.print(UsefulUtils.pad(spaceToAdd + 2, ' '));
+		    				if (userProps != null) systemOut.print(userProps.formatted.toRawString());
+		    				else  systemOut.print(minProps);  // at least some messages have user props
+	    				}
 					}
-					systemOut.println(props);
-					systemOut.print("  ");
-    				if (config.isAutoTrimPayload()) {
-    					if (payload.length() > currentScreenWidth - config.getCurrentIndent()) {
-        					systemOut.print(payload.trim(currentScreenWidth - config.getCurrentIndent() - payloadSizeString.length()));
-        					systemOut.println(payloadSizeString);
-    					} else {  // enough space
-    						systemOut.println(payload);
-    					}
-    				}
-    				else {
-    					systemOut.println(payload.reset());  // need the reset b/c a (fancy) string payload won't have the reset() at the end
-    					if (config.getCurrentIndent() + payload.getTotalCharCount() > currentScreenWidth) systemOut.println();
-    				}
+					systemOut.println();
+					if (!payloadSizeString.isBlank()) {  // don't add the extra line just for empty payload
+						systemOut.print("  ");
+	    				if (config.isAutoTrimPayload()) {
+	    					if (payload.length() > currentScreenWidth - config.getCurrentIndent()) {
+	        					systemOut.print(payload.trim(currentScreenWidth - config.getCurrentIndent() - payloadSizeString.length()));
+	        					systemOut.println(payloadSizeString);
+	    					} else {  // enough space
+	    						systemOut.println(payload);
+	    					}
+	    				} else {
+	    					systemOut.println(payload.reset());  // need the reset b/c a (fancy) string payload won't have the reset() at the end
+	    					if (config.getCurrentIndent() + payload.getTotalCharCount() > currentScreenWidth) systemOut.println();
+	    				}
+					}
 				} else {  // proper one-line mode!
 					final int PADDING_CORRECTION = 1;
 					// what is the smallest we can trim the payload portion to?
-    				int minPayloadLength = minLengthPayloadLength.getMax();
+    				int minPayloadLength = minLengthPayloadLength.max();
     				// if we haven't seen any user props in a long time, don't need to add any space for them; otherwise add some space
-    				if (maxLengthUserPropsList.getMax() > 0) minPayloadLength += maxLengthUserPropsList.getMax() + 2 - PADDING_CORRECTION;  // user prop spacing + 1 + 1 for blackspace
+    				if (maxLengthUserPropsList.max() > 0) minPayloadLength += maxLengthUserPropsList.max() + 2 - PADDING_CORRECTION;  // user prop spacing + 1 + 1 for blackspace
     				// need some more padding if ts is enabled
     				minPayloadLength += config.getTimestampIndentIfEnabled();
     				int effectiveIndent = config.getCurrentIndent();
@@ -351,7 +373,7 @@ public class MessageHelper {
     				
 					AaAnsi props = AaAnsi.n().fg(Elem.PAYLOAD_TYPE);
 //					AaAnsi props = AaAnsi.n().insertBlackSpace().a(' ').fg(Elem.BYTES);
-					if (maxLengthUserPropsList.getMax() > 0) {
+					if (maxLengthUserPropsList.max() > 0) {
 //						props.blackOn();
 						if (userProps == null || userProps.numElements == 0) props.faintOn().a('-');
 						else props.a(userProps.numElements);

@@ -230,7 +230,7 @@ public class AaAnsi /* implements CharSequence */ {
 			int startingColIndex = 5;  // cyan 86
 	//		int startingColIndex = 7;  // temp 75
 //			double step = Math.max(1, Math.min(3, topicColorTable.length * 1.0 / Math.max(1, maxLengthTopicLevels.getMax())));
-			double step = Math.max(1, Math.min(4, topicColorTable.length * 1.0 / Math.max(1, maxLengthTopicLevels.getMax())));
+			double step = Math.max(1, Math.min(4, topicColorTable.length * 1.0 / Math.max(1, maxLengthTopicLevels.max())));
 			if (i == highlight) {
 				return 49;  // solace green ish
 			} else return topicColorTable[(startingColIndex + (int)(step * i)) % topicColorTable.length];
@@ -484,7 +484,7 @@ public class AaAnsi /* implements CharSequence */ {
 //		if (len == 1 ) return "…";
 		if (getTotalCharCount() <= len) return toString();
 		StringBuilder sb = new StringBuilder();
-		return sb.append(chop(len-1)).append("…").append(AaAnsi.n()).toString();
+		return sb.append(chop(len-1)).append('…').append(AaAnsi.n()).toString();
 //		final String s = toString();
 //		int count = 0;
 //		int pos = 0;

@@ -115,9 +115,9 @@ public class ConfigState {
     public void updateTopicIndentValue(int maxTopicLength) {
     	if (autoResizeIndent) {
 	    	topicsLengthList.add(maxTopicLength);
-	    	if (topicsLengthList.getMax() + 1 != INDENT) {  // changed our current max
+	    	if (topicsLengthList.max() + 1 != INDENT) {  // changed our current max
 	//    		int from = Math.abs(INDENT);
-	    		INDENT = topicsLengthList.getMax() + 1;  // so INDENT will always be at least 3 (even MQTT spec states topic must be length > 1)
+	    		INDENT = topicsLengthList.max() + 1;  // so INDENT will always be at least 3 (even MQTT spec states topic must be length > 1)
 	//    		System.out.println(new org.fusesource.jansi.Ansi().reset().a(org.fusesource.jansi.Ansi.Attribute.INTENSITY_FAINT).a("** changing INDENT from " + from + " to " + Math.abs(INDENT) + "**").reset().toString());
 	//    	} else {
 	//    		System.out.println(new org.fusesource.jansi.Ansi().reset().a(org.fusesource.jansi.Ansi.Attribute.INTENSITY_FAINT).a("** keeping INDENT = " + Math.abs(INDENT) + "**").reset().toString());
@@ -145,7 +145,7 @@ public class ConfigState {
 	    	StringBuilder sb = new StringBuilder();
 	    	for (int i=0; i < levels.length; i++) {
 	    		sb.append(levels[i]);
-	    		int max = topicLevelsLengthList.get(i).getMax();
+	    		int max = topicLevelsLengthList.get(i).max();
 	    		if (i < levels.length-1) {
 		    		if (max > levels[i].length()) {
 						sb.append(UsefulUtils.pad(max - levels[i].length(), /*'⋅'*/ '·' ));

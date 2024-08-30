@@ -154,7 +154,7 @@ public class PrettyDump {
 		System.out.println("    • --count=n   stop after receiving n number of msgs; or if < 0, only show last n msgs");
 //		System.out.println("    • --skip=n    skip the first n messages received");
 		System.out.println("    • --trim      enable paylaod trim for one-line (and two-line) modes");
-		System.out.println("    • --ts        enable timestamp printing for received messages");
+		System.out.println("    • --ts        print time when PrettyDump received the message (not messages' timestamp)");
 		System.out.println("    • --defaults  show all possible JCSMP Session properties to set/override");
 		System.out.println(" - One-Line runtime options: type the following into the console while the app is running");
 		System.out.println("    • Press \"t\" ENTER to toggle payload trim to terminal width (or argument --trim)");
