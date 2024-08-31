@@ -4,9 +4,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -23,6 +20,8 @@ public class ConfigState {
 	boolean isConnected = false;
 	boolean isFlowActive = false;
 	boolean includeTimestamp = false;
+	boolean noExport = true;
+	boolean isCompressed = false;
 
     int highlightTopicLevel = -1;
     int INDENT = 2;  // default starting value, keeping it all-caps for retro v0.0.1 value

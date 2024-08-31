@@ -151,11 +151,13 @@ public class PrettyDump {
 		System.out.println(" - Additional non-ordered arguments: for more advanced capabilities");
 		System.out.println("    • --selector=\"mi like 'hello%world'\"  Selector for Queue consume and browse");
 		System.out.println("    • --filter=\"ABC123\"  client-side REGEX content filter on any received message");
-		System.out.println("    • --count=n   stop after receiving n number of msgs; or if < 0, only show last n msgs");
-//		System.out.println("    • --skip=n    skip the first n messages received");
-		System.out.println("    • --trim      enable paylaod trim for one-line (and two-line) modes");
-		System.out.println("    • --ts        print time when PrettyDump received the message (not messages' timestamp)");
-		System.out.println("    • --defaults  show all possible JCSMP Session properties to set/override");
+		System.out.println("    • --count=n     stop after receiving n number of msgs; or if < 0, only show last n msgs");
+//		System.out.println("    • --skip=n      skip the first n messages received");
+		System.out.println("    • --trim        enable paylaod trim for one-line (and two-line) modes");
+		System.out.println("    • --ts          print time when PrettyDump received the message (not messages' timestamp)");
+		System.out.println("    • --export      disables the automatic prefixing of \"#noexport/\" to the start of all topics");
+		System.out.println("    • --compressed  tells JCSMP to use streaming compression on the connection");
+		System.out.println("    • --defaults    show all possible JCSMP Session properties to set/override");
 		System.out.println(" - One-Line runtime options: type the following into the console while the app is running");
 		System.out.println("    • Press \"t\" ENTER to toggle payload trim to terminal width (or argument --trim)");
 		System.out.println("    • Press \"+\" or \"-\" ENTER to toggle topic level spacing/alignment (or argument \"+indent\")");
@@ -275,6 +277,11 @@ public class PrettyDump {
 		PrettyDump dump = new PrettyDump();
 		dump.run(args);
 	}
+	
+	
+	
+	
+	// MAIN!
 
 	@SuppressWarnings("deprecation")  // this is for our use of Message ID for the browser
 	public void run(String... args) throws JCSMPException, IOException, InterruptedException {
@@ -345,8 +352,6 @@ public class PrettyDump {
 					// if nothing thrown, then it's a valid indent, so assume shortcut mode
 					shortcut = true;
 					regArgsList.add(0, DEFAULT_TOPIC);  // stick the default topic in front of this arg
-					// let's modify the args list to make parsing the count easier
-					//					if (args.length == 2) args = new String[] { DEFAULT_TOPIC, args[0], args[1] };
 				} catch (NumberFormatException e) {  // not a number
 					// do nothing, host will get set below because !shortcut
 				} catch (IllegalArgumentException e) {  // a number, but not valid... let the check code later deal with it
@@ -493,6 +498,11 @@ public class PrettyDump {
 				config.setAutoTrimPayload(true);
 			} else if (arg.equals("--ts")) {
 				config.includeTimestamp = true;
+			} else if (arg.equals("--export")) {
+				config.noExport = false;
+			} else if (arg.equals("--compressed")) {
+				config.isCompressed = true;
+				properties.setProperty(JCSMPProperties.CLIENT_CHANNEL_PROPERTIES_COMPRESSION_LEVEL, 9);
 			} else if (arg.startsWith("--count")) {
 				String argVal = "?";
 				try {
@@ -811,6 +821,13 @@ public class PrettyDump {
 			if (topics[0].startsWith("tq:")) {  // gonna use a temporary queue for Guaranteed delivery
 				topics[0] = topics[0].substring(3);
 				if (topics.length == 1 && topics[0].equals("")) topics = new String[0];
+				else {
+					for (int i=0; i<topics.length; i++) {
+						if (config.noExport && !topics[i].startsWith("#noexport/")) {
+							topics[i] = "#noexport/" + topics[i];
+						}
+					}
+				}
 				Arrays.sort(topics);  // sort the list b/c we need to any not subscriptions first, and "!" is 0x21, so only space would be before this
 				queue = session.createTemporaryQueue();
 				// Provision the temporary Queue and create a receiver
@@ -853,7 +870,7 @@ public class PrettyDump {
 										session.addSubscription(queue, t, JCSMPSession.WAIT_FOR_CONFIRM);  // will throw exception if already there
 										if (latch.getCount() == 1) {  // first time doing this
 											//											AaAnsi aa = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '%s'", (topic.startsWith("!") ? "*NOT* " : ""), AaAnsi.n().colorizeTopic(topic)));
-											AaAnsi ansi = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '", (topic.startsWith("!") ? "*NOT* " : "")));
+											AaAnsi ansi = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '", (topic.startsWith("!") || topic.startsWith("#noexport/!") ? "*NOT* " : "")));
 											ansi.aa(AaAnsi.colorizeTopic(topic));
 											ansi.a('\'').reset();
 											System.out.println(ansi);
@@ -890,6 +907,18 @@ public class PrettyDump {
 				flowQueueReceiver.start();
 			} else {
 				// Regular Direct topic consumer, using async / callback to receive
+				for (int i=0; i<topics.length; i++) {
+					if (topics[i].startsWith("!")) {
+						AaAnsi ansi = AaAnsi.n().invalid("\nNOT subscriptions are not supported for Direct messaging, use a tempQ: ");
+						ansi.fg(Elem.DESTINATION).a("tq:" + topics[i]).reset();
+						System.out.println(ansi);
+						System.out.println("Quitting! 💀");
+						System.exit(1);
+					}
+					if (config.noExport && !topics[i].startsWith("#noexport/")) {
+						topics[i] = "#noexport/" + topics[i];
+					}
+				}
 				directConsumer = session.getMessageConsumer((JCSMPReconnectEventHandler)null, new PrinterHelper());
 				for (String topic : topics) {
 					TopicProperties tp = new TopicProperties();
@@ -902,7 +931,12 @@ public class PrettyDump {
 					tp.setRxAllDeliverToOne(true);  // ensure DTO-override / DA is enabled for this sub
 					Topic t = f.createTopic(tp);
 					session.addSubscription(t, true);  // true == wait for confirm
-					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed to Direct topic: '%s'", topic)).reset());
+//					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed to Direct topic: '%s'", topic)).reset());
+					AaAnsi ansi = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a("Subscribed to Direct topic: '");
+//					ansi.aa(AaAnsi.colorizeTopic(topic));
+					ansi.fg(Elem.DESTINATION).a(topic).fg(Elem.PAYLOAD_TYPE);
+					ansi.a('\'').reset();
+					System.out.println(ansi);
 				}
 				directConsumer.start();
 			}
