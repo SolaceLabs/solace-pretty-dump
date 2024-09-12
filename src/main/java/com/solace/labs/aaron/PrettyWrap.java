@@ -158,14 +158,14 @@ Destination:                            Topic 'q1/abc'
 						assert !insideMessage;
 						insideMessage = true;
 //						System.out.println( input);
-						wrapPrintln(MessageHelper.printMessageStart(++msgCount));
+						wrapPrintln(MessageObject.printMessageStart(++msgCount));
 //						wrapPrintln(MessageHelper.printMessageStart());
 					} else if (input.contains("^^^ End Message ^^^")) {
 						assert insideMessage;
 						assert !insidePayloadSection;
 						insideMessage = false;
 //						System.out.println(input);
-						wrapPrintln(MessageHelper.printMessageEnd(msgCount));
+						wrapPrintln(MessageObject.printMessageEnd(msgCount));
 //						wrapPrintln(MessageHelper.printMessageEnd());
 						AaAnsi.resetAnsi(System.out);
 //					} else if (input.matches("^(?:XML:|Binary Attachment:).*len.*")) {

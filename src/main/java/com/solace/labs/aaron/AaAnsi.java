@@ -644,8 +644,13 @@ public class AaAnsi /* implements CharSequence */ {
 				} else if (c == 0x1b) {
 					aa.a("^[");
 				} else if (c == 0) {
-					aa.a('∅');
+//					aa.a('␀');  // null char
+					aa.a('∅');  // empty set
 					if (i != s.length()-1) controlChars++;  // if not at very end of string, then count it (shouldn't have null mid-string)
+				} else if (c == 26) {   // aka 0x01  https://en.wikipedia.org/wiki/C0_and_C1_control_codes
+//					aa.a('☐');  // used in some testing character encoding replacements to make more obvious
+					aa.a('¿');
+					controlChars++;
 				} else {
 					aa.a('·');  // all other control chars
 					controlChars++;
@@ -657,7 +662,8 @@ public class AaAnsi /* implements CharSequence */ {
 //						System.out.println("curElem is null.  This is what I have so far:");
 //						System.out.println(jansi.toString());
 					}
-					Ansi a = new Ansi().reset().bg(Elem.ERROR.getCurrentColor().value).fg(231).a('¿').bgDefault();
+//					Ansi a = new Ansi().reset().bg(Elem.ERROR.getCurrentColor().value).fg(231).a('¿').bgDefault();
+					Ansi a = new Ansi().reset().bg(160).fg(231).a('¿').bgDefault();
 					if (curElem != null) {
 						a.fg(curElem.getCurrentColor().value);
 					} else {

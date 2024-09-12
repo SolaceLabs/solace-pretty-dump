@@ -113,7 +113,7 @@ public class PayloadHelper {
 	}
 	
 	
-	private void doBinaryPayload(BytesXMLMessage message, MessageHelper ms) {
+	private void doBinaryPayload(BytesXMLMessage message, MessageObject ms) {
 		byte[] bytes = message.getAttachmentByteBuffer().array();
 		if ("gzip".equals(message.getHTTPContentEncoding())) {
 			GZIPInputStream gzip = null;
@@ -205,7 +205,7 @@ public class PayloadHelper {
     public void dealWithMessage(BytesXMLMessage message) {
     	if (isStopped()) return;
     	config.currentMsgCount++;
-    	MessageHelper ms = new MessageHelper(this.config, message, config.currentMsgCount);
+    	MessageObject ms = new MessageObject(this.config, message, config.currentMsgCount);
     	if (message instanceof XMLContentMessage) {
         	ms.msgType = PrettyMsgType.XML.toString();
         } else if (message instanceof MapMessage) {

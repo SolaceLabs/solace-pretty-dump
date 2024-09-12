@@ -949,34 +949,33 @@ public class PrettyDump {
 			//			ThinkingAnsiHelper.tick(String.format("%d messages gathered, # messages received = ", config.getLastNMessagesSize()));
 //		} else if (config.) {
 		}
-		final Thread shutdownThread = new Thread(new Runnable() {
-			public void run() {
-//				config.stop();
-				ThinkingAnsiHelper.filteringOff();
-				System.out.print(AaAnsi.n());
-				System.out.println("\nShutdown hook triggered, quitting...");
-				config.isShutdown = true;
-				if (config.isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
-					if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
-					if (directConsumer != null) directConsumer.close();
-				}
-				try {
-					Thread.sleep(200);
-					session.closeSession();
-					Thread.sleep(300);
-				} catch (InterruptedException e) {  // ignore, we're quitting anyway
-				}
-				if (config.isLastNMessagesEnabled()) {  // got some messages to dump!
-					for (MessageHelper msg : config.getLastNMessages()) {
-						System.out.print(msg.printMessage());
-					}
-					System.out.println();
-				}
-				logger.info("### PrettyDump finishing!");
-				System.out.println("Goodbye! 👋🏼");
-				AnsiConsole.systemUninstall();
+		final Thread shutdownThread = new Thread(() -> {
+//			config.stop();
+			ThinkingAnsiHelper.filteringOff();
+			System.out.print(AaAnsi.n());
+			System.out.println("\nShutdown hook triggered, quitting...");
+			config.isShutdown = true;
+//				if (config.isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
+//					if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
+				if (directConsumer != null) directConsumer.close();
+//				}
+			try {
+				Thread.sleep(200);
+				session.closeSession();
+				Thread.sleep(300);
+			} catch (InterruptedException e) {  // ignore, we're quitting anyway
 			}
-		});
+			if (config.isLastNMessagesEnabled()) {  // got some messages to dump!
+				for (MessageObject msg : config.getLastNMessages()) {
+					System.out.print(msg.printMessage());
+				}
+				System.out.println();
+			}
+			logger.info("### PrettyDump finishing!");
+			System.out.println("Goodbye! 👋🏼");
+			AnsiConsole.systemUninstall();
+			})
+		;
 		shutdownThread.setName("Shutdown Hook thread");
 		//        shutdownThread.setDaemon(true);  // doesn't work, still gets deadlocked if disconnected and trying to reconnect
 		// https://stackoverflow.com/questions/58972594/difference-in-adding-a-daemon-vs-non-daemon-thread-in-a-java-shutdown-hook

@@ -32,7 +32,7 @@ public class ConfigState {
     boolean autoTrimPayload = false;
     BoundedLinkedList.ComparableList<Integer> topicsLengthList = new BoundedLinkedList.ComparableList<>(TOPICS_LENGTH_LIST_SIZE);
     List<BoundedLinkedList.ComparableList<Integer>> topicLevelsLengthList = new ArrayList<>();
-    BoundedLinkedList<MessageHelper> lastNMessagesList = null;
+    BoundedLinkedList<MessageObject> lastNMessagesList = null;
 
     long currentMsgCount = 0;
     long filteredCount = 0;
@@ -102,7 +102,7 @@ public class ConfigState {
 		else return 0;
 	}
 
-	public BoundedLinkedList<MessageHelper> getLastNMessages() {
+	public BoundedLinkedList<MessageObject> getLastNMessages() {
 		return lastNMessagesList;
 	}
 	

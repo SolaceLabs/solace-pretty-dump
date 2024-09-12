@@ -8,7 +8,7 @@ import com.solacesystems.jcsmp.DeliveryMode;
 import com.solacesystems.jcsmp.Queue;
 import com.solacesystems.jcsmp.XMLMessage;
 
-public class MessageHelper {
+public class MessageObject {
 	
     private static BoundedLinkedList.ComparableList<Integer> maxLengthUserPropsList = new BoundedLinkedList.ComparableList<>(200);
     private static BoundedLinkedList.ComparableList<Integer> minLengthPayloadLength = new BoundedLinkedList.ComparableList<>(50);  // max min-length of payload to display for -1 mode
@@ -29,7 +29,7 @@ public class MessageHelper {
     
     private final ConfigState config;
             
-    public MessageHelper(ConfigState config, BytesXMLMessage message, long msgCountNumber) {
+    public MessageObject(ConfigState config, BytesXMLMessage message, long msgCountNumber) {
     	this.config = config;
     	orig = message;
     	this.lockedMsgCountNumber = msgCountNumber;
@@ -261,11 +261,11 @@ public class MessageHelper {
 				systemOut.println(msgDestNameFormatted);
     		} else {  // one payload section defined, or empty
 				AaAnsi payload = null;
-				if (binary != null && binary.type != null && !binary.type.startsWith("<EMPTY")) {
+				if (binary != null && (binary.type == null || (binary.type != null && !binary.type.startsWith("<EMPTY")))) {
 					payload = binary.formatted;
 					payloadSizeString = binary.getSizeString();  // like: (bytes=2345)
 				}
-				else if (xml != null && xml.type != null && !xml.type.startsWith("<EMPTY")) {
+				else if (xml != null && (xml.type == null || (xml.type != null && !xml.type.startsWith("<EMPTY")))) {
 					payload = xml.formatted;
 					payloadSizeString = xml.getSizeString();
 				}
