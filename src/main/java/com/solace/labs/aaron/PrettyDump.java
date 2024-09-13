@@ -95,7 +95,7 @@ public class PrettyDump {
 	private FlowReceiver flowQueueReceiver = null;  // for queues and tempQueue
 	private XMLMessageConsumer directConsumer = null;  // for Direct
 
-	final private PayloadHelper ph;
+	final private MessageHelper ph;
 	final private ConfigState config = new ConfigState();
 	private long origMsgCount = Long.MAX_VALUE;
 	private long msgCountRemaining = Long.MAX_VALUE;
@@ -109,7 +109,7 @@ public class PrettyDump {
 	private ReplicationGroupMessageId browseFromRGMID = null;
 
 	private PrettyDump() {
-		this.ph = new PayloadHelper(config);
+		this.ph = new MessageHelper(config);
 	}
 
 	private static void printHelpIndent() {
@@ -405,7 +405,7 @@ public class PrettyDump {
 		if (AnsiConsole.getTerminalWidth() >= 80) System.out.print(Banner.printBanner(Which.DUMP));
 		else System.out.println();
 		System.out.println(APP_NAME + " initializing...");
-		ph.setProtobufCallbacks(ProtoBufUtils.loadProtobufDefinitions());
+		config.setProtobufCallbacks(ProtoBufUtils.loadProtobufDefinitions());
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		// now let's get on with it!
 //		final JCSMPProperties properties = new JCSMPProperties();

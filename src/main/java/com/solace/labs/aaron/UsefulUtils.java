@@ -28,7 +28,6 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import com.solace.labs.aaron.PayloadHelper.PrettyMsgType;
 import com.solacesystems.common.util.ByteArray;
 
 public class UsefulUtils {
@@ -596,6 +595,11 @@ public class UsefulUtils {
     	return null;
     }
     
+    
+    /* This is only called if I have a DEFLATE bytes message arrive, but it's actually a TextMessage
+     * How could this actually happen??
+     */
+    // TODO ??
     public static String textMessageBytesToString(byte[] bytes) {
     	if (bytes[bytes.length-1] != 0x00) return null;  // last byte must be null;
     	int len = bytes.length;

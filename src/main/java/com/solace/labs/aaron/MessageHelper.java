@@ -31,24 +31,19 @@ import com.solacesystems.jcsmp.XMLContentMessage;
 /**
  * A PayloadHelper contains a charset and an indent amount, and is used for 
  */
-public class PayloadHelper {
+public class MessageHelper {
 	
 	
-    private static final Logger logger = LogManager.getLogger(PayloadHelper.class);
+    private static final Logger logger = LogManager.getLogger(MessageHelper.class);
 	
     private final ConfigState config;
-    private Map<Sub, Method> protobufCallbacks = new HashMap<>();
     
-	PayloadHelper(ConfigState config) {
+	MessageHelper(ConfigState config) {
 		this.config = config;
 	}
 	
 	ConfigState getConfigState() {
 		return config;
-	}
-
-	public void setProtobufCallbacks(Map<Sub, Method> map) {
-		protobufCallbacks = map;
 	}
 
 	/** Only used by PrettyWrap */
@@ -113,8 +108,8 @@ public class PayloadHelper {
 	}
 	
 	
-	private void doBinaryPayload(BytesXMLMessage message, MessageObject ms) {
-		byte[] bytes = message.getAttachmentByteBuffer().array();
+	private void doBinaryPayload(BytesXMLMessage message, MessageObject ms, byte[] bytes) {
+//		byte[] bytes = message.getAttachmentByteBuffer().array();
 		if ("gzip".equals(message.getHTTPContentEncoding())) {
 			GZIPInputStream gzip = null;
 			ByteArrayOutputStream os = new ByteArrayOutputStream();
@@ -153,7 +148,7 @@ public class PayloadHelper {
 				String s = UsefulUtils.textMessageBytesToString(bytes);
 				if (s != null) {
 					ms.msgType = "DEFLATEd " + PrettyMsgType.TEXT.desc;
-	            	ms.binary.formatString(s, bytes, message.getHTTPContentType());
+	            	ms.binary.formatString(s, bytes, message.getHTTPContentType(), false);
 	            	return;  // all done, it's a deflated TextMessage
 				}
 			} catch (DataFormatException e) {
@@ -170,7 +165,7 @@ public class PayloadHelper {
 
 		// Protobuf stuff...
 		boolean topicMatch = false;
-			for (Entry<Sub,Method> entry : protobufCallbacks.entrySet()) {
+			for (Entry<Sub,Method> entry : config.protobufCallbacks.entrySet()) {
     			Sub sub = entry.getKey();
     			String topic = message.getDestination().getName();
 //			            			System.out.printf("Sub: %s, topic: %s%n", sub, topic);
@@ -213,10 +208,8 @@ public class PayloadHelper {
         } else if (message instanceof StreamMessage) {
         	ms.msgType = PrettyMsgType.STREAM.toString();
         } else if (message instanceof TextMessage) {
-			ms.msgType = /* "<EMPTY> " + */ PrettyMsgType.TEXT.toString();
+			ms.msgType = PrettyMsgType.TEXT.toString();
         } else if (message instanceof BytesMessage) {
-//	        	if (message.hasAttachment() && message.getAttachmentContentLength() > 0) ms.msgType = PrettyMsgType.BYTES.toString();
-//	        	else ms.msgType = "<EMPTY> " + PrettyMsgType.BYTES.toString();
         	ms.msgType = PrettyMsgType.BYTES.toString();
         } else {  // shouldn't be anything else..?   Even JMS ObjectMessage arrives to JCSMP as BytesMessage & no way to check that payload bit/type
         	// leave as Impl class
@@ -240,7 +233,7 @@ public class PayloadHelper {
 //			            	String pay = ((TextMessage)message).getText();
 //			            	ByteBuffer bb = message.getAttachmentByteBuffer();
 			            	byte[] bytes = message.getAttachmentByteBuffer().array();
-			            	ms.binary.formatString(((TextMessage)message).getText(), bytes, message.getHTTPContentType());
+			            	ms.binary.formatString(((TextMessage)message).getText(), bytes, message.getHTTPContentType(), false);
 	//		            	ms.msgType = ms.binary.formatted.getCharCount() == 0 ? "<EMPTY> SDT TextMessage" : "SDT TextMessage";
 			            	if (ms.binary.formatted.getTotalCharCount() == 0) {  // looks like an empty text message, but could be malformed
 			            		int len = message.getAttachmentContentLength();
@@ -258,19 +251,24 @@ public class PayloadHelper {
 			            			ms.binary.formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, config.getFormattingIndent(), currentScreenWidth);
 			            		}
 			            	} else {  // should be valid! maybe check if it's properly formatted, UTF-8
-			    	        	ms.msgType = PrettyMsgType.TEXT.toString();
+//			    	        	ms.msgType = PrettyMsgType.TEXT.toString();  // shouldn't need to do this?
 			            	}
 			            } else {  // bytes message
 	//		            	ms.msgType = "Raw BytesMessage";
 			            	if (message.getAttachmentByteBuffer() != null) {
-			            		doBinaryPayload(message, ms);
+			            		doBinaryPayload(message, ms, message.getAttachmentByteBuffer().array());
 		                    }
 			            }
 		            }
 	        	}
 	            if (message.hasContent()) {  // try the XML portion of the payload (OLD SCHOOL!!!)
-	            	ms.xml = new PayloadSection(config);   // could there be Protobuf stuff in this section??
-	            	ms.xml.formatBytes(message.getBytes(), message.getHTTPContentType());
+	            	ms.xml = new PayloadSection(config);   // TODO could there be Protobuf stuff in this section??
+//	            	if (message instanceof XMLContentMessage) {
+//	            		ms.xml.formatString(((XMLContentMessage)message).getXMLContent(), message.getBytes(), message.getHTTPContentType(), false);
+//	            	} else {
+	            		// don't try to use getXMLContent() in case it's binary
+	            		ms.xml.formatBytes(message.getBytes(), message.getHTTPContentType());
+//	            	}
 	            }
         	}
             if (message.getProperties() != null && !message.getProperties().isEmpty()) {

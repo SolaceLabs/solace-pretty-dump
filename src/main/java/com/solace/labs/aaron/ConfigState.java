@@ -1,14 +1,18 @@
 package com.solace.labs.aaron;
 
+import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import com.solace.labs.aaron.utils.BoundedLinkedList;
+import com.solace.labs.topic.Sub;
 
 public class ConfigState {
 
@@ -30,6 +34,8 @@ public class ConfigState {
     boolean autoResizeIndent = false;  // specify -1 as indent for this MODE
     boolean autoSpaceTopicLevels = false;  // specify +something to space out the levels
     boolean autoTrimPayload = false;
+    boolean rawPayload = true;
+    
     BoundedLinkedList.ComparableList<Integer> topicsLengthList = new BoundedLinkedList.ComparableList<>(TOPICS_LENGTH_LIST_SIZE);
     List<BoundedLinkedList.ComparableList<Integer>> topicLevelsLengthList = new ArrayList<>();
     BoundedLinkedList<MessageObject> lastNMessagesList = null;
@@ -40,6 +46,8 @@ public class ConfigState {
 
     Charset charset = StandardCharsets.UTF_8;
 	CharsetDecoder decoder = charset.newDecoder().onMalformedInput(CodingErrorAction.REPLACE).onUnmappableCharacter(CodingErrorAction.REPLACE);
+
+    Map<Sub, Method> protobufCallbacks = new HashMap<>();
 
 	
 	static String DTF_FORMAT = "HH:mm:ss.SS ";
@@ -237,6 +245,11 @@ public class ConfigState {
 		return filteredCount;
 	}
 	
+	public void setProtobufCallbacks(Map<Sub, Method> map) {
+		protobufCallbacks = map;
+	}
+
+
 
 	
 	/** used when calculating one-line indent values, includes a space at the end of the timestamp */

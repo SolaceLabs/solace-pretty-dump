@@ -2,13 +2,14 @@ package com.solace.labs.aaron;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.fusesource.jansi.AnsiConsole;
 
-import com.solace.labs.aaron.PayloadHelper.PrettyMsgType;
+import com.solace.labs.aaron.MessageHelper.PrettyMsgType;
 import com.solace.labs.aaron.utils.DecoderUtils;
 import com.solacesystems.jcsmp.impl.sdt.MapImpl;
 import com.solacesystems.jcsmp.impl.sdt.MapTLVBuffer;
@@ -53,11 +54,11 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
 	}
 	
 	/** sets `formatted` to be the nice String representation */
-	void formatString(final String text, final byte[] bytes) {
-		formatString(text, bytes, null);
+	void formatString(final String text, final byte[] bytes, boolean decodedFromBytes) {
+		formatString(text, bytes, null, decodedFromBytes);
 	}
 	
-	void formatString(final String text, final byte[] bytes, String contentType) {
+	void formatString(final String text, final byte[] bytes, String contentType, boolean decodedFromBytes) {
 		if (contentType == null) contentType = "";  // empty string, for easier matching later
 		size = bytes.length;
 		if (text == null) {  // that shouldn't happen?
@@ -67,24 +68,27 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
 		} else if (text.isEmpty()) {
 			formatted = AaAnsi.n();
 			type = "<EMPTY>";
+			if (size != 0 && size != 3 && size != 6) {
+				logger.warn("Empty string passed, but bytes has length " + size + ". This is unexpected.");
+			}
 			return;
 		}
 		String trimmed = text.trim();
     	if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || contentType.contains("application/json")) {  // try JSON object
     		try {
         		formatted = GsonUtils.parseJsonObject(trimmed, config.getFormattingIndent());
-    			type = config.charset.displayName() + " charset, JSON Object";
+    			type = (decodedFromBytes ? config.charset.displayName() + " charset, " : "") + "JSON Object";
 			} catch (IOException e) {
-    			type = config.charset.displayName() + " charset, INVALID JSON payload";
+				type = (decodedFromBytes ? config.charset.displayName() + " charset, " : "") + "INVALID JSON payload";
 //    			formatted = new AaAnsi().setError().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
     			formatted = AaAnsi.n().ex(e).a('\n').a(trimmed);
 			}
     	} else if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || contentType.contains("application/json")) {  // try JSON array
     		try {
         		formatted = GsonUtils.parseJsonArray(trimmed, config.getFormattingIndent());
-    			type = config.charset.displayName() + " charset, JSON Array";
+        		type = (decodedFromBytes ? config.charset.displayName() + " charset, " : "") + "JSON Array";
     		} catch (IOException e) {
-    			type = config.charset.displayName() + " charset, INVALID JSON payload";
+    			type = (decodedFromBytes ? config.charset.displayName() + " charset, " : "") + "INVALID JSON payload";
 //    			formatted = new AaAnsi().setError().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
     			formatted = AaAnsi.n().ex(e).a('\n').a(trimmed);
 			}
@@ -92,29 +96,30 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
     			"application/xml".equals(contentType)  || contentType.contains("text/xml")) {  // try XML
 			try {
 				SaxHandler handler = new SaxHandler(config.getFormattingIndent());
-				SaxParser.parseString(trimmed, handler);
+				SaxParser.parseString(trimmed.replaceAll("\\Q\u001a\\E", "� "), handler);
                 formatted = handler.getResult();  // overwrite
-                type = config.charset.displayName() + " charset, XML document";
+                type = (decodedFromBytes ? config.charset.displayName() + " charset, " : "") + "XML document";
 			} catch (SaxParserException e) {
 				logger.warn("Couldn't parse xml", e);
-    			type = config.charset.displayName() + " charset, INVALID XML payload";
+				type = (decodedFromBytes ? config.charset.displayName() + " charset, " : "") + "INVALID XML payload";
     			formatted = AaAnsi.n().ex(e).a('\n').a(trimmed);
 			}
     	} else {  // it's neither JSON or XML, but has text content
 //    		type = charset.displayName() + " String";
-    		type = config.charset.displayName() + " encoded string";
+    		if (decodedFromBytes) type = config.charset.displayName() + " encoded string";
     		formatted = AaAnsi.n().aStyledString(text).reset();
 //    		formatted = text;
     	}
 		boolean malformed = text.contains("\ufffd");
 //		System.out.println("MALFORMED: " + malformed);
     	if (malformed) {
-			type = "non " + type;
+    		// should be impossible for type == null, but just in case.  means that TextMessage, UTF-8, but contains replacement char
+			type = "non " + (type == null ? StandardCharsets.UTF_8.displayName() + " encoded string" : type);
     	}
     	double ratio = (1.0 * formatted.getControlCharsCount() + formatted.getReplacementCharsCount()) / formatted.getTotalCharCount();
-		if (malformed && ratio >= 0.25 /* && !oneLineMode */) {  // 25%, very likely a binary file
+		if (malformed && ratio >= 0.25 /* && !oneLineMode */ && !config.rawPayload) {  // 25%, very likely a binary file
 			formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, config.getFormattingIndent(), AnsiConsole.getTerminalWidth());
-    	} else if (malformed || formatted.getControlCharsCount() > 0) {  // any unusual control chars (not tab, LF, CR, FF, or Esc, or NUL at string end
+    	} else if (malformed || formatted.getControlCharsCount() > 0 || config.rawPayload) {  // any unusual control chars (not tab, LF, CR, FF, or Esc, or NUL at string end
 			if (!config.oneLineMode && config.getFormattingIndent() > 0) {  // only if not in one-line mode!
 				formatted.a('\n').aa(UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, config.getFormattingIndent(), AnsiConsole.getTerminalWidth()));
 			}
@@ -124,7 +129,7 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
 	void formatBytes(byte[] bytes, String contentType) {
 		String parsed = DecoderUtils.decodeToString(config.decoder, bytes);
 //		boolean malformed = parsed.contains("\ufffd");
-		formatString(parsed, bytes, contentType);  // call the String version
+		formatString(parsed, bytes, contentType, true);  // call the String version
 		if (!type.startsWith("non") && size > 0) {
 			if (formatted.getControlCharsCount() > 0) type = "technically valid " + type;
 			else type = "valid " + type;
@@ -186,7 +191,11 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
 			int size = buffer.getInt();  // next 4 bytes
 //			System.out.println("size bytes ("+size+") and buffer limit ("+buffer.limit()+")!");
 			if (buffer.limit() == size) {  // looks correct!  otherwise maybe just a regular binary msg
-				copy = Arrays.copyOfRange(buffer.array(), 0, buffer.limit());  // need to do this to copy out the whole bytes!
+//				copy = Arrays.copyOfRange(buffer.array(), 0, buffer.limit());  // need to do this to copy out the whole bytes!
+//				// this should work too, ah but might not work if we've advanced some position in the buffer
+				// nope, should be fine: https://docs.oracle.com/javase/8/docs/api/java/nio/ByteBuffer.html#get-byte:A-
+				copy = new byte[buffer.limit()];
+				buffer.get(copy);
 				MapTLVBuffer buf = new MapTLVBuffer(copy);  // sneaky hidden but public methods
 				MapImpl map = new MapImpl(buf);
 //				String test = SdtUtils.printMap(map, 3).toString();
@@ -222,7 +231,7 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
 		copy = Arrays.copyOfRange(buffer.array(), 0, buffer.limit());
 		String parsed = DecoderUtils.decodeToString(config.decoder, copy);
 //		boolean malformed = parsed.contains("\ufffd");
-		formatString(parsed, copy);  // call the String version
+		formatString(parsed, copy, true);  // call the String version
 		if (tempType != null) type = tempType + ", " + type;
 //    	if (malformed) {
 //			type = "Non " + type;

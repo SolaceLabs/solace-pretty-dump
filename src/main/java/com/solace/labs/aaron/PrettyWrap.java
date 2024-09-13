@@ -99,7 +99,7 @@ Destination:                            Topic 'q1/abc'
 		
 		AnsiConsole.systemInstall();
 //        protobufCallbacks = ProtoBufUtils.loadProtobufDefinitions();
-    	PayloadHelper payloadHelper = new PayloadHelper(new ConfigState());  // default stuff
+    	MessageHelper payloadHelper = new MessageHelper(new ConfigState());  // default stuff
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 		// test code
 		
@@ -187,7 +187,7 @@ Destination:                            Topic 'q1/abc'
 						if (input.startsWith("Dest")) {
 //							topic = extractTopic(input);  // if it is an actual topic, this will return it; otherwise empty string
 						}
-						wrapPrintln(PayloadHelper.colorizeDestinationString(input));
+						wrapPrintln(MessageHelper.colorizeDestinationString(input));
 //						System.out.println(new AaAnsi().fg(Elem.DESTINATION).a(input).toString());
 					} else if (input.startsWith("SDT Map:     ") || input.startsWith("SDT Stream:     ")) {  // this is only for JCSMP and derivatives
 						ignore = true;
