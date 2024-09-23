@@ -164,6 +164,7 @@ fun createAdditionalScript(name: String, configureStartScripts: CreateStartScrip
     classpath = tasks.getByName("jar").outputs.files + configurations.runtimeClasspath.get()
     //defaultJvmOpts = [ "-ea" ]  // enable assertions
     //defaultJvmOpts = listOf("-ea")  // enable assertions
+    defaultJvmOpts = listOf("networkaddress.cache.ttl=0")  // disable DNS caching
     //defaultJvmOpts = listOf("-ea").iterator().asSequence().toList()  // enable assertions
   }.also {
     application.applicationDistribution.into("bin") {

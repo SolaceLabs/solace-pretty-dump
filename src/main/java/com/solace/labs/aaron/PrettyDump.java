@@ -19,6 +19,7 @@ package com.solace.labs.aaron;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
@@ -83,7 +84,8 @@ public class PrettyDump {
 		logger.info("### Starting PrettyDump!");
 	}
 	private static final String DEFAULT_TOPIC = "#noexport/>";
-	
+
+	private static final PrintStream o = System.out;
 	private static final JCSMPFactory f = JCSMPFactory.onlyInstance();
 	private final JCSMPProperties properties = new JCSMPProperties();
 	private JCSMPSession session;
@@ -112,109 +114,12 @@ public class PrettyDump {
 		this.ph = new MessageHelper(config);
 	}
 
-	private static void printHelpIndent() {
-
-		System.out.println("    • 1..8      normal mode, pretty-printed and indented n spaces");
-		System.out.println("    • 0         normal mode, payload and user properties compressed to one line");
-		System.out.println("    • 00        no payload mode, user properties still pretty-printed");
-		System.out.println("    • 000       no payload mode, user properties each compressed to one line");
-		System.out.println("    • 0000      no payload mode, no user properties, headers only");
-		System.out.println("    • -250..-3  one-line mode, topic and payload only, compressed, fixed indent");
-		System.out.println("    • -2        two-line mode, topic and payload on two lines (try 'minimal' color mode)");
-		System.out.println("    • -1        one-line mode, automatic variable payload indentation");
-		System.out.println("    • -0        one-line mode, topic only");
-        System.out.println("    • For one-line modes, change '-' to '+' to enable topic level alignment");
-//		System.out.println("    - ±0        one-line mode, topic only, with/without topic spacing");
-		//		System.out.println("Runtime: press 't'[ENTER] (or argument '--trim') to auto-trim payload to screen width");
-		//		System.out.println("Runtime: press '+' or '-'[ENTER] to toggle topic level spacing during runtime");
-		////		System.out.println("Runtime: press \"t[ENTER]\" to toggle payload trim to terminal width (or argument --trim)");
-		////		System.out.println("Runtime: press \"+ or -[ENTER]\" to toggle topic level spacing/alignment (or argument \"+indent\")");
-		//		System.out.println("NOTE: optional content Filter searches entire message body, regardless of indent");
-		////		printUsageText();
-		//		System.out.println("See README.md for more detailed help with indent.");
-
-	}
-
-
-	private static void printHelpMoreText() {
-		printHelpText(false);
-		System.out.println("    • e.g. prettydump 'logs/>' -1  ~or~  prettydump q:q1  ~or~  prettydump b:dmq -0");
-		System.out.println(" - Optional indent: integer, valid values:");
-		printHelpIndent();
-		//		System.out.println(" - Optional indent: integer, default==2 spaces; specifying 0 compresses payload formatting");
-		//		System.out.println("    - No payload mode: use indent '00' to only show headers and props, or '000' for compressed");
-		//		System.out.println("    - One-line mode: use negative indent value (trim topic length) for topic & payload only");
-		//		System.out.println("       - Or use -1 for auto column width adjustment, or -2 for two-line mode");
-		//		System.out.println("       - Use negative zero -0 for topic only, no payload");
-		//		System.out.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
-
-		System.out.println(" - Additional non-ordered arguments: for more advanced capabilities");
-		System.out.println("    • --selector=\"mi like 'hello%world'\"  Selector for Queue consume and browse");
-		System.out.println("    • --filter=\"ABC123\"  client-side REGEX content filter on any received message");
-		System.out.println("    • --count=n     stop after receiving n number of msgs; or if < 0, only show last n msgs");
-//		System.out.println("    • --skip=n      skip the first n messages received");
-		System.out.println("    • --trim        enable paylaod trim for one-line (and two-line) modes");
-		System.out.println("    • --ts          print time when PrettyDump received the message (not messages' timestamp)");
-		System.out.println("    • --export      disables the automatic prefixing of \"#noexport/\" to the start of all topics");
-		System.out.println("    • --compressed  tells JCSMP to use streaming compression on the connection");
-		System.out.println("    • --defaults    show all possible JCSMP Session properties to set/override");
-		System.out.println(" - One-Line runtime options: type the following into the console while the app is running");
-		System.out.println("    • Press \"t\" ENTER to toggle payload trim to terminal width (or argument --trim)");
-		System.out.println("    • Press \"+\" or \"-\" ENTER to toggle topic level spacing/alignment (or argument \"+indent\")");
-		System.out.println("    • Press \"[1-n]\" ENTER to highlight a particular topic level (\"0\" ENTER to revert)");
-		System.out.println("    • Type \"c[svlmxo]\" ENTER\" to set colour mode: standard, vivid, light, minimal, matrix, off");
-		System.out.println("Environment variable options:");
-		System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=ISO-8859-1");
-		//		System.out.println("    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or \"set\" on Windows)");
-		System.out.println(" - Multiple colour schemes supported. Override by setting: export PRETTY_COLORS=whatever");
-		System.out.println("    • Choose: \"standard\" (default), \"vivid\", \"light\", \"minimal\", \"matrix\", \"off\"");
-		System.out.println();
-//		System.out.println("Runtime commands, type these + [ENTER] while running:");
-//		System.out.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=ISO-8859-1");
-//		System.out.println();
-		System.out.println("SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to \" | prettydump wrap\" to prettify");
-		System.out.println();
-		System.out.println("See the README.md for more explanations of every feature and capability");
-		System.out.println("https://github.com/SolaceLabs/solace-pretty-dump");
-		System.out.println("https://solace.community/discussion/3238/sdkperf-but-pretty-for-json-and-xml");
-		System.out.println();
-	}
-
-	private static void printHelpText(boolean full) {
-		printUsageText(false);
-		System.out.println(" - Default protocol TCP; for TLS use \"tcps://\"; or \"ws://\" or \"wss://\" for WebSocket");
-		System.out.println(" - Default parameters will be: localhost:55555 default foo bar '#noexport/>' 2");
-		System.out.println(" - Subscribing options (arg 5, or shortcut mode arg 1), one of:");
-		System.out.println("    • Comma-separated list of Direct topic subscriptions");
-		System.out.println("       - Strongly consider prefixing with \"#noexport/\" if using DMR or MNR");
-		System.out.println("    • q:queueName to consume from queue");
-		System.out.println("    • b:queueName to browse a queue (all messages, or range by MsgSpoolID or RGMID)");
-		System.out.println("    • f:queueName to browse/dump only first oldest message on a queue");
-		System.out.println("    • tq:topics   provision a tempQ with optional topics  (can use NOT '!' topics)");
-		if (full) System.out.println(" - Indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode");
-		//		System.out.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
-		System.out.println(" - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume defaults");
-		System.out.println("    • Or if first arg parses as integer, select as indent, rest default options");
-		if (full) System.out.println(" - Additional non-ordered args: --count, --filter, --selector, --trim, --ts");
-		if (full) System.out.println(" - Any JCSMP Session property (use --defaults to see all)");
-		if (full) System.out.println(" - Environment variables for decoding charset and colour mode");
-		if (full) System.out.println();
-		if (full) System.out.println("prettydump -hm for more help on indent, additional parameters, charsets, and colours");
-		if (full) System.out.println();
-	}
-
-	private static void printUsageText(boolean full) {
-		System.out.printf("Usage: %s [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [indent]%n", APP_NAME.toLowerCase());
-		System.out.printf("   or: %s <topics|[qbf]:queueName|tq:topics> [indent]  for \"shortcut\" mode%n", APP_NAME.toLowerCase());
-		System.out.println();
-		if (full) System.out.println("prettydump -h or -hm for help on available arguments and environment variables.");
-		if (full) System.out.println();
-	}
+	
 
 	private void printParamsInfo(String indentStr, String countStr) {
 		//    	if (indentStr.isEmpty()) indentStr = "2";
 		//    	String countStr = Long.toString(count);
-		//    	System.out.println(countStr);
+		//    	o.println(countStr);
 		int pad = Math.max(indentStr.length(), countStr.length());
 		AaAnsi ansi = AaAnsi.n();
 		if (!indentStr.isEmpty()) {
@@ -270,7 +175,7 @@ public class PrettyDump {
 			ansi.a(" messages)");
 		}
 		//    	}
-		System.out.println(ansi);
+		o.println(ansi);
 	}
 	
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
@@ -289,16 +194,19 @@ public class PrettyDump {
 		//		
 		//		ReplicationGroupMessageId one = f.createReplicationGroupMessageId("rmid1:3477f-a5ce520f5ec-00000000-000f89e2");
 		//		ReplicationGroupMessageId two = f.createReplicationGroupMessageId("rmid1:3477f-a5ce520f5ec-00000000-000f89e2");
-		//		System.out.println(one.equals(two));
+		//		o.println(one.equals(two));
 		//		System.exit(0);
 		//		
 		for (String arg : args) {
-			if (arg.equals("-h") || arg.equals("-?") || arg.startsWith("--?") || arg.contains("-help")) {
-				printHelpText(true);
-//				System.out.println("Use -hm  for more help");
+			if (arg.equals("-h") || arg.equals("--h") || arg.equals("-?") || arg.startsWith("--?") || arg.equals("-help") || arg.equals("--help")) {
+				HelperText.printHelpText(true);
+//				o.println("Use -hm  for more help");
 				System.exit(0);
-			} else if (arg.equals("-hm") || arg.startsWith("--hm") || arg.equals("-??") || arg.contains("helpmore")) {
-				printHelpMoreText();
+			} else if (arg.equals("-hm") || arg.equals("--hm") || arg.equals("-??")) {
+				HelperText.printHelpMoreText();
+				System.exit(0);
+			} else if (arg.equals("-he") || arg.equals("--he")) {
+				HelperText.printHelpExamples();
 				System.exit(0);
 			}
 		}
@@ -308,12 +216,12 @@ public class PrettyDump {
 		}
 		config.setCharset(CHARSET);
 		if (System.getenv("PRETTY_SELECTOR") != null && !System.getenv("PRETTY_SELECTOR").isEmpty()) {
-			System.out.println(AaAnsi.n().invalid(String.format("Env var PRETTY_SELECTOR deprecated, use argument --selector=\"%s\" instead.%n", System.getenv("PRETTY_SELECTOR"))));
+			o.println(AaAnsi.n().invalid(String.format("Env var PRETTY_SELECTOR deprecated, use argument --selector=\"%s\" instead.%n", System.getenv("PRETTY_SELECTOR"))));
 			System.exit(1);
 			//			selector = System.getenv("PRETTY_SELECTOR");
 		}
 		if (System.getenv("PRETTY_FILTER") != null && !System.getenv("PRETTY_FILTER").isEmpty()) {
-			System.out.println(AaAnsi.n().invalid(String.format("Env var PRETTY_FILTER deprecated, use argument --filter=\"%s\" instead.%n", System.getenv("PRETTY_FILTER"))));
+			o.println(AaAnsi.n().invalid(String.format("Env var PRETTY_FILTER deprecated, use argument --filter=\"%s\" instead.%n", System.getenv("PRETTY_FILTER"))));
 			System.exit(1);
 			//			contentFilter = System.getenv("PRETTY_FILTER");
 		}
@@ -322,7 +230,7 @@ public class PrettyDump {
 		ArrayList<String> regArgsList = new ArrayList<>();
 		ArrayList<String> specialArgsList = new ArrayList<>();
 		for (String arg : args) {
-			if (arg.startsWith("--")) specialArgsList.add(arg);
+			if (arg.startsWith("--") || (arg.equals("-defaults"))) specialArgsList.add(arg);
 			else regArgsList.add(arg);
 		}
 
@@ -370,7 +278,7 @@ public class PrettyDump {
 		} else if (regArgsList.size() > 0) {
 			host = regArgsList.get(0);
 		}
-//		System.out.println(argsList);
+//		o.println(argsList);
 		if (regArgsList.size() > 1) vpn = regArgsList.get(1);
 		if (regArgsList.size() > 2) username = regArgsList.get(2);
 		if (regArgsList.size() > 3) password = regArgsList.get(3);
@@ -387,24 +295,24 @@ public class PrettyDump {
 			try {
 				config.dealWithIndentParam(indentStr);
 			} catch (IllegalArgumentException e) {
-				System.out.println(AaAnsi.n().invalid(String.format("Invalid value for indent: '%s'.  ", indentStr)));
-				System.out.println();
-				printHelpIndent();
-				System.out.println();
-				System.out.println("prettydump -h  or  -hm for more help details, or see README.md for more details");
+				o.println(AaAnsi.n().invalid(String.format("Invalid value for indent: '%s'.  ", indentStr)));
+				o.println();
+				HelperText.printHelpIndent();
+				o.println();
+				o.println("prettydump -h  or  -hm for more help details, or see README.md for more details");
 				System.exit(1);
 			}
 		}
 		if (regArgsList.size() > 6) {
-			printHelpMoreText();
+			HelperText.printHelpMoreText();
 			throw new IllegalArgumentException("Too many arguments");
 		}
 		// we'll handle the special -- args down below
 		
 		AnsiConsole.systemInstall();
-		if (AnsiConsole.getTerminalWidth() >= 80) System.out.print(Banner.printBanner(Which.DUMP));
-		else System.out.println();
-		System.out.println(APP_NAME + " initializing...");
+		if (AnsiConsole.getTerminalWidth() >= 80) o.print(Banner.printBanner(Which.DUMP));
+		else o.println();
+		o.println(APP_NAME + " initializing...");
 		config.setProtobufCallbacks(ProtoBufUtils.loadProtobufDefinitions());
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		// now let's get on with it!
@@ -425,10 +333,10 @@ public class PrettyDump {
 		JCSMPGlobalProperties.setShouldDropInternalReplyMessages(false);  // neat trick to hear all other req/rep messages
 		// if we're going to override any special settings, do it here
 		
-		if (specialArgsList.contains("--defaults")) {
-			System.out.println("These are the default JCSMPProperties that PrettyDump uses.");
-			System.out.println("Most are defaults in JCSMP, some have been overriden.");
-			System.out.println("Not all of these are settable, see Javadocs for more info.");
+		if (specialArgsList.contains("--defaults") || specialArgsList.contains("-defaults")) {
+			o.println("These are the default JCSMPProperties that PrettyDump uses.");
+			o.println("Most are defaults in JCSMP, some have been overriden.");
+			o.println("Not all of these are settable, see Javadocs for more info.");
 			List<String> upperProps = new ArrayList<>();
 			Map<String, String> propsMap = new HashMap<>();
 			for (String key : properties.propertyNames()) {
@@ -459,9 +367,9 @@ public class PrettyDump {
 //					aa.fg(Elem.DATA_TYPE).a(o.getClass().getSimpleName()).a(' ').a(o.toString());
 				}
 			}
-			System.out.println(ansi.reset());
-			System.out.print("For JCSMPProperties descriptions, see Javadocs here: ");
-			System.out.println(new Ansi().fg(4).a(Attribute.UNDERLINE).a("https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html").reset());
+			o.println(ansi.reset());
+			o.print("For JCSMPProperties descriptions, see Javadocs here: ");
+			o.println(new Ansi().fg(4).a(Attribute.UNDERLINE).a("https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html").reset());
 			System.exit(0);
 		}
 
@@ -471,14 +379,14 @@ public class PrettyDump {
 				try {
 					selector = arg.substring("--selector=".length());
 					if (selector != null && !selector.isEmpty() && selector.length() > 2000) {
-						System.out.println(AaAnsi.n().invalid("Selector length greater than 2000 character limit!"));
-						System.out.println("Quitting! 💀");
+						o.println(AaAnsi.n().invalid("Selector length greater than 2000 character limit!"));
+						o.println("Quitting! 💀");
 						System.exit(1);
 					}
 				} catch (StringIndexOutOfBoundsException e) {
-					System.out.println(AaAnsi.n().invalid(String.format("Must specify a value for Selector.")));
-					printHelpMoreText();
-					System.out.println("See README.md for more detailed help.");
+					o.println(AaAnsi.n().invalid(String.format("Must specify a value for Selector.")));
+					HelperText.printHelpMoreText();
+					o.println("See README.md for more detailed help.");
 					System.exit(1);
 				}
 			} else if (arg.startsWith("--filter")) {
@@ -490,9 +398,9 @@ public class PrettyDump {
 						config.setRegexFilterPattern(p);
 					}
 				} catch (StringIndexOutOfBoundsException e) {
-					System.out.println(AaAnsi.n().invalid(String.format("Must specify a regex for Filter.")));
-					printHelpMoreText();
-					System.out.println("See README.md for more detailed help.");
+					o.println(AaAnsi.n().invalid(String.format("Must specify a regex for Filter.")));
+					HelperText.printHelpMoreText();
+					o.println("See README.md for more detailed help.");
 				}
 			} else if (arg.equals("--trim")) {
 				config.setAutoTrimPayload(true);
@@ -501,13 +409,15 @@ public class PrettyDump {
 			} else if (arg.equals("--export")) {
 				config.noExport = false;
 			} else if (arg.equals("--compressed")) {
-				config.isCompressed = true;
+				config.isCompressed = true;  // doesn't really matter, we never use this again
 				properties.setProperty(JCSMPProperties.CLIENT_CHANNEL_PROPERTIES_COMPRESSION_LEVEL, 9);
+			} else if (arg.equals("--raw")) {
+				config.rawPayload = true;
 			} else if (arg.startsWith("--count")) {
 				String argVal = "?";
 				try {
 					argVal = arg.substring("--count=".length());
-					//				System.out.println(argVal);
+					//				o.println(argVal);
 					long count = Long.parseLong(argVal);
 					if (count > 0) {
 						msgCountRemaining = count;
@@ -518,15 +428,15 @@ public class PrettyDump {
 						throw new NumberFormatException();
 					}
 				} catch (NumberFormatException | StringIndexOutOfBoundsException e) {
-					System.out.println(AaAnsi.n().invalid(String.format("Invalid value for count: '%s'. n > 0 to stop after n msgs; n < 0 to display last n msgs.", argVal)));
-					printHelpMoreText();
+					o.println(AaAnsi.n().invalid(String.format("Invalid value for count: '%s'. n > 0 to stop after n msgs; n < 0 to display last n msgs.", argVal)));
+					HelperText.printHelpMoreText();
 					System.exit(1);
 				}
 /*			} else if (arg.startsWith("--skip")) {
 				String argVal = "?";
 				try {
 					argVal = arg.substring("--skip=".length());
-					//				System.out.println(argVal);
+					//				o.println(argVal);
 					long skip = Long.parseLong(argVal);
 					if (skip > 0) {
 						skipMsgCount = skip;
@@ -537,7 +447,7 @@ public class PrettyDump {
 						throw new NumberFormatException();
 					}
 				} catch (NumberFormatException | StringIndexOutOfBoundsException e) {
-					System.out.println(AaAnsi.n().invalid(String.format("Invalid value for skip: '%s'. n > 0 to skip first n msgs.", argVal)));
+					o.println(AaAnsi.n().invalid(String.format("Invalid value for skip: '%s'. n > 0 to skip first n msgs.", argVal)));
 					printHelpMoreText();
 					System.exit(1);
 				}*/
@@ -548,18 +458,18 @@ public class PrettyDump {
 				if (val.isEmpty()) {
 					throw new IllegalArgumentException("Must provide JCSMPProperty name = value");
 				}
-				Object o = properties.getProperty(propName);
+				Object obj = properties.getProperty(propName);
 				AaAnsi ansi = AaAnsi.n().a(jcscmpPropCount == 0 ? "Overriding " : "           ").fg(Elem.KEY).a("JCSMPProperties.").a(propName.toUpperCase()).reset().a(": ");
-				if (o instanceof Integer) {
-					int oldVal = (int)o;
+				if (obj instanceof Integer) {
+					int oldVal = (int)obj;
 					properties.setProperty(propName, Integer.parseInt(val));
 					ansi.fg(Elem.NUMBER).a(oldVal).reset().a(" → ").fg(Elem.NUMBER).a(properties.getProperty(propName).toString());
-				} else if (o instanceof Boolean) {
-					boolean oldVal = (boolean)o;
+				} else if (obj instanceof Boolean) {
+					boolean oldVal = (boolean)obj;
 					properties.setProperty(propName, Boolean.parseBoolean(val));
 					ansi.fg(Elem.BOOLEAN).a(oldVal).reset().a(" → ").fg(Elem.BOOLEAN).a(properties.getProperty(propName).toString());
 				} else {  // assume String!
-					String oldVal = (String)o;
+					String oldVal = (String)obj;
 //					if (oldVal.isEmpty()) oldVal = "\"\"";
 					properties.setProperty(propName, val);
 					if (oldVal.isEmpty()) {
@@ -569,12 +479,12 @@ public class PrettyDump {
 					}
 					ansi.a(" → ").fg(Elem.STRING).a(properties.getProperty(propName).toString());
 				}
-//				System.out.println("Overriding JCSMPProperties." + propName + "=" + properties.getProperty(propName));
-				System.out.println(ansi.reset());
+//				o.println("Overriding JCSMPProperties." + propName + "=" + properties.getProperty(propName));
+				o.println(ansi.reset());
 				jcscmpPropCount++;
 			} else {
-				System.out.println(AaAnsi.n().invalid("Don't recognize this argument '" + arg + "'!"));
-				System.out.println("Quitting! 💀");
+				o.println(AaAnsi.n().invalid("Don't recognize this argument '" + arg + "'!"));
+				o.println("Quitting! 💀");
 				System.exit(1);
 			}
 		}
@@ -582,37 +492,37 @@ public class PrettyDump {
 		session = f.createSession(properties, null, new SessionEventHandler() {
 			@Override
 			public void handleEvent(SessionEventArgs event) {  // could be reconnecting, connection lost, etc.
-				//        		System.out.println(" > " + event.getEvent());
+				//        		o.println(" > " + event.getEvent());
 				if (event.getEvent() == SessionEvent.RECONNECTING) {
 					if (config.isConnected) {  // first time
 						config.isConnected = false;
-						//						System.out.print(AaAnsi.n().invalid("Connection lost!") + "\n > RECONNECTING...");
-						System.out.println(AaAnsi.n().warn("TCP Connection lost!"));
-						System.out.print(" > SESSION RECONNECTING...");
+						//						o.print(AaAnsi.n().invalid("Connection lost!") + "\n > RECONNECTING...");
+						o.println(AaAnsi.n().warn("TCP Connection lost!"));
+						o.print(" > SESSION RECONNECTING...");
 					} else {
-						System.out.print(".");
-						//            			System.out.print(". " + Thread.currentThread().getName() + " (" + Thread.currentThread().isDaemon() + ") ");
+						o.print(".");
+						//            			o.print(". " + Thread.currentThread().getName() + " (" + Thread.currentThread().isDaemon() + ") ");
 						//            			Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
 						//            			for (Thread t : threadSet) {
 						//            				if (!t.isDaemon()) {
-						//            					System.out.printf("%s %s%n", t.getName(), (t.getStackTrace().length > 0 ? Arrays.toString(t.getStackTrace()) : "n/a"));
-						//            					System.out.printf("%s %s%n", t.getName(), t.getStackTrace()[0].toString());
+						//            					o.printf("%s %s%n", t.getName(), (t.getStackTrace().length > 0 ? Arrays.toString(t.getStackTrace()) : "n/a"));
+						//            					o.printf("%s %s%n", t.getName(), t.getStackTrace()[0].toString());
 						//            				}
 						//            			}
 					}
 				} else if (event.getEvent() == SessionEvent.RECONNECTED) {
-					System.out.println("\n > SESSION RECONNECTED!");
+					o.println("\n > SESSION RECONNECTED!");
 					config.isConnected = true;
 				} else {
-					if (!config.isConnected) System.out.println();  // add a blank line
-					System.out.println(" > " + event.getEvent() + ": " + event);
+					if (!config.isConnected) o.println();  // add a blank line
+					o.println(" > " + event.getEvent() + ": " + event);
 				}
 			}
 		});
 		session.connect();  // connect to the broker... could throw JCSMPException, so best practice would be to try-catch here..!
 		config.isConnected = true;
 		session.setProperty(JCSMPProperties.CLIENT_NAME, "PrettyDump_" + session.getProperty(JCSMPProperties.CLIENT_NAME));
-		System.out.printf("%s connected to VPN '%s' on broker '%s' v%s.%n%n",
+		o.printf("%s connected to VPN '%s' on broker '%s' v%s.%n%n",
 				APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE),
 				session.getCapability(CapabilityType.PEER_ROUTER_NAME),
 				session.getCapability(CapabilityType.PEER_SOFTWARE_VERSION));
@@ -628,7 +538,7 @@ public class PrettyDump {
 		}		
 
 //				for (CapabilityType cap : CapabilityType.values()) {
-//					System.out.println(cap + ": " + session.getCapability(cap));
+//					o.println(cap + ": " + session.getCapability(cap));
 //				}
 
 		// is it a queue?
@@ -645,7 +555,7 @@ public class PrettyDump {
 				//            	flow_prop.setSelector("pasta = 'rotini' OR pasta = 'farfalle'");
 				flowProps.setSelector(selector);
 			}
-			System.out.printf("Attempting to bind to queue '%s' on the broker... ", queueName);
+			o.printf("Attempting to bind to queue '%s' on the broker... ", queueName);
 			flowQueueReceiver = null;
 			final CountDownLatch latch = new CountDownLatch(1);
 			try {
@@ -656,11 +566,11 @@ public class PrettyDump {
 						// Flow events are usually: active, reconnecting (i.e. unbound), reconnected, active
 						if (fe == FlowEvent.FLOW_RECONNECTING && config.isConnected) {
 							// flow active here?
-							System.out.println(AaAnsi.n().warn("'"+queueName+"' flow closed! Queue egress probably shutdown at the broker."));
-							System.out.println(" > FLOW RECONNECTING...");
+							o.println(AaAnsi.n().warn("'"+queueName+"' flow closed! Queue egress probably shutdown at the broker."));
+							o.println(" > FLOW RECONNECTING...");
 						} else if (fe == FlowEvent.FLOW_RECONNECTED) {
 							// flow inactive here?
-							System.out.println(" > FLOW RECONNECTED!");
+							o.println(" > FLOW RECONNECTED!");
 						} else if (fe == FlowEvent.FLOW_ACTIVE) {
 							config.isFlowActive = true;
 							if (latch.getCount() == 1) {  // first time here, so skip this notification
@@ -668,40 +578,40 @@ public class PrettyDump {
 									// TODO just to hide the warning, but need to probably do something with this?
 								}
 							} else {
-								if (!config.isConnected) System.out.println();  // connection coming back up
-								System.out.println(" > " + fe);
+								if (!config.isConnected) o.println();  // connection coming back up
+								o.println(" > " + fe);
 							}
 						} else if (fe == FlowEvent.FLOW_INACTIVE) {
 							config.isFlowActive = false;
 						} else if (!config.isConnected) {
 							// ignore
 						} else {
-							System.out.println(" > " + fe);
+							o.println(" > " + fe);
 						}
-						//						System.out.printf(" ### Received a Flow event: %s%n", event);  // hide this, don't really need to show in this app
+						//						o.printf(" ### Received a Flow event: %s%n", event);  // hide this, don't really need to show in this app
 					}
 				});
-				System.out.println("success!");
-				System.out.println();
+				o.println("success!");
+				o.println();
 				// double-check
 				if (contentFilter != null) {
-					System.out.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").fg(Elem.STRING).a(contentFilter).reset());
-					System.out.println(AaAnsi.n().warn("Filtered messages that are not displayed will still be ACKed!"));
+					o.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").fg(Elem.STRING).a(contentFilter).reset());
+					o.println(AaAnsi.n().warn("Filtered messages that are not displayed will still be ACKed!"));
 				}
 				if (config.isLastNMessagesEnabled()) {
-					System.out.println(AaAnsi.n().warn(String.format("Only last %d will be displayed, but all received messages will still be ACKed!", config.getLastNMessagesCapacity())));
+					o.println(AaAnsi.n().warn(String.format("Only last %d will be displayed, but all received messages will still be ACKed!", config.getLastNMessagesCapacity())));
 				}
 				if (selector != null) {
-					System.out.println(AaAnsi.n().a("🔎 Selector detected: ").fg(Elem.STRING).a(selector).reset());
-					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s' that match Selector.%nUse browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
+					o.println(AaAnsi.n().a("🔎 Selector detected: ").fg(Elem.STRING).a(selector).reset());
+					o.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s' that match Selector.%nUse browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
 				} else {  // no selectors, consume all
-					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s'.%nUse browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
+					o.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s'.%nUse browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
 				}
-				System.out.print(AaAnsi.n().fg(Elem.WARN));  // turn the console yellow
+				o.print(AaAnsi.n().fg(Elem.WARN));  // turn the console yellow
 				String answer = reader.readLine().trim().toLowerCase();
-				System.out.print(AaAnsi.n());  // to reset() the ANSI
+				o.print(AaAnsi.n());  // to reset() the ANSI
 				if (!"y".equals(answer) && !"yes".equals(answer)) {
-					System.out.println("\nExiting. 👎🏼");
+					o.println("\nExiting. 👎🏼");
 					System.exit(0);
 				}
 				latch.countDown();  // this hides the FLOW_ACTIVE until after all this stuff
@@ -709,18 +619,18 @@ public class PrettyDump {
 				// tell the broker to start sending messages on this queue receiver
 				flowQueueReceiver.start();
 				//            } catch (OperationNotSupportedException e) {  // not allowed to do this
-				//            	System.out.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getMessage(), e.toString())));
+				//            	o.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getMessage(), e.toString())));
 				//    			System.exit(1);
 				//            } catch (JCSMPErrorResponseException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
-				//            	System.out.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s: %s", e.getClass().getSimpleName(), e.getMessage())));
-				////            	System.out.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getResponsePhrase(), e.toString())));
+				//            	o.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s: %s", e.getClass().getSimpleName(), e.getMessage())));
+				////            	o.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getResponsePhrase(), e.toString())));
 				//    			System.exit(1);
 			} catch (JCSMPException | AccessDeniedException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
-				System.out.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s: %s", e.getClass().getSimpleName(), e.getMessage())));
+				o.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s: %s", e.getClass().getSimpleName(), e.getMessage())));
 				//            	if (e.getCause() instanceof JCSMPErrorResponseException) {
-				//                	System.out.println(AaAnsi.n().invalid(((JCSMPErrorResponseException)e.getCause()).getMessage()));
+				//                	o.println(AaAnsi.n().invalid(((JCSMPErrorResponseException)e.getCause()).getMessage()));
 				//            	}
-				System.out.println("Quitting! 💀");
+				o.println("Quitting! 💀");
 				logger.error("Caught this connecting to a queue",e);
 				if (flowQueueReceiver != null) flowQueueReceiver.close();
 				session.closeSession();
@@ -736,35 +646,35 @@ public class PrettyDump {
 			if (selector != null) {
 				bp.setSelector(selector);
 			}
-			System.out.printf("Attempting to browse queue '%s' on the broker... ", queueName);
+			o.printf("Attempting to browse queue '%s' on the broker... ", queueName);
 			try {
 				browser = session.createBrowser(bp, new FlowEventHandler() {
 					@Override
 					public void handleEvent(Object source, FlowEventArgs event) {
 						// Flow events are usually: active, reconnecting (i.e. unbound), reconnected, active
 						if (event.getEvent() == FlowEvent.FLOW_RECONNECTING && config.isConnected) {
-							System.out.println(AaAnsi.n().warn("'"+queueName+"' flow closed! Queue egress probably shutdown at the broker."));
-							System.out.print(" > FLOW RECONNECTING...");
+							o.println(AaAnsi.n().warn("'"+queueName+"' flow closed! Queue egress probably shutdown at the broker."));
+							o.print(" > FLOW RECONNECTING...");
 						} else if (event.getEvent() == FlowEvent.FLOW_RECONNECTED) {
-							System.out.println("\n > FLOW RECONNECTED!");
+							o.println("\n > FLOW RECONNECTED!");
 						} // else ignore!
-						//						System.out.printf(" ### Received a Flow event: %s%n", event);  // hide this, don't really need to show in this app
+						//						o.printf(" ### Received a Flow event: %s%n", event);  // hide this, don't really need to show in this app
 					}
 				});
-				System.out.println("success!");
-				System.out.println();
+				o.println("success!");
+				o.println();
 				if (selector != null) {
-					//					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Selector detected: \"%s\"", selector)).reset());
-					System.out.println(AaAnsi.n().a("🔎 Selector detected: ").fg(Elem.STRING).a(selector).reset());
+					//					o.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Selector detected: \"%s\"", selector)).reset());
+					o.println(AaAnsi.n().a("🔎 Selector detected: ").fg(Elem.STRING).a(selector).reset());
 				}
 				if (contentFilter != null) {
-					System.out.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").fg(Elem.STRING).a(contentFilter).reset());
+					o.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").fg(Elem.STRING).a(contentFilter).reset());
 				}
 				if (topics[0].startsWith("b:")) {  // regular browse, prompt for msg IDs
-					System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or to/from or range of MsgSpoolIDs (e.g. \"10659-11061\" or \"9817-\" or \"-10845\"),%n or to/from RGMID (e.g. \"-rmid1:3477f-a5ce52...\"): ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
-					System.out.print(AaAnsi.n().fg(Elem.KEY));  // turn the console blue
+					o.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or to/from or range of MsgSpoolIDs (e.g. \"10659-11061\" or \"9817-\" or \"-10845\"),%n or to/from RGMID (e.g. \"-rmid1:3477f-a5ce52...\"): ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
+					o.print(AaAnsi.n().fg(Elem.KEY));  // turn the console blue
 					String answer = reader.readLine().trim().toLowerCase();
-					System.out.print(AaAnsi.n());  // to reset() the ANSI
+					o.print(AaAnsi.n());  // to reset() the ANSI
 					if (answer.isEmpty()) {
 						// all messages
 					} else {
@@ -779,7 +689,7 @@ public class PrettyDump {
 								browseToRGMID = f.createReplicationGroupMessageId(answer);  // will throw if malformed
 							}
 						} catch (IllegalArgumentException | InvalidPropertiesException e) {
-							System.out.println(AaAnsi.n().invalid("Invalid format, must be: rmid1:xxxxxx- (starting from), or -rmid1:xxxxx (until)"));
+							o.println(AaAnsi.n().invalid("Invalid format, must be: rmid1:xxxxxx- (starting from), or -rmid1:xxxxx (until)"));
 							System.exit(1);
 						} else try {  // assume this is a Message Spool ID
 							browseTo = Long.parseLong(answer);  // could throw if not a number
@@ -794,7 +704,7 @@ public class PrettyDump {
 								browseFrom = Long.parseLong(numbers[0]);
 								if (numbers.length > 1) browseTo = Long.parseLong(numbers[1]);
 							} else {
-								System.out.println(AaAnsi.n().invalid("Invalid format, must be: xxxxx- (starting from), or -xxxxx (until), or xxxxx-yyyyy range"));
+								o.println(AaAnsi.n().invalid("Invalid format, must be: xxxxx- (starting from), or -xxxxx (until), or xxxxx-yyyyy range"));
 								System.exit(1);
 							}
 						}
@@ -804,18 +714,18 @@ public class PrettyDump {
 					origMsgCount = 1;
 				}
 				//	        } catch (JCSMPErrorResponseException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
-				//            	System.out.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getResponsePhrase(), e.toString())));
+				//            	o.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getResponsePhrase(), e.toString())));
 				////            	System.err.printf("%nUh-oh!  There was a problem: %s%n%s%nQuitting!", e.getResponsePhrase(), e.toString());
 				//    			System.exit(1);
 			} catch (JCSMPException | AccessDeniedException e) {  // something else went wrong: queue not exist, queue shutdown, etc.
 				logger.error("Caught this connecting to a queue",e);
-				System.out.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s: %s", e.getClass().getSimpleName(), e.getMessage())));
-				System.out.println("Quitting! 💀");
+				o.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s: %s", e.getClass().getSimpleName(), e.getMessage())));
+				o.println("Quitting! 💀");
 				System.exit(1);
 			}
 		} else {  // either direct or temporaryQ with subs
 			if (contentFilter != null) {
-				System.out.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").fg(Elem.STRING).a(contentFilter).reset());
+				o.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").fg(Elem.STRING).a(contentFilter).reset());
 			}
 			// now 
 			if (topics[0].startsWith("tq:")) {  // gonna use a temporary queue for Guaranteed delivery
@@ -838,7 +748,7 @@ public class PrettyDump {
 				if (selector != null) {
 					flowProps.setSelector(selector);
 				}
-				//				System.out.println("max msg queue: " + (Integer)session.getCapability(CapabilityType.MAX_GUARANTEED_MSG_SIZE));
+				//				o.println("max msg queue: " + (Integer)session.getCapability(CapabilityType.MAX_GUARANTEED_MSG_SIZE));
 				//				EndpointProperties endpointProps = new EndpointProperties(EndpointProperties.ACCESSTYPE_NONEXCLUSIVE, (Integer)session.getCapability(CapabilityType.MAX_GUARANTEED_MSG_SIZE), EndpointProperties.PERMISSION_NONE, 100);
 				EndpointProperties endpointProps = new EndpointProperties(EndpointProperties.ACCESSTYPE_NONEXCLUSIVE, 9_999_999, EndpointProperties.PERMISSION_NONE, 100);
 				endpointProps.setMaxMsgRedelivery(15);
@@ -847,22 +757,22 @@ public class PrettyDump {
 					//                	flow_prop.setSelector("pasta = 'rotini' OR pasta = 'farfalle'");
 					flowProps.setSelector(selector);
 				}
-				System.out.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Creating temporary Queue.")).reset());
+				o.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Creating temporary Queue.")).reset());
 				if (selector != null) {
-					System.out.println(AaAnsi.n().a(" 🔎 Selector detected: ").fg(Elem.STRING).a(selector).reset());
+					o.println(AaAnsi.n().a(" 🔎 Selector detected: ").fg(Elem.STRING).a(selector).reset());
 				} else {
-					System.out.println();
+					o.println();
 				}
 				final CountDownLatch latch = new CountDownLatch(1);
 				flowQueueReceiver = session.createFlow(new PrinterHelper(), flowProps, endpointProps, new FlowEventHandler() {
 					@Override
 					public void handleEvent(Object source, FlowEventArgs event) {
-						//						System.out.printf(" ### Received a Flow event: %s on thread %s %n", event, Thread.currentThread().getName());  // hide this, don't really need to show in this app
-						//						System.out.println(queue.getName());
+						//						o.printf(" ### Received a Flow event: %s on thread %s %n", event, Thread.currentThread().getName());  // hide this, don't really need to show in this app
+						//						o.println(queue.getName());
 						//						if (event.getEvent() == FlowEvent.FLOW_ACTIVE && queue != null && !queue.isDurable()) {  // don't need to check this stuff here b/c this handler would only exist if we come down this path of the code
 						if (event.getEvent() == FlowEvent.FLOW_ACTIVE) {
 							boolean isNewTempQueue = false;
-							//							System.out.println("temp queue deteted!  gonna re-add subs");
+							//							o.println("temp queue deteted!  gonna re-add subs");
 							for (String topic : topics) {
 								Topic t = f.createTopic(topic);
 								try {
@@ -871,9 +781,10 @@ public class PrettyDump {
 										if (latch.getCount() == 1) {  // first time doing this
 											//											AaAnsi aa = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '%s'", (topic.startsWith("!") ? "*NOT* " : ""), AaAnsi.n().colorizeTopic(topic)));
 											AaAnsi ansi = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed tempQ to %stopic: '", (topic.startsWith("!") || topic.startsWith("#noexport/!") ? "*NOT* " : "")));
-											ansi.aa(AaAnsi.colorizeTopic(topic));
+//											ansi.aa(AaAnsi.colorizeTopic(topic));
+											ansi.fg(Elem.DESTINATION).a(topic).fg(Elem.PAYLOAD_TYPE);
 											ansi.a('\'').reset();
-											System.out.println(ansi);
+											o.println(ansi);
 										} else {
 											// means that we've successfully added a sub to the tempQ on reconnect, which means new tempQ
 											isNewTempQueue = true;
@@ -886,7 +797,7 @@ public class PrettyDump {
 										}
 									}
 								} catch (JCSMPException | RuntimeException e) {
-									System.out.println(AaAnsi.n().ex(e));
+									o.println(AaAnsi.n().ex(e));
 									System.exit(5);
 									//									e.printStackTrace();
 									//									isShutdown = true;
@@ -894,15 +805,15 @@ public class PrettyDump {
 							}
 							latch.countDown();  // subs added, let's continue
 							if (isNewTempQueue) {
-								System.out.println(AaAnsi.n().invalid("!!! New temporary queue created: possible message loss during disconnect"));
+								o.println(AaAnsi.n().invalid("!!! New temporary queue created: possible message loss during disconnect"));
 							}
 						} else {
-							System.out.println("OTHER FLOW THING: " + event);
+							o.println("OTHER FLOW THING: " + event);
 						}
 					}
 				});
-				System.out.println(AaAnsi.n().a("Queue name: ").fg(Elem.KEY).a(flowQueueReceiver.getDestination().getName()).reset());
-				if (topics.length == 0) System.out.println(AaAnsi.n().warn("No subscriptions added, I hope you're copying messages into this queue!").toString());
+				o.println(AaAnsi.n().a("Queue name: ").fg(Elem.KEY).a(flowQueueReceiver.getDestination().getName()).reset());
+				if (topics.length == 0) o.println(AaAnsi.n().warn("No subscriptions added, I hope you're copying messages into this queue!").toString());
 				latch.await();  // block here until the subs are added
 				flowQueueReceiver.start();
 			} else {
@@ -911,8 +822,8 @@ public class PrettyDump {
 					if (topics[i].startsWith("!")) {
 						AaAnsi ansi = AaAnsi.n().invalid("\nNOT subscriptions are not supported for Direct messaging, use a tempQ: ");
 						ansi.fg(Elem.DESTINATION).a("tq:" + topics[i]).reset();
-						System.out.println(ansi);
-						System.out.println("Quitting! 💀");
+						o.println(ansi);
+						o.println("Quitting! 💀");
 						System.exit(1);
 					}
 					if (config.noExport && !topics[i].startsWith("#noexport/")) {
@@ -931,19 +842,19 @@ public class PrettyDump {
 					tp.setRxAllDeliverToOne(true);  // ensure DTO-override / DA is enabled for this sub
 					Topic t = f.createTopic(tp);
 					session.addSubscription(t, true);  // true == wait for confirm
-//					System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed to Direct topic: '%s'", topic)).reset());
+//					o.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Subscribed to Direct topic: '%s'", topic)).reset());
 					AaAnsi ansi = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a("Subscribed to Direct topic: '");
 //					ansi.aa(AaAnsi.colorizeTopic(topic));
 					ansi.fg(Elem.DESTINATION).a(topic).fg(Elem.PAYLOAD_TYPE);
 					ansi.a('\'').reset();
-					System.out.println(ansi);
+					o.println(ansi);
 				}
 				directConsumer.start();
 			}
 		}
 		// DONE!!!!   READY TO ROCK!
-		System.out.println();
-		System.out.println("Starting. Press Ctrl-C to quit.");
+		o.println();
+		o.println("Starting. Press Ctrl-C to quit.");
 		if (config.isLastNMessagesEnabled()) {
 			ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered(null, 0, 0, 0, config.getLastNMessagesCapacity()));
 			//			ThinkingAnsiHelper.tick(String.format("%d messages gathered, # messages received = ", config.getLastNMessagesSize()));
@@ -952,8 +863,8 @@ public class PrettyDump {
 		final Thread shutdownThread = new Thread(() -> {
 //			config.stop();
 			ThinkingAnsiHelper.filteringOff();
-			System.out.print(AaAnsi.n());
-			System.out.println("\nShutdown hook triggered, quitting...");
+			o.print(AaAnsi.n());
+			o.println("\nShutdown hook triggered, quitting...");
 			config.isShutdown = true;
 //				if (config.isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
 //					if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
@@ -967,12 +878,12 @@ public class PrettyDump {
 			}
 			if (config.isLastNMessagesEnabled()) {  // got some messages to dump!
 				for (MessageObject msg : config.getLastNMessages()) {
-					System.out.print(msg.printMessage());
+					o.print(msg.printMessage());
 				}
-				System.out.println();
+				o.println();
 			}
 			logger.info("### PrettyDump finishing!");
-			System.out.println("Goodbye! 👋🏼");
+			o.println("Goodbye! 👋🏼");
 			AnsiConsole.systemUninstall();
 			})
 		;
@@ -1001,10 +912,10 @@ public class PrettyDump {
 							printer.onReceive(nextMsg);  // always print it
 							try {
 								if (rgmid.compare(browseToRGMID) == 0) {  // match!  time to stop
-									System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("%nMessage with RGMID '%s' received. Done.", rgmid)).reset());
+									o.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("%nMessage with RGMID '%s' received. Done.", rgmid)).reset());
 									break;  // done!
 								} else if (rgmid.compare(browseToRGMID) > 0) {  // too big!  time to stop
-									System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("%nMessage with RGMID '%d' received, greater than than browse range '%d'. Done.", rgmid, browseToRGMID)).reset());
+									o.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("%nMessage with RGMID '%d' received, greater than than browse range '%d'. Done.", rgmid, browseToRGMID)).reset());
 									break;  // done!
 								}
 							} catch (JCSMPNotComparableException e) {  // can't compare, so ignore and keep going
@@ -1044,7 +955,7 @@ public class PrettyDump {
 						try {
 							long msgId = nextMsg.getMessageIdLong();  // deprecated, shouldn't be using this, but oh well!
 							if (msgId <= 0) {  // should be impossible??
-								System.out.println(AaAnsi.n().invalid("Message received with no Message ID set!"));
+								o.println(AaAnsi.n().invalid("Message received with no Message ID set!"));
 								printer.onReceive(nextMsg);
 								break;
 							}
@@ -1053,7 +964,7 @@ public class PrettyDump {
 								break;
 							} else if (msgId > browseTo) {  // too far, time to stop
 								printer.onReceive(nextMsg);
-								System.out.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("%nMessage with ID '%d' received, greater than than browse range '%d'. Done.", msgId, browseTo)).reset());
+								o.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("%nMessage with ID '%d' received, greater than than browse range '%d'. Done.", msgId, browseTo)).reset());
 								break;  // done!
 							} else if (msgId < browseFrom) {  // haven't got there yet
 								config.incMessageCount();
@@ -1070,23 +981,23 @@ public class PrettyDump {
 								printer.onReceive(nextMsg);
 							}
 						} catch (Exception e) {
-							System.out.println(AaAnsi.n().invalid("Exception on message trying to get Message ID!").reset());
+							o.println(AaAnsi.n().invalid("Exception on message trying to get Message ID!").reset());
 							printer.onReceive(nextMsg);
 							break;
 						}
 					}
 				}  // end of while loop
 			} catch (JCSMPException | AccessDeniedException e) {  // something else went wrong: queue permissions changed? , etc.
-				System.out.println();
-				System.out.println("I'm here inside catch block");
+				o.println();
+				o.println("I'm here inside catch block");
 				if (!config.isShutdown) {
-					System.out.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s: %s", e.getClass().getSimpleName(), e.getMessage())));
-					System.out.println("Quitting! 💀");
+					o.println(AaAnsi.n().invalid(String.format("%nUh-oh!  There was a problem: %s: %s", e.getClass().getSimpleName(), e.getMessage())));
+					o.println("Quitting! 💀");
 					System.exit(1);
 				}
 			} finally {
-				System.out.println(AaAnsi.n());
-				System.out.println("Browsing finished!");
+				o.println(AaAnsi.n());
+				o.println("Browsing finished!");
 				browser.close();
 			}
 		} else {  // async receive, either Direct sub or from a queue, so just wait here until Ctrl+C pressed
@@ -1102,8 +1013,8 @@ public class PrettyDump {
 			}
 		}
 		config.isShutdown = true;
-		System.out.print(AaAnsi.n());
-		System.out.println("Main thread exiting.");
+		o.print(AaAnsi.n());
+		o.println("Main thread exiting.");
 	}  // end of main()
 
 	private void handleKeyboardInput(BufferedReader reader) throws IOException {
@@ -1158,10 +1069,10 @@ public class PrettyDump {
 				CHARSET = Charset.forName(System.getenv("PRETTY_CHARSET"));  // this should throw if it doesn't find it
 				DECODER = CHARSET.newDecoder().onMalformedInput(CodingErrorAction.REPLACE).onUnmappableCharacter(CodingErrorAction.REPLACE);
 			} catch (Exception e) {
-				System.out.println(AaAnsi.n().invalid("Invalid charset specified! PRETTY_CHARSET=" + System.getenv("PRETTY_CHARSET")).reset());
-				System.out.println("Use one of: " + Charset.availableCharsets().keySet());
-				System.out.println("Or clear environment variable 'PRETTY_CHARSET' to use default UTF-8");
-				System.out.println("Quitting! 💀");
+				o.println(AaAnsi.n().invalid("Invalid charset specified! PRETTY_CHARSET=" + System.getenv("PRETTY_CHARSET")).reset());
+				o.println("Use one of: " + Charset.availableCharsets().keySet());
+				o.println("Or clear environment variable 'PRETTY_CHARSET' to use default UTF-8");
+				o.println("Quitting! 💀");
 				System.exit(1);
 			}
 		} else {
@@ -1184,7 +1095,7 @@ public class PrettyDump {
 			// NOTE!  You can still ACK a browsed message!!
 			if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
 			if (msgCountRemaining == 0) {
-				System.out.println("\n" + AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(origMsgCount + " messages received. Quitting.").reset());
+				o.println("\n" + AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(origMsgCount + " messages received. Quitting.").reset());
 //				config.stop();
 				config.isShutdown = true;
 //				if (flowQueueReceiver != null) flowQueueReceiver.close();
@@ -1194,7 +1105,7 @@ public class PrettyDump {
 
 		@Override
 		public void onException(JCSMPException e) {  // uh oh!
-			System.out.println(AaAnsi.n().ex(" ### MessageListener's onException()", e).a(" - check ~/.pretty/pretty.log for details. "));
+			o.println(AaAnsi.n().ex(" ### MessageListener's onException()", e).a(" - check ~/.pretty/pretty.log for details. "));
 			logger.warn("Caught in my onExecption() callback", e);
 			if (e instanceof JCSMPTransportException) {  // all reconnect attempts failed (impossible now since we're at -1)
 				config.isShutdown = true;  // let's quit

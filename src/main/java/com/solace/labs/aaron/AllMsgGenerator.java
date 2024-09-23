@@ -67,8 +67,7 @@ public class AllMsgGenerator {
 		String s = "<payload><name>"+NAME+"</name><age>"+AGE+"</age><height>"+HEIGHT+"</height><nice>true</nice><null></null><emoji>😅</emoji></payload>";
 		return s;
 	}
-	
-	
+
 	enum TextStrings {
 		JSON_SIMPLE(getPayloadJsonObjectSmall()),
 		XML_SIMPLE(getPayloadXmlSmall()),
@@ -100,6 +99,30 @@ public class AllMsgGenerator {
 			TextStrings.XML_SIMPLE
 			);
 //	EnumSet<Texts> textPayloads2 = EnumSet.allOf(Texts.class);
+
+	private static byte[] getAllByteValuesArray() {
+		byte[] allByteValsArray = new byte[256];
+		for (int i=0; i<128; i++) {
+			allByteValsArray[i] = (byte)(i);
+		}
+		for (int i=128; i<256; i++) {
+			allByteValsArray[i] = (byte)(i-256);
+		}
+		return allByteValsArray;
+	}
+
+	enum BinaryPayloads {
+		ALL_BYTE_VALUES(getAllByteValuesArray()),
+		;
+		final byte[] payload;
+		BinaryPayloads(byte[] payload) {
+			this.payload = payload;
+		}
+		@Override public String toString() {
+			return name().replace('_', '-').toLowerCase();
+		}
+		;
+	}
 	
 	static Map<String,byte[]> binaryPayloads = new HashMap<>();
 	static {
@@ -111,7 +134,6 @@ public class AllMsgGenerator {
 			allByteValsArray[i] = (byte)(i-256);
 		}
 		binaryPayloads.put("all-byte-values", allByteValsArray);
-		
 	}
 	
 	static SDTMap getPayloadSDTMapSmall() throws SDTException {
@@ -140,7 +162,6 @@ public class AllMsgGenerator {
 		stream.writeString("😅");
 		return stream.toString();
 	}
-
 
 	static Map<String,Object> streamPayloads = new HashMap<>();
 	static {
@@ -209,21 +230,22 @@ public class AllMsgGenerator {
 		void send() throws JCSMPException, InterruptedException;
 	}
 	
-	abstract class Sender2 implements Sender {
+	abstract class SenderImpl implements Sender {
 		final String topic;
 		final Object payload;
-		Sender2(String topic, Object payload) {
+		SenderImpl(String topic, Object payload) {
 			this.topic = topic;
 			this.payload = payload;
 		}
+		
 		void send(BytesXMLMessage msg) throws JCSMPException {
 			producer.send(msg, f.createTopic(topic));
 		}
 	}
 	
 	
-	class TextMessageSender2 extends Sender2 {
-		public TextMessageSender2(String topic, String payload) {
+	class TextMessageSender extends SenderImpl {
+		public TextMessageSender(String topic, String payload) {
 			super(topic, payload);
 		}
 		public void send() throws JCSMPException {
@@ -234,11 +256,11 @@ public class AllMsgGenerator {
 		}
 	}
 
-	class BytesMessageSender2 extends Sender2 {
-		public BytesMessageSender2(String topic, byte[] payload) {
+	class BytesMessageSender extends SenderImpl {
+		public BytesMessageSender(String topic, byte[] payload) {
 			super(topic, payload);
 		}
-		public BytesMessageSender2(String topic, String payload) {
+		public BytesMessageSender(String topic, String payload) {
 			super(topic, payload.getBytes(StandardCharsets.UTF_8));
 		}
 		public void send() throws JCSMPException {
@@ -249,8 +271,8 @@ public class AllMsgGenerator {
 		}
 	}
 
-	class XmlContentMessageSender2 extends Sender2 {
-		public XmlContentMessageSender2(String topic, String payload) {
+	class XmlContentMessageSender extends SenderImpl {
+		public XmlContentMessageSender(String topic, String payload) {
 			super(topic, payload);
 		}
 		public void send() throws JCSMPException {
@@ -261,8 +283,8 @@ public class AllMsgGenerator {
 		}
 	}
 
-	class XmlBinaryMessageSender2 extends Sender2 {
-		public XmlBinaryMessageSender2(String topic, byte[] payload) {
+	class XmlBinaryMessageSender extends SenderImpl {
+		public XmlBinaryMessageSender(String topic, byte[] payload) {
 			super(topic, payload);
 		}
 		public void send() throws JCSMPException {
@@ -273,7 +295,7 @@ public class AllMsgGenerator {
 		}
 	}
 
-	class DoubleBinaryMessageSender2 extends Sender2 {
+	class DoubleBinaryMessageSender2 extends SenderImpl {
 		public DoubleBinaryMessageSender2(String topic, byte[] payload) {
 			super(topic, payload);
 		}
@@ -359,10 +381,10 @@ public class AllMsgGenerator {
 		if (args.length > 3) props.setProperty(JCSMPProperties.PASSWORD, args[3]);
 		session = f.createSession(props);
 		
-		types.add(new BytesMessageSender2(ROOT_TOPIC + "/bytes/array/raw", binaryPayloads.get("all-byte-values")));
-		types.add(new BytesMessageSender2(ROOT_TOPIC + "/bytes/array/utf-8", encode(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString(), CharsetType.UTF_8)));
-		types.add(new TextMessageSender2(ROOT_TOPIC + "/text/array/ascii", StandardCharsets.US_ASCII.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString()));
-		types.add(new BytesMessageSender2(ROOT_TOPIC + "/bytes/array/ascii", encode(StandardCharsets.US_ASCII.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString(), CharsetType.ASCII)));
+		types.add(new BytesMessageSender(ROOT_TOPIC + "/bytes/array/raw", binaryPayloads.get("all-byte-values")));
+		types.add(new BytesMessageSender(ROOT_TOPIC + "/bytes/array/utf-8", encode(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString(), CharsetType.UTF_8)));
+		types.add(new TextMessageSender(ROOT_TOPIC + "/text/array/ascii", StandardCharsets.US_ASCII.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString()));
+		types.add(new BytesMessageSender(ROOT_TOPIC + "/bytes/array/ascii", encode(StandardCharsets.US_ASCII.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString(), CharsetType.ASCII)));
 //		types.add(new XmlBinaryMessageSender2(ROOT_TOPIC + "/bytes/array/raw", binaryPayloads.get("all-byte-values")));
 
 /*		for (String type : textPayloads.keySet()) {
@@ -386,7 +408,7 @@ public class AllMsgGenerator {
 		*/
 		
 		for (TextStrings type : textPayloads2) {
-			types.add(makeSender(TextMessageSender2.class, type, null));
+			types.add(makeSender(TextMessageSender.class, type, null));
 		}
 	}
 	
@@ -406,15 +428,15 @@ public class AllMsgGenerator {
 		}
 	}*/
 
-	private Sender makeSender(Class clazz, TextStrings type, CharsetType charset) {
-		if (clazz == TextMessageSender2.class) {
-			return new TextMessageSender2(String.format("%s/text/%s", ROOT_TOPIC, type), type.payload);
-		} else if (clazz == BytesMessageSender2.class) {
-			return new BytesMessageSender2(String.format("%s/bytes/%s/%s", ROOT_TOPIC, charset.getDisplayName(), type), encode(type.payload, charset));
-		} else if (clazz == XmlContentMessageSender2.class) {
-			return new XmlContentMessageSender2(String.format("%s/xml-content/%s", ROOT_TOPIC, type), type.payload);
-		} else if (clazz == XmlBinaryMessageSender2.class) {
-			return new XmlBinaryMessageSender2(String.format("%s/xml-binary/%s/%s", ROOT_TOPIC, charset.getDisplayName(), type), encode(type.payload, charset));
+	private Sender makeSender(Class<? extends SenderImpl> clazz, TextStrings type, CharsetType charset) {
+		if (clazz == TextMessageSender.class) {
+			return new TextMessageSender(String.format("%s/text/%s", ROOT_TOPIC, type), type.payload);
+		} else if (clazz == BytesMessageSender.class) {
+			return new BytesMessageSender(String.format("%s/bytes/%s/%s", ROOT_TOPIC, charset.getDisplayName(), type), encode(type.payload, charset));
+		} else if (clazz == XmlContentMessageSender.class) {
+			return new XmlContentMessageSender(String.format("%s/xml-content/%s", ROOT_TOPIC, type), type.payload);
+		} else if (clazz == XmlBinaryMessageSender.class) {
+			return new XmlBinaryMessageSender(String.format("%s/xml-binary/%s/%s", ROOT_TOPIC, charset.getDisplayName(), type), encode(type.payload, charset));
 		} else if (clazz == DoubleBinaryMessageSender2.class) {
 			return new DoubleBinaryMessageSender2(String.format("%s/double-binary/%s/%s", ROOT_TOPIC, charset.getDisplayName(), type), encode(type.payload, charset));
 		} else {
