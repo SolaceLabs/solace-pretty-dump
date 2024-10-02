@@ -156,16 +156,18 @@ public class SdtUtils {
 			if (value instanceof Topic) ansi.colorizeTopic(strValue, -1).reset();
 			else {
 				ansi.aa(ansiValue).reset();
-				if (value instanceof Long) {
-					String ts = UsefulUtils.guessIfTimestampLong(key, (long)value);
-					if (ts != null) {
-//						ansi.fg(Elem.CHAR).a(ts);
-						ansi.fg(Elem.NUMBER).faintOn().a(ts).reset();
-					}
-				} else if (value instanceof String) {
-					String ts = UsefulUtils.guessIfTimestampString(key, (String)value);
-					if (ts != null) {
-						ansi.fg(Elem.STRING).faintOn().a(ts).reset();
+				if (indentFactor > 0) {  // i.e. not compressed
+					if (value instanceof Long) {
+						String ts = UsefulUtils.guessIfTimestampLong(key, (long)value);
+						if (ts != null) {
+	//						ansi.fg(Elem.CHAR).a(ts);
+							ansi.fg(Elem.NUMBER).faintOn().a(ts).reset();
+						}
+					} else if (value instanceof String) {
+						String ts = UsefulUtils.guessIfTimestampString(key, (String)value);
+						if (ts != null) {
+							ansi.fg(Elem.STRING).faintOn().a(ts).reset();
+						}
 					}
 				}
 			}

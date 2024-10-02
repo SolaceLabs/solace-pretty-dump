@@ -163,8 +163,9 @@ public class MessageHelper {
 			}
 		}
 
-		// Protobuf stuff...
 		boolean topicMatch = false;
+		if (!config.rawPayload) {
+			// Protobuf stuff...
 			for (Entry<Sub,Method> entry : config.protobufCallbacks.entrySet()) {
     			Sub sub = entry.getKey();
     			String topic = message.getDestination().getName();
@@ -192,8 +193,8 @@ public class MessageHelper {
 					}
     			}
     		}
+		}
 		if (!topicMatch) ms.binary.formatBytes(bytes, message.getHTTPContentType());  // didn't match anything
-
 	}
 	
 

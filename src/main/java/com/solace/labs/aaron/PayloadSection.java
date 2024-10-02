@@ -117,9 +117,9 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
 			type = "non " + (type == null ? StandardCharsets.UTF_8.displayName() + " encoded string" : type);
     	}
     	double ratio = (1.0 * formatted.getControlCharsCount() + formatted.getReplacementCharsCount()) / formatted.getTotalCharCount();
-		if (malformed && ratio >= 0.25 /* && !oneLineMode */ && !config.rawPayload) {  // 25%, very likely a binary file
+		if ((malformed && ratio >= 0.25) /* && !oneLineMode */ || config.rawPayload) {  // 25%, very likely a binary file
 			formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, config.getFormattingIndent(), AnsiConsole.getTerminalWidth());
-    	} else if (malformed || formatted.getControlCharsCount() > 0 || config.rawPayload) {  // any unusual control chars (not tab, LF, CR, FF, or Esc, or NUL at string end
+		} else if (malformed || formatted.getControlCharsCount() > 0 /*|| config.rawPayload */) {  // any unusual control chars (not tab, LF, CR, FF, or Esc, or NUL at string end
 			if (!config.oneLineMode && config.getFormattingIndent() > 0) {  // only if not in one-line mode!
 				formatted.a('\n').aa(UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, config.getFormattingIndent(), AnsiConsole.getTerminalWidth()));
 			}

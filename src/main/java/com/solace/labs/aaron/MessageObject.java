@@ -314,7 +314,7 @@ public class MessageObject {
 		    	    			systemOut.print("  ");
 			    	    		if (spaceToAdd2 == 0 || userProps == null) systemOut.print(minProps);
 			    	    		// shouldn't be able to make it into this block if userProps == null
-			    	    		else systemOut.print(AaAnsi.n().a(userProps.formatted.toRawString().substring(0, spaceToAdd2-1)).a('…').aa(minProps));
+			    	    		else systemOut.print(AaAnsi.n().fg(Elem.MSG_BREAK).a(userProps.formatted.toRawString().substring(0, spaceToAdd2-1)).a('…').aa(minProps));
 		    	    		}
 		    	    	}
 					} else {  // no trimming needed!
@@ -322,12 +322,12 @@ public class MessageObject {
 	    				systemOut.print(msgDestNameFormatted);
 	    				if (maxLengthUserPropsList.max() > 0) {
 		    				systemOut.print(UsefulUtils.pad(spaceToAdd + 2, ' '));
-		    				if (userProps != null) systemOut.print(userProps.formatted.toRawString());
+		    				if (userProps != null) systemOut.print(AaAnsi.n().fg(Elem.MSG_BREAK).a(userProps.formatted.toRawString()));
 		    				else  systemOut.print(minProps);  // at least some messages have user props
 	    				}
 					}
 					systemOut.println();
-					if (!payloadSizeString.isBlank()) {  // don't add the extra line just for empty payload
+					if (!payloadSizeString.isEmpty()) {  // don't add the extra line just for empty payload
 						systemOut.print("  ");
 	    				if (config.isAutoTrimPayload()) {
 	    					if (payload.length() > currentScreenWidth - config.getCurrentIndent()) {

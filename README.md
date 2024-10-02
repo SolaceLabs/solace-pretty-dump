@@ -519,8 +519,9 @@ SaxParserException - org.xml.sax.SAXParseException; lineNumber: 1; columnNumber:
 ## Protobuf Stuff
 
 PrettyDump comes preloaded with Protobuf decoders for:
-- Solace Distributed Trace messages
 - Sparkplug B
+- OpenTelemtry OTLP Traces
+- Solace Distributed Trace messages (from `#telemetry-default` queue)
 
 Check the `protobuf.properties` file for topic-to-class mapping.  PrettyDump uses [topic dispatch](https://github.com/aaron-613/jcsmp-topic-dispatch) to
 selectively choose which Protobuf decoder to use based on the incoming messages' topics.
@@ -668,10 +669,10 @@ Note that the copied messages are _new_ messages, and as such will have differen
 One of the most common ways I run this when developing an app and just want to sniff the broker is to use one-line mode, auto indent `+1` with spacing, and enable payload trim with argument `--trim`.  You can always press `+` or `-` `[ENTER]` during runtime to toggle between spacing modes, or `t` `[ENTER]` to toggle payload trim.
 ```
 pq-demo/proc..../pq12/sub-pq12-4049/8f-7/0/_  <EMPTY> Raw BytesMessage
-pq-demo/stats.../pq../sub-pq12-4049           {"red":0,"oos":0,"queueName":"pq12","slow":0,"r…(len=189)
+pq-demo/stats.../pq../sub-pq12-4049           {"red":0,"oos":0,"queueName":"pq12","slow":0,"…(len=189)
 pq12.../pub-dc8f/8f-4/0............/_         <EMPTY> Raw BytesMessage
 pq-demo/proc..../pq12/sub-pq12-4049/8f-4/0/_  <EMPTY> Raw BytesMessage
-pq-demo/stats.../pq../pub-dc8f                {"prob":0,"paused":false,"delay":0,"nacks":0,"re…(len=85)
+pq-demo/stats.../pq../pub-dc8f                {"prob":0,"paused":false,"delay":0,"nacks":0,"r…(len=85)
 ```
 
 And use "vivid" colour mode `export PRETTY_COLORS=vivid` for nice rainbow topic level colouring.
@@ -686,14 +687,14 @@ If running on Windows PowerShell or Command Prompt, make sure you enable UTF-8 c
 C:\> chcp 65001
 C:\> set PRETTYDUMP_OPTS=-Dsun.stdout.encoding=utf-8
 C:\> set TERM=xterm-256color
-C:\> prettydump
+C:\> prettydump.bat
 
  ~or~
 
 PS C:\> chcp 65001
 PS C:\> $Env:PRETTYDUMP_OPTS='-Dsun.stdout.encoding=utf-8'
 PS C:\> $Env:TERM='xterm-256color'
-PS C:\> prettydump
+PS C:\> .\prettydump
 ```
 
 See: https://en.wikipedia.org/wiki/Windows-1252

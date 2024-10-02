@@ -35,7 +35,7 @@ import com.solacesystems.jcsmp.XMLMessageProducer;
 
 public class AllMsgGenerator {
 
-	// payload helper methods
+	// payload helper methods, main class + vars below
 	
 	private static final String NAME = "Aárön";
 	private static final int AGE = 47;
@@ -78,10 +78,13 @@ public class AllMsgGenerator {
 		ARABIC("مرحباً، هذه الجملة مكتوبة باللغة العربية."),
 		CANTONESE("你好，這句話是用粵語寫的。"),
 		LOG_ENTRY("2024-09-11T01:33:17.110+00:00 <local3.notice> solace1081 event: CLIENT: CLIENT_CLIENT_NAME_CHANGE: default PrettyDump_AaronsThinkPad3/992/00110001/EzN57TqULU Client (20) PrettyDump_AaronsThinkPad3/992/00110001/EzN57TqULU username foo changed name from AaronsThinkPad3/992/00110001/EzN57TqULU\u0000"),
-		ASCII_REPLACE_CHAR("This char \u001a is SUB."),
-		UTF8_REPLACE_CHAR("This has the replacement � char."),
+		ASCII_REPLACE_CHAR("This char \u001a 0x1a is the ASCII SUBstitution character."),
+		UTF8_REPLACE_CHAR("This contains the UTF-8 replacement � U+FFFD char."),
 		CURRENCY("The currency of UK is £.  The curency of Japan is ¥, and € in Europe.  1/100th of $1.00 is 1¢."),
-		NULL_CHAR("A \u0000 A"),
+		NULL_CHAR("NULL char here > \u0000 <"),
+		ANSI_COLORS("Console apps that have ANSI support: this word is \u001b[0;31mRED\u001b[m, this one is \u001b[0;32mGREEN\u001b[m, and this one is \u001b[5mblinking\u001b[m."),
+		ANSI_NUKE_SCREEN("Console apps that don't verify ANSI: this sequence should wipe your screen.\u001b[2J"),
+		COOL_UNICODE(UsefulUtils.UNICODE_BULLETS),
 		;
 		final String payload;
 		TextStrings(String payload) {
@@ -93,10 +96,15 @@ public class AllMsgGenerator {
 	}
 
 	static EnumSet<TextStrings> textPayloads2 = EnumSet.of(
-			TextStrings.ASCII_REPLACE_CHAR,
-			TextStrings.ENGLISH,
-			TextStrings.JSON_SIMPLE,
-			TextStrings.XML_SIMPLE
+//			TextStrings.ASCII_REPLACE_CHAR,
+//			TextStrings.ENGLISH,
+//			TextStrings.FRENCH,
+//			TextStrings.SPANISH,
+//			TextStrings.JSON_SIMPLE,
+//			TextStrings.XML_SIMPLE,
+			TextStrings.ANSI_COLORS,
+			TextStrings.ANSI_NUKE_SCREEN,
+			TextStrings.COOL_UNICODE
 			);
 //	EnumSet<Texts> textPayloads2 = EnumSet.allOf(Texts.class);
 
@@ -359,11 +367,42 @@ public class AllMsgGenerator {
 		public void send() throws JCSMPException {
 			TextMessage msg = f.createMessage(TextMessage.class);
 			msg.writeAttachment("This is overwriting using writeAttachment()".getBytes());
-			producer.send(msg, f.createTopic("gen/text/invalid"));
+			producer.send(msg, f.createTopic(ROOT_TOPIC + "/text/invalid"));
 		}
 	}
 	
+	class AnsiTopicMessage implements Sender {
+		public void send() throws JCSMPException {
+			TextMessage msg = f.createMessage(TextMessage.class);  // empty text message
+			msg.setText("");
+			producer.send(msg, f.createTopic(ROOT_TOPIC + "/ansi/\u001b[38;5;1mred\u001b[m/normal"));
+//			producer.send(msg, f.createTopic(ROOT_TOPIC + "/ansi/red/normal"));
+		}
+	}
+
+	class AnsiHiddenPayloadMessage implements Sender {
+		public void send() throws JCSMPException {
+			TextMessage msg = f.createMessage(TextMessage.class);  // empty text message
+			msg.setText("This text content will be hidden by this ANSI escape sequence.\u001b[200D<IF YOU ONLY SEE THIS, THE ACTUAL PAYLOAD HAS BEEN HIDDEN, AND YOU ARE INTERPRETING ANSI ESCAPE SEQUENCES>");
+			producer.send(msg, f.createTopic(ROOT_TOPIC + "/ansi/hidden/payload"));
+		}
+	}
+
+	class AnsiHiddenPayloadMessage2 implements Sender {
+		public void send() throws JCSMPException {
+			TextMessage msg = f.createMessage(TextMessage.class);  // empty text message
+			msg.setText("This text content will be hidden by a series of backspace chars.");
+			StringBuilder sb = new StringBuilder();
+			for (int i=0; i<msg.getText().length(); i++) {
+				sb.append((char)8);  // a backspace char
+			}
+			msg.setText(msg.getText() + sb.toString() + "<IF YOU ONLY SEE THIS, THE ACTUAL PAYLOAD HAS BEEN HIDDEN BY BACKSPACE CONTROL CHARS>");
+			producer.send(msg, f.createTopic(ROOT_TOPIC + "/ansi/hidden/payload2"));
+		}
+	}
 	
+
+	// MAIN CLASS //////////////////////////////////////////////////////////////////////////////////////////////////
 	
 	private static final JCSMPFactory f = JCSMPFactory.onlyInstance();
 	private final JCSMPProperties props;
@@ -381,31 +420,36 @@ public class AllMsgGenerator {
 		if (args.length > 3) props.setProperty(JCSMPProperties.PASSWORD, args[3]);
 		session = f.createSession(props);
 		
-		types.add(new BytesMessageSender(ROOT_TOPIC + "/bytes/array/raw", binaryPayloads.get("all-byte-values")));
-		types.add(new BytesMessageSender(ROOT_TOPIC + "/bytes/array/utf-8", encode(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString(), CharsetType.UTF_8)));
-		types.add(new TextMessageSender(ROOT_TOPIC + "/text/array/ascii", StandardCharsets.US_ASCII.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString()));
-		types.add(new BytesMessageSender(ROOT_TOPIC + "/bytes/array/ascii", encode(StandardCharsets.US_ASCII.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString(), CharsetType.ASCII)));
+//		types.add(new AnsiTopicMessage());
+//		types.add(new AnsiHiddenPayloadMessage());
+//		types.add(new AnsiHiddenPayloadMessage2());
+//		
+//		types.add(new BytesMessageSender(ROOT_TOPIC + "/bytes/array/raw", binaryPayloads.get("all-byte-values")));
+//		types.add(new BytesMessageSender(ROOT_TOPIC + "/bytes/array/utf-8", encode(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString(), CharsetType.UTF_8)));
+//		types.add(new TextMessageSender(ROOT_TOPIC + "/text/array/ascii", StandardCharsets.US_ASCII.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString()));
+//		types.add(new BytesMessageSender(ROOT_TOPIC + "/bytes/array/ascii", encode(StandardCharsets.US_ASCII.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString(), CharsetType.ASCII)));
+
 //		types.add(new XmlBinaryMessageSender2(ROOT_TOPIC + "/bytes/array/raw", binaryPayloads.get("all-byte-values")));
 
-/*		for (String type : textPayloads.keySet()) {
-			types.add(makeSender(TextMessageSender2.class, type, null));
-			types.add(makeSender(BytesMessageSender2.class, type, CharsetType.UTF_8));
+		for (TextStrings type : textPayloads2) {
+//			types.add(makeSender(TextMessageSender.class, type, null));
+//			types.add(makeSender(BytesMessageSender.class, type, CharsetType.UTF_8));
 //			types.add(makeSender(BytesMessageSender2.class, type, CharsetType.ASCII));
-			types.add(makeSender(BytesMessageSender2.class, type, CharsetType.LATIN1));
+//			types.add(makeSender(BytesMessageSender2.class, type, CharsetType.LATIN1));
 //			types.add(makeSender(BytesMessageSender2.class, type, CharsetType.WIN_1252));
 //			types.add(makeSender(BytesMessageSender2.class, type, CharsetType.DOS));
 //			types.add(makeSender(BytesMessageSender2.class, type, CharsetType.UTF_16));
-			types.add(makeSender(XmlContentMessageSender2.class, type, null));
-			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.UTF_8));
+//			types.add(makeSender(XmlContentMessageSender2.class, type, null));
+//			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.UTF_8));
 //			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.ASCII));
-			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.LATIN1));
+//			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.LATIN1));
 //			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.WIN_1252));
 //			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.DOS));
 //			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.UTF_16));
-			types.add(makeSender(DoubleBinaryMessageSender2.class, type, CharsetType.UTF_8));
-			types.add(makeSender(DoubleBinaryMessageSender2.class, type, CharsetType.LATIN1));
+//			types.add(makeSender(DoubleBinaryMessageSender2.class, type, CharsetType.UTF_8));
+//			types.add(makeSender(DoubleBinaryMessageSender2.class, type, CharsetType.LATIN1));
 		}
-		*/
+
 		
 		for (TextStrings type : textPayloads2) {
 			types.add(makeSender(TextMessageSender.class, type, null));
@@ -476,7 +520,7 @@ public class AllMsgGenerator {
 //				types.stream().
 				Sender s = types.get((int)(Math.random() * types.size()));
 				s.send();
-//				System.out.print(".");
+				System.out.print(".");
 				Thread.sleep(3000);
 				count--;
 			} catch (InterruptedException e) {

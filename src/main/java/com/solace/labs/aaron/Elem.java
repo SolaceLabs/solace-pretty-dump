@@ -117,9 +117,9 @@ public enum Elem {
 		map.put(BRACE, new Col(-1));
 //		map.put(DESTINATION, new Col(14));
 //		map.put(TOPIC_SEPARATOR, new Col(6));
-		map.put(DESTINATION, new Col(49));
+		map.put(DESTINATION, new Col(42));
 		map.put(TOPIC_SEPARATOR, new Col(36));
-		map.put(MSG_BREAK, new Col(-1));
+		map.put(MSG_BREAK, new Col(-1, true));
 		map.put(WARN, new Col(11));
 		map.put(ERROR, new Col(9));
 		map.put(UNKNOWN, new Col(13, false, true));
@@ -144,7 +144,7 @@ public enum Elem {
 		map.put(DESTINATION, new Col(49));
 //		map.put(TOPIC_SEPARATOR, new Col(43));
 		map.put(TOPIC_SEPARATOR, new Col(36));
-		map.put(MSG_BREAK, new Col(-1,true));
+		map.put(MSG_BREAK, new Col(-1, true));
 		map.put(WARN, new Col(208));
 		map.put(ERROR, new Col(9));
 		map.put(UNKNOWN, new Col(196, false, true));

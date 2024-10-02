@@ -50,6 +50,33 @@ public class ProtoBufUtils {
 			return dataType.toString();
     	}
     }
+    
+    static void lookForAllParseFromMethods(String className) {
+    	
+    	try {
+			Class<?> clazz = Class.forName(className);
+			boolean foundMethod = false;
+			for (Method method : clazz.getMethods()) {  // loop through all the methods
+				if (method.getName().startsWith("parseFrom")) {
+					System.out.println("Found a parseFrom()");
+					
+					
+//					if (method.getParameterCount() == 1  && method.getParameterTypes()[0] == byte[].class) {  // the one I want!
+//					}
+				}
+			}
+
+    	} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally {
+    		
+    	}
+    	
+    	
+    	
+    	
+    }
 	
 	static Map<Sub, Method> loadProtobufDefinitions() {
 	    Map<Sub, Method> protobufCallbacks = new HashMap<>();
@@ -198,7 +225,7 @@ public class ProtoBufUtils {
 							while (listIt.hasNext()) {
 								Object o = listIt.next();
 								ansi.fg(Elem.NUMBER).a(o.toString());
-								if (indent > 0) {
+								if (indentFactor > 0) {
 									String ts = UsefulUtils.guessIfTimestampLong(fd.getName(), (long)val);
 									if (ts != null) {
 										ansi.faintOn().a(ts);
@@ -213,7 +240,7 @@ public class ProtoBufUtils {
 						}
 					} else {
 						ansi.fg(Elem.NUMBER).a(val.toString());
-						if (indent > 0) {
+						if (indentFactor > 0) {
 							String ts = UsefulUtils.guessIfTimestampLong(fd.getName(), (long)val);
 							if (ts != null) {
 								ansi.faintOn().a(ts);
@@ -345,8 +372,6 @@ public class ProtoBufUtils {
 		}
 	}
 	
-	
-	
 	private static void addByteString(ByteString bs, AaAnsi ansi, FieldDescriptor fd) {
 		if (bs.size() == 4 && fd.getName().toLowerCase().contains("ip")) {  // assume IP address
 			ansi.fg(Elem.BYTES).a(UsefulUtils.bytesToSpacedHexString(bs.toByteArray()));
@@ -355,5 +380,22 @@ public class ProtoBufUtils {
 			ansi.fg(Elem.BYTES).a(UsefulUtils.bytesToSpacedHexString(bs.toByteArray()));
 		}
 	}
+
+	
+	
+	
+	
+	public static void main(String... args) {
+
+		lookForAllParseFromMethods("io.opentelemetry.proto.trace.v1.TracesData");
+	
+	
+	
+	
+	
+	}
+	
+	
+	
 	
 }

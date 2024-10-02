@@ -866,10 +866,10 @@ public class PrettyDump {
 			o.print(AaAnsi.n());
 			o.println("\nShutdown hook triggered, quitting...");
 			config.isShutdown = true;
-//				if (config.isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
-//					if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
+			if (config.isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
+				if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
 				if (directConsumer != null) directConsumer.close();
-//				}
+			}
 			try {
 				Thread.sleep(200);
 				session.closeSession();

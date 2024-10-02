@@ -17,6 +17,7 @@
 package com.solace.labs.aaron;
 
 import java.io.PrintStream;
+import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -528,10 +529,10 @@ public class AaAnsi /* implements CharSequence */ {
 //		return rawCompressedSb.toString();
 //	}
 
-	/** Just jam is straight in, don't parse at all! */
-	private AaAnsi aRaw(String s, String raw) {
+	/** Just jam is straight in, don't parse at all! Only used in this method */
+	private AaAnsi aRaw(String s, String rawBwNoAnsiVersion) {
 		jansi.a(s);
-		rawSb.append(raw);
+		rawSb.append(rawBwNoAnsiVersion);
 //		rawCompressedSb.append(raw);
 //		lastRawCompressedChar = raw.equals("") ? lastRawCompressedChar : raw.charAt(raw.length()-1);
 //		charCount += raw.length();
@@ -561,8 +562,12 @@ public class AaAnsi /* implements CharSequence */ {
 	}
 	
 	public AaAnsi a(char c) {
+		return a(c, true);  // default
+	}
+	
+	public AaAnsi a(char c, boolean includeInRaw) {
 		jansi.a(c);
-		rawSb.append(c);
+		if (includeInRaw) rawSb.append(c);
 //		if (!(c == 0x09 || c == 0x0a || c == 0x0c || c == 0x0d || c == 0x1b || c == '·')) {
 //			if (c == ' ') {
 //				if (lastRawCompressedChar == ' ') { // do nothing
@@ -600,7 +605,12 @@ public class AaAnsi /* implements CharSequence */ {
 		return a(s, false);
 	}
 	
+	private static final Pattern ANSI_COLOR_CODE_ESCAPE_SEQUENCE = Pattern.compile("\u001b\\[[0-9; ]*m");  // https://en.wikipedia.org/wiki/ANSI_escape_code
 	public AaAnsi aStyledString(String s) {
+		if (ANSI_COLOR_CODE_ESCAPE_SEQUENCE.matcher(s).find()) {
+			jansi.reset();  // make the actual terminal default colour
+			return a(s, false);  // don't apply my styling colouring if we detect ANSI colours
+		}
 		return fg(Elem.STRING).a(s, true);
 	}
 	
@@ -621,6 +631,20 @@ public class AaAnsi /* implements CharSequence */ {
 		return this;
 	}
 	
+	private static boolean searchForwardForAnsiColorEscapeSequence(String s, int pos) {
+		// should look like: ^[[38;5;1
+		// Pattern.compile("\u001b\\[[0-9; ]*m");  // https://en.wikipedia.org/wiki/ANSI_escape_code
+		if (pos == s.length()-1 || s.charAt(pos+1) != '[') return false;  // if pos is last char, or if not then make sure next char is [
+		int i = pos+1;  // starting after [ char
+		while (++i < s.length()) {
+			char c = s.charAt(i);
+			if (c == 'm') return true;  // done!
+			if (c >= '0' && c <= '9') continue;
+			if (c == ';') continue;
+			return false;
+		}
+		return false;
+	}
 
 	/** Consider each char individually, and if replacement \ufffd char then add some red colour.
 	 */
@@ -630,6 +654,8 @@ public class AaAnsi /* implements CharSequence */ {
 		boolean insideNumStyle = false;  // these two vars are for my "styled string" code below
 		boolean insideSymbolStyle = false;
 //		boolean insideWordStyle = false;
+		boolean insideAnsiColorCode = false;
+		boolean ansiColorCodesEnabled = false;
 		for (int i=0; i<s.length(); i++) {
 			char c = s.charAt(i);
 			if (c < 0x20 || c == 0x7f) {  // special handling of control characters, make them visible
@@ -642,7 +668,23 @@ public class AaAnsi /* implements CharSequence */ {
 //					assert c != 0x1b;  // could be binary!?
 					aa.a(c);
 				} else if (c == 0x1b) {
-					aa.a("^[");
+					insideAnsiColorCode = searchForwardForAnsiColorEscapeSequence(s, i);
+					ansiColorCodesEnabled = insideAnsiColorCode;
+					if (insideAnsiColorCode) {
+						aa.a(c, false);  // leave the escape char as is
+					} else {
+						aa.a('^').a('[');
+					}
+//					if (styled) aa.a('^').a('[');
+//					else {
+						// time to do a forward search, we're only going to allow colour codes
+					
+//						if (searchForwardForAnsiColorEscapeSequence(s, i)) {
+//							insideAnsiColorCode = true;
+//						} else {
+//							aa.a('^').a('[');
+//						}
+//					}
 				} else if (c == 0) {
 //					aa.a('␀');  // null char
 					aa.a('∅');  // empty set
@@ -674,7 +716,7 @@ public class AaAnsi /* implements CharSequence */ {
 					aa.a('¿');
 				}
 			} else {  // all good, normal char
-				if (styled && isOn()) {  // styled is for normal strings, we'll do some colour coding to make it look cooler
+				if (styled && !insideAnsiColorCode && isOn()) {  // styled is for normal strings, we'll do some colour coding to make it look cooler
 					if (Character.isMirrored(c) || c == '\'' || c == '"') {  // things like () {} [] 
 						aa.fg(Elem.BRACE).a(c).fg(Elem.STRING);
 						insideNumStyle = false;
@@ -713,7 +755,8 @@ public class AaAnsi /* implements CharSequence */ {
 						aa.a(c);
 					}
 				} else {  // not styled text, just normal append
-					aa.a(c);
+					aa.a(c, insideAnsiColorCode);
+					if (insideAnsiColorCode && c == 'm') insideAnsiColorCode = false;  // end of SGR sequence, turn off
 				}
 			}
 		}

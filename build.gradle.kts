@@ -111,6 +111,7 @@ dependencies {
     implementation("com.google.protobuf:protobuf-java:3.+")
 
     implementation("org.apache.avro:avro:1.+")
+    implementation("io.opentelemetry.proto:opentelemetry-proto:1.3.+");
 
     implementation(fileTree(mapOf("dir" to "include", "include" to listOf("*.jar"))))
 //    implementation(fileTree(mapOf("dir" to "protobuf/jars", "include" to listOf("*.jar"))))

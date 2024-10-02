@@ -31,6 +31,7 @@ public class ConfigState {
     int INDENT = 2;  // default starting value, keeping it all-caps for retro v0.0.1 value
     boolean oneLineMode = false;
     boolean noPayload = false;
+    boolean onlyPayload = false;
     boolean autoResizeIndent = false;  // specify -1 as indent for this MODE
     boolean autoSpaceTopicLevels = false;  // specify +something to space out the levels
     boolean autoTrimPayload = false;
@@ -71,7 +72,7 @@ public class ConfigState {
 	public boolean isNoPayload() {
 		return noPayload;
 	}
-	
+		
 	public boolean isAutoResizeIndent() {
 		return autoResizeIndent;
 	}
@@ -188,7 +189,7 @@ public class ConfigState {
     		indentStr = "-" + indentStr.substring(1);
     	}
 		int indent = Integer.parseInt(indentStr);  // might throw
-		if (indent < -250 || indent > 8) throw new IllegalArgumentException();
+		if ((indent < -250 && indent != -300) || indent > 8) throw new IllegalArgumentException();
 		INDENT = indent;
 		if (INDENT < 0) {
 			oneLineMode = true;
@@ -198,6 +199,8 @@ public class ConfigState {
 				updateTopicIndentValue(2);  // now update it
 			} else if (INDENT == -2) {  // two line mode
 				INDENT = Math.abs(INDENT);
+			} else if (INDENT == -300) {  // special no-payload mode
+				onlyPayload = true;
 			} else {
 				INDENT = Math.abs(INDENT) + 2; // TODO why is this 2?  I think 1 for ... and 1 for space
 //				updateTopicIndentValue(INDENT);  // now update it  TODO why do we need to update if not auto-indenting?

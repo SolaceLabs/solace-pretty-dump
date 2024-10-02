@@ -23,7 +23,7 @@ public class ThinkingAnsiHelper {
 //			BACKSPACES = sb.toString();
 			BACKSPACES = "\n";
 		} else {
-			BACKSPACES = (char)27 + "[200D";  // 200 backspace chars
+			BACKSPACES = /* (char)27 +*/ "\u001b[200D";  // 200 backspace chars
 			isEnabled = true;
 		}
 	}
