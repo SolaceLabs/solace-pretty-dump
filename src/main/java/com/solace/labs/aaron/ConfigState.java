@@ -35,7 +35,15 @@ public class ConfigState {
     boolean autoResizeIndent = false;  // specify -1 as indent for this MODE
     boolean autoSpaceTopicLevels = false;  // specify +something to space out the levels
     boolean autoTrimPayload = false;
-    boolean rawPayload = false;
+    
+    enum DisplayType {
+    	NORMAL,
+    	RAW,
+    	DUMP,
+    	;
+    }
+    DisplayType payloadDisplay = DisplayType.NORMAL;
+//    boolean rawPayload = false;
     
     BoundedLinkedList.ComparableList<Integer> topicsLengthList = new BoundedLinkedList.ComparableList<>(TOPICS_LENGTH_LIST_SIZE);
     List<BoundedLinkedList.ComparableList<Integer>> topicLevelsLengthList = new ArrayList<>();

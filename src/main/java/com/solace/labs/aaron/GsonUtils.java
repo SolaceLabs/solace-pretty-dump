@@ -32,6 +32,11 @@ public class GsonUtils {
 	
 	private static final Logger logger = LogManager.getLogger(GsonUtils.class);
 	private static String lastKeyName = "";
+	
+	static AaAnsi parseJsonDunnoWhich(String trimmedJson, int indentFactor) throws IOException {
+		if (trimmedJson.charAt(0) == '{') return parseJsonObject(trimmedJson, indentFactor);
+		else return parseJsonArray(trimmedJson, indentFactor);
+	}
 
 	static AaAnsi parseJsonObject(String json, int indentFactor) throws IOException {
 		return parseJsonObject(json, indentFactor, false);

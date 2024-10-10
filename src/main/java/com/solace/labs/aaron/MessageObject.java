@@ -217,7 +217,12 @@ public class MessageObject {
                 	AaAnsi payloadText = AaAnsi.n().a(line).a(" bytes");
                 	if (binary != null) handlePayloadSection(binary, payloadText);  // in no payload mode, with no filter, we won't even parse the payload
                 	else if (config.getFormattingIndent() > 0) payloadText.a('\n');  // still add a carriage return for '00' indent mode
-                	systemOut.println(payloadText);
+                	try {
+                		systemOut.println(payloadText);
+                	} catch (Exception e) {
+                		System.err.println("Caught this!!" + e.toString());
+                		e.printStackTrace();
+                	}
             	} else if (line.startsWith("XML:")) {
 //            		assert xml != null;
                 	printMsgTypeIfRequired(systemOut);

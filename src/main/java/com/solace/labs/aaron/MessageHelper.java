@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.zip.DataFormatException;
 import java.util.zip.GZIPInputStream;
@@ -18,6 +16,7 @@ import org.apache.logging.log4j.Logger;
 import org.fusesource.jansi.AnsiConsole;
 
 import com.google.protobuf.MessageOrBuilder;
+import com.solace.labs.aaron.ConfigState.DisplayType;
 import com.solace.labs.topic.Sub;
 import com.solacesystems.jcsmp.BytesMessage;
 import com.solacesystems.jcsmp.BytesXMLMessage;
@@ -164,7 +163,7 @@ public class MessageHelper {
 		}
 
 		boolean topicMatch = false;
-		if (!config.rawPayload) {
+		if (config.payloadDisplay != DisplayType.DUMP) {
 			// Protobuf stuff...
 			for (Entry<Sub,Method> entry : config.protobufCallbacks.entrySet()) {
     			Sub sub = entry.getKey();
@@ -303,12 +302,12 @@ public class MessageHelper {
             		ThinkingAnsiHelper.filteringOff();
             	}
             }
+            // if you've made it here, that means we're going to print it to console for sure
             
             // TODO only update the spacing when we're actually printing it out?
 //            ms.updateTopicSpacing();  // now that we've determined if we're gonna filter this message, do the topic stuff
 
             // now it's time to try printing it!
-//            if (lastNMessages != null) {
 			if (config.isLastNMessagesEnabled()) {  // gathering
 				config.lastNMessagesList.add(ms);
 				ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("",
@@ -318,14 +317,35 @@ public class MessageHelper {
             	if (isStopped()) return;  // stop if we're stopped!
             	if (ThinkingAnsiHelper.isFilteringOn()) ThinkingAnsiHelper.filteringOff();
                 SystemOutHelper systemOut = ms.printMessage();
+                
+                // test code
+//                OutputStream testOs = new ByteArrayOutputStream();
+//                org.fusesource.jansi.io.AnsiOutputStream aos = new AnsiOutputStream(testOs, new org.fusesource.jansi.io.AnsiOutputStream.WidthSupplier() {
+//					
+//					@Override
+//					public int getTerminalWidth() {
+//						return 80;
+//					}
+//				}, AnsiMode.Default, new AnsiProcessor(testOs), null, null, null, null, null, isStopped());
+//                AnsiPrintStream aps = AnsiConsole.out();
+//                aps.getOut();
+//                try (PrintStream sysOutTest = new PrintStream(new ByteArrayOutputStream())) {
+//                	sysOutTest.println(systemOut.toString());
+//                } catch (Exception e) {
+//                	System.err.println("Caught something!!  " + e.toString());
+//                	e.printStackTrace();
+//                }
+                // end test code
+                
             	System.out.print(systemOut);
             	if (config.filterRegexPattern != null) {  // there is some filtering
 					ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringPrinted("",
 							config.getMessageCount(), config.getFilteredCount(), config.getMessageCount()-config.getFilteredCount()));
             	}
             }
-        } catch (RuntimeException e) {  // really shouldn't happen!!
-        	System.out.println(ms.printMessageStart());
+        } catch (RuntimeException e) {  // really shouldn't happen!!  something wrong with payload?  Bad ANSI
+//        	System.out.println(ms.printMessageStart());
+        	System.out.println();
         	System.out.println(AaAnsi.n().ex("Exception occured, check ~/.pretty/pretty.log for details. ", e));
         	logger.warn("Had issue parsing a message.  Message follows after exception.",e);
         	logger.warn(message.dump());

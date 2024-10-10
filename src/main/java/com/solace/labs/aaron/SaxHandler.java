@@ -33,6 +33,7 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 
 	private AaAnsi ansi = AaAnsi.n();
 	private final int indentFactor;
+	private final boolean doTrimOnCharacters;
 	private int level = 0;
     private StringBuilder characterDataSb = new StringBuilder();   // need StringBuilder for the 'characters' method since SAX can call it multiple times
 	private Tag previous = null;
@@ -45,7 +46,12 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 	}
 	
 	public SaxHandler(int indentFactor) {
+		this(indentFactor, true);
+	}
+
+	public SaxHandler(int indentFactor, boolean doTrimOnCharacters) {
 		this.indentFactor = indentFactor;
+		this.doTrimOnCharacters = doTrimOnCharacters;
 	}
 
 	@Override
@@ -115,7 +121,7 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 	@Override
 	public final void endElement(String namespaceURI, String localName, String qName) throws SAXException {
 		level--;
-		String chars = characterDataSb.toString().trim();
+		String chars = doTrimOnCharacters ? characterDataSb.toString().trim() : characterDataSb.toString();
 		if (previous == Tag.START) {
 			if (startTagForLater != null) {  // the previous tag is a start tag
 				if (chars.length() > 0) {

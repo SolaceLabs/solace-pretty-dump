@@ -39,23 +39,23 @@ public class UsefulUtils {
 	// https://stackoverflow.com/a/36743430/101766
     // https://stackoverflow.com/a/56545033/101766
 	static final String UNICODE_BULLETS = "\n"
-			+ " ├\u2027┤ hyphenation point 2027\n"  // half-width in some fonts
-			+ " ├\u22c5┤ dot operator 22c5\n"     // half-width in some fonts
-			+ " ├\u2024┤ one dot leader 2024\n" 
-			+ " ├\u002e┤ period 002e\n" 
-			+ " ├" + '·' + "┤ my default bullet " + Integer.toHexString(Character.getNumericValue('·')) + '\n'
-			+ " ├\u00b7┤ middle dot 00b7\n"
-			+ " ├" + '•' + "┤ my larger bullet " + Integer.toHexString(Character.getNumericValue('•')) + '\n'
-			+ " ├\u2022┤ bullet (black small circle) 2022\n" 
-			+ " ├\u2219┤ bullet operator 2219\n"
-			+ " ├\u2981┤ z notation spot 2981\n"  // half-width in some fonts
-			+ " ├\u25e6┤ white bullet 25e6\n"
-			+ " ├\u25cb┤ white circle 25cf\n"
-			+ " ├\u25cc┤ dotted circle 25cf\n"
-			+ " ├\u25cf┤ black circle 25cf\n"
-			+ " ├\u002d┤ hyphen-minus 002d\n"
-			+ " ├\u2010┤ hyphen 2010\n"
-			+ " ├\u2012┤ figure dash 2012\n"
+			+ "  ├\u2027┤ hyphenation point           U+2027\n"  // half-width in some fonts
+			+ "  ├\u22c5┤ dot operator                U+22C5\n"     // half-width in some fonts
+			+ "  ├\u2024┤ one dot leader              U+2024\n" 
+			+ "  ├\u002e┤ period                      U+002E\n" 
+			+ "  ├" + '·' + "┤ my default bullet " + Integer.toHexString(Character.getNumericValue('·')) + '\n'
+			+ "  ├\u00b7┤ middle dot                  U+00B7\n"
+			+ "  ├" + '•' + "┤ my larger bullet " + Integer.toHexString(Character.getNumericValue('•')) + '\n'
+			+ "  ├\u2022┤ bullet (black small circle) U+2022\n" 
+			+ "  ├\u2219┤ bullet operator             U+2219\n"
+			+ "  ├\u2981┤ z notation spot             U+2981\n"  // half-width in some fonts
+			+ "  ├\u25e6┤ white bullet                U+25E6\n"
+			+ "  ├\u25cb┤ white circle                U+25CB\n"
+			+ "  ├\u25cc┤ dotted circle               U+25CC\n"
+			+ "  ├\u25cf┤ black circle                U+25CF\n"
+			+ "  ├\u002d┤ hyphen-minus                U+002D\n"
+			+ "  ├\u2010┤ hyphen                      U+2010\n"
+			+ "  ├\u2012┤ figure dash                 U+2012\n"
 			+ "End.";
 	
 	public static final char[] HARDCODED = new char[] {

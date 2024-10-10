@@ -59,7 +59,7 @@ public class HelperText {
 		o.println("    • 00        no payload mode, user properties still pretty-printed");
 		o.println("    • 000       no payload mode, user properties each compressed to one line");
 		o.println("    • 0000      no payload mode, no user properties, headers only");
-		o.println("    • -250..-3  one-line mode, topic and payload only, compressed, fixed indent");
+		o.println("    • -250..-3  one-line mode, topic and payload only, compressed, abs(n) fixed indent");
 		o.println("    • -2        two-line mode, topic and payload on two lines (try 'minimal' color mode)");
 		o.println("    • -1        one-line mode, automatic variable payload indentation");
 		o.println("    • -0        one-line mode, topic only");
@@ -90,11 +90,12 @@ public class HelperText {
 
 		o.println(" - Additional non-ordered arguments: for more advanced capabilities");
 		o.println("    • --selector=\"mi like 'hello%world'\"  Selector for Queue consume and browse");
-		o.println("    • --filter=\"ABC123\"  client-side REGEX content filter on any received message dump");
+		o.println("    • --filter=\"ABC123\"  client-side regex content filter on any received message dump");
 		o.println("    • --count=n     stop after receiving n number of msgs; or if < 0, only show last n msgs");
 //		o.println("    • --skip=n      skip the first n messages received");
 		
-		o.println("    • --raw         enable binary dump for every message (useful for charset encoding issues)");
+		o.println("    • --raw         show original message payload, not pretty-printed; text, JSON, XML only");
+		o.println("    • --dump        enable binary dump for every message (useful for charset encoding issues)");
 		o.println("    • --trim        enable paylaod trim for one-line (and two-line) modes");
 		o.println("    • --ts          print time when PrettyDump received the message (not messages' timestamp)");
 		o.println("    • --export      disables the automatic prefixing of \"#noexport/\" to the start of all topics");
@@ -128,7 +129,7 @@ public class HelperText {
 		o.println(" - Default parameters will be: localhost:55555 default foo bar '#noexport/>' 2");
 		o.println(" - Subscribing options (arg 5, or shortcut mode arg 1), one of:");
 		o.println("    • Comma-separated list of Direct topic subscriptions");
-		o.println("       - Strongly consider prefixing with \"#noexport/\" if using DMR or MNR");
+		o.println("       - Automatic \"#noexport/\" prefixes added for DMR/MNR; disable with --export");
 		o.println("    • q:queueName to consume from queue");
 		o.println("    • b:queueName to browse a queue (all messages, or range by MsgSpoolID or RGMID)");
 		o.println("    • f:queueName to browse/dump only first oldest message on a queue");

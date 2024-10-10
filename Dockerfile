@@ -1,4 +1,4 @@
-# Download a Docker tarball from https://github.com/SolaceLabs/pretty-dump/releases
+# Download a Docker tarball from https://github.com/SolaceLabs/solace-pretty-dump/releases
 # Load into Docker Images with: docker load -i solace-pretty-dump-1.1.0.tar.gz
 #
 # To RUN:

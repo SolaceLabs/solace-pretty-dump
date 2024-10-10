@@ -12,6 +12,7 @@ plugins {
     java
     eclipse
     idea
+    //id("com.gradleup.shadow") version "8.3.2"  // https://gradleup.com/shadow/
 }
 
 version = "1.1.0"
@@ -110,6 +111,7 @@ dependencies {
     // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
     implementation("com.google.protobuf:protobuf-java:3.+")
 
+    implementation("org.htmlunit:neko-htmlunit:4.+")
     implementation("org.apache.avro:avro:1.+")
     implementation("io.opentelemetry.proto:opentelemetry-proto:1.3.+");
 
@@ -130,8 +132,6 @@ dependencies {
     testImplementation("junit:junit:4.+")
     testImplementation("org.json:json:20230227")
 }
-
-
 
 
 tasks.jar {
@@ -164,8 +164,8 @@ fun createAdditionalScript(name: String, configureStartScripts: CreateStartScrip
     outputDir = File(project.layout.buildDirectory.get().asFile, "scripts")
     classpath = tasks.getByName("jar").outputs.files + configurations.runtimeClasspath.get()
     //defaultJvmOpts = [ "-ea" ]  // enable assertions
-    //defaultJvmOpts = listOf("-ea")  // enable assertions
-    defaultJvmOpts = listOf("networkaddress.cache.ttl=0")  // disable DNS caching
+    defaultJvmOpts = listOf("-ea")  // enable assertions
+    //defaultJvmOpts = listOf("networkaddress.cache.ttl=0")  // disable DNS caching
     //defaultJvmOpts = listOf("-ea").iterator().asSequence().toList()  // enable assertions
   }.also {
     application.applicationDistribution.into("bin") {
@@ -175,8 +175,43 @@ fun createAdditionalScript(name: String, configureStartScripts: CreateStartScrip
     }
   }
 
-//createAdditionalScript("PrettyDumpWrap") {
-//  mainClass = "com.solace.labs.aaron.PrettyWrap"
+createAdditionalScript("AllMsgGenerator") {
+  mainClass = "com.solace.labs.aaron.AllMsgGenerator"
+}
+
+//createAdditionalScript("KeyboardHandler") {
+//  mainClass = "com.solace.labs.aaron.KeyboardHandler"
+//}
+
+//tasks {
+//    named<ShadowJar>("shadowJar") {
+//        archiveBaseName.set("shadow")
+//        mergeServiceFiles()
+//        manifest {
+//            attributes(mapOf("Main-Class" to "com.github.csolem.gradle.shadow.kotlin.example.App"))
+//        }
+//    }
+//}
+
+// Output to build/libs/shadow.jar
+//tasks {
+//   named("shadowJar") {
+//   //, com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+//        archiveBaseName.set("shadow")
+	//mergeServiceFiles()
+        //archiveClassifier.set("mega")
+        //archiveVersion.set("0.0.4")
+//    }
+//}
+
+//tasks.withType<ShadowJar> {
+//    archiveFileName.set("app.jar")
+//}
+
+//tasks {
+//    build {
+//        dependsOn(shadowJar)
+//    }
 //}
 
 //createAdditionalScript("bar") {

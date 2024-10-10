@@ -601,11 +601,15 @@ public class AaAnsi /* implements CharSequence */ {
 		return this;
 	}
 
+	/** append this string, assume no fancy formatting */
 	public AaAnsi a(String s) {
 		return a(s, false);
 	}
 	
 	private static final Pattern ANSI_COLOR_CODE_ESCAPE_SEQUENCE = Pattern.compile("\u001b\\[[0-9; ]*m");  // https://en.wikipedia.org/wiki/ANSI_escape_code
+	/* append this string with some "style", chars green, numbers orange, some punctuation...
+	 * but scan the string and if it contains any ANSI colour escape sequences, don't do fancy styles
+	 */
 	public AaAnsi aStyledString(String s) {
 		if (ANSI_COLOR_CODE_ESCAPE_SEQUENCE.matcher(s).find()) {
 			jansi.reset();  // make the actual terminal default colour
@@ -615,21 +619,21 @@ public class AaAnsi /* implements CharSequence */ {
 	}
 	
 //	private static final String BLACK_SPACE = new Ansi().reset().bg(0).fg(Elem.DESTINATION.getCurrentColor().value).fg(7).a('│').bgDefault().toString();
-	private static final String BLACK_SPACE = new Ansi().reset().bg(0).a(' ').bgDefault().toString();
-	public AaAnsi insertBlackSpace() {
-		this.aRaw(BLACK_SPACE, " ");
-		return this;
-	}
-	
-	public AaAnsi blackOn() {
-		this.aRaw(new Ansi().bg(0).toString(), "");
-		return this;
-	}
-	
-	public AaAnsi blackOff() {
-		this.aRaw(new Ansi().bgDefault().toString(), "");
-		return this;
-	}
+//	private static final String BLACK_SPACE = new Ansi().reset().bg(0).a(' ').bgDefault().toString();
+//	public AaAnsi insertBlackSpace() {
+//		this.aRaw(BLACK_SPACE, " ");
+//		return this;
+//	}
+//	
+//	public AaAnsi blackOn() {
+//		this.aRaw(new Ansi().bg(0).toString(), "");
+//		return this;
+//	}
+//	
+//	public AaAnsi blackOff() {
+//		this.aRaw(new Ansi().bgDefault().toString(), "");
+//		return this;
+//	}
 	
 	private static boolean searchForwardForAnsiColorEscapeSequence(String s, int pos) {
 		// should look like: ^[[38;5;1
@@ -655,10 +659,10 @@ public class AaAnsi /* implements CharSequence */ {
 		boolean insideSymbolStyle = false;
 //		boolean insideWordStyle = false;
 		boolean insideAnsiColorCode = false;
-		boolean ansiColorCodesEnabled = false;
+//		boolean ansiColorCodesEnabled = false;
 		for (int i=0; i<s.length(); i++) {
 			char c = s.charAt(i);
-			if (c < 0x20 || c == 0x7f) {  // special handling of control characters, make them visible
+			if ((c < 0x20 && c != 0x1a) || c == 0x7f) {  // special handling of control characters, make them visible
 				if (insideNumStyle || insideSymbolStyle) {  // this cannot be true if styled == false
 					insideNumStyle = false;
 					insideSymbolStyle = false;
@@ -669,7 +673,7 @@ public class AaAnsi /* implements CharSequence */ {
 					aa.a(c);
 				} else if (c == 0x1b) {
 					insideAnsiColorCode = searchForwardForAnsiColorEscapeSequence(s, i);
-					ansiColorCodesEnabled = insideAnsiColorCode;
+//					ansiColorCodesEnabled = insideAnsiColorCode;
 					if (insideAnsiColorCode) {
 						aa.a(c, false);  // leave the escape char as is
 					} else {
@@ -697,7 +701,7 @@ public class AaAnsi /* implements CharSequence */ {
 					aa.a('·');  // all other control chars
 					controlChars++;
 				}
-			} else if (c == '\ufffd') {  // the replacement char introduced when trying to parse the bytes with the specified charset
+			} else if (c == '\ufffd' || c == 0x1a) {  // the Unicode replacement char introduced when trying to parse the bytes with the specified charset, or the ASCII Substitution char
 				replacementChars++;
 				if (isOn()) {  // bright red background, upsidedown ?
 					if (curElem == null) {
@@ -755,7 +759,7 @@ public class AaAnsi /* implements CharSequence */ {
 						aa.a(c);
 					}
 				} else {  // not styled text, just normal append
-					aa.a(c, insideAnsiColorCode);
+					aa.a(c, !insideAnsiColorCode);
 					if (insideAnsiColorCode && c == 'm') insideAnsiColorCode = false;  // end of SGR sequence, turn off
 				}
 			}

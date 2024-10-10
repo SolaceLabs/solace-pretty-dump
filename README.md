@@ -11,6 +11,7 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 - Subscribing options: [Direct topic subscriptions](#direct-subscriptions), [Queue consume](#queue-consume), [Browsing a queue](#browsing-a-queue), [TempQ with subs](#temporary-queue-with-subscriptions)
 - [Output Indent options](#output-indent-options-the-6th-argument) ([One-line Mode](#one-line-mode-indent--0))
 - [Count, Selectors and Filtering](#count-selectors-and-filtering)
+- [Additional Parameters](#additional-parameters)
 - [One-line Mode: Runtime options](#one-line-mode-runtime-options)
 - [Charset Encoding](#charset-encoding)
 - [Error Checking](#error-checking)
@@ -37,12 +38,13 @@ prettydump
 
 Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-dump/releases) with everything already built.
 
-For Docker container usage, read the comments in [the Dockerfile](Dockerfile).
 
 
 ## Running
 
 **N.B.** for those using Windows PowerShell or Command Prompt, see [Tips and Tricks](#windows) at the bottom.
+
+For Docker: `docker run -it --rm solace-pretty-dump:latest broker vpn user pw ">" 4`
 
 #### No args, default broker options
 ```
@@ -425,7 +427,24 @@ A Filter is specified by the command line argument `--filter="blah"` when runnni
 
 ### A word on performance
 
-I filled up a queue with > 1M messages in it.  I used a browser and Selector to find a message I knew was at the back of the queue (looking for its Application Message ID / JMS Message ID).  It literally took a few seconds.  I ran the same test, using a client-side Filter, set to something equivalient: `^AppMessageID: +aaron123$` and it took maybe a minute or two to scrub through all the messages on the queue.
+I filled up a queue with > 1M messages in it.  I used a browser and Selector to find a message I knew was at the back of the queue (looking for its Application Message ID / JMS Message ID).  It literally took a few seconds.  I ran the same test, using a client-side Filter, set to something equivalient: `^AppMessageID: +aaron123$` and it took maybe a minute or two to scrub through all the messages on the queue.  So: Selectors are great for browsing... Solace just doesn't recommend them for live data routing as typically same behaviour can be achieved through topic subscriptions, which are much more performant.
+
+
+
+## Additional Parameters
+
+There are a number of (argument order doesn't matter) parameters that have been added, and are documented in `prettydump -hm`.  Specifically:
+
+- `--selector="blah"` See [Selectors](#selectors) above
+- `--filter="blah"` See [Client-side Filtering](#client-side-filtering) above
+- `--count=n` If you specify a number > 0, then PrettyDump will quit after receiving this many messages.  If you specify a number < 0, then PrettyDump will read/store this many messages and hold them internally until you quit `Ctrl+C` the app, at which point it will dump them to the screen.  This is exceptionally useful for browsing the last, say, 100 messages off a very deep queue.  Note if _consuming_ from a queue (`q:queueName`) then it will consume/ACK (aka delete) these messages.
+- `--raw` Do not perform any pretty-print formatting on text string payloads. This applies to JSON and XML. Binary encodings such as SDTMaps, SDTStreams, Protobuf, etc. will be unaffected.
+- `--dump` Binary dump (à la SdkPerf `-md`) all message payloads to screen. This parameter overrides `--raw`.
+- `--trim` In one-line mode, trim payloads to console width to keep terminal display nice and neat 
+- `--ts` Print the time-of-day the message was received by PrettyDump (not actual message timestamp). Works in both regular and one-line mode. Very useful if needing to observe timings between messages or exactly when live messages were received.
+- `--export` By default, PrettyDump adds `#noexport/` prefix to every topic subscription, to help not overload DMR/MNR links by subscribing to things accidentally.  See https://docs.solace.com/Messaging/No-Export.htm.  Use this to disable.
+- `--compressed` Tell PrettyDump you want to connect using streaming compression (not payload compression new feature). This is super useful when connecting over long RTT / WAN links. For non-TLS, this is port 55003.
+- `--defaults` Print all the JCSMPProperties that you might be able to override.  Or check the docs: https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html
 
 
 
@@ -565,6 +584,14 @@ Raw BytesMessage, SpanData ProtoBuf:
     'binary_attachment_size' (UINT32): 510
     'solos_version' (STRING): "10.8.1.126"
 ```
+Note that this is not the full detail of information sent by the Collector to the observability backend... the Collector does further enriching of the data.
+
+
+### OpenTelemetry
+
+You can also see the output of the Collector.  If you modify your OTel configuration file to send HTTP instead of gRPC, and point the Collector at a Solace broker's
+REST/HTTP API port, you can subscribe to the topics (with your VPN in either in REST Messaging mode or REST Gateway mode).
+
 
 
 

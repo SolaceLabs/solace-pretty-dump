@@ -41,6 +41,7 @@ import org.fusesource.jansi.AnsiConsole;
 
 import com.solace.labs.aaron.AaAnsi.ColorMode;
 import com.solace.labs.aaron.Banner.Which;
+import com.solace.labs.aaron.ConfigState.DisplayType;
 import com.solacesystems.jcsmp.AccessDeniedException;
 import com.solacesystems.jcsmp.Browser;
 import com.solacesystems.jcsmp.BrowserProperties;
@@ -74,6 +75,7 @@ import com.solacesystems.jcsmp.Topic;
 import com.solacesystems.jcsmp.TopicProperties;
 import com.solacesystems.jcsmp.XMLMessageConsumer;
 import com.solacesystems.jcsmp.XMLMessageListener;
+
 
 /** Based on DirectSubscriber sample from https://github.com/SolaceSamples/solace-samples-java-jcsmp */
 public class PrettyDump {
@@ -363,8 +365,8 @@ public class PrettyDump {
 					ansi.fg(Elem.KEY).a('-').a('-').a(key).reset().a('=');
 					ansi.fg(Elem.STRING).a(o.toString()).a('\n');
 				} else {  //skip this one
-//					aa.fg(Elem.KEY).a(key).reset().a('=');
-//					aa.fg(Elem.DATA_TYPE).a(o.getClass().getSimpleName()).a(' ').a(o.toString());
+//					ansi.fg(Elem.KEY).a(key).reset().a('=');
+//					ansi.fg(Elem.DATA_TYPE).a(o.getClass().getSimpleName()).a(' ').a(o.toString());
 				}
 			}
 			o.println(ansi.reset());
@@ -410,9 +412,11 @@ public class PrettyDump {
 				config.noExport = false;
 			} else if (arg.equals("--compressed")) {
 				config.isCompressed = true;  // doesn't really matter, we never use this again
-				properties.setProperty(JCSMPProperties.CLIENT_CHANNEL_PROPERTIES_COMPRESSION_LEVEL, 9);
+				properties.setProperty(JCSMPProperties.CLIENT_CHANNEL_PROPERTIES_COMPRESSION_LEVEL, 9);  // this is kind of a hidden feature, usually you have to create a ClientChannelProperties object
 			} else if (arg.equals("--raw")) {
-				config.rawPayload = true;
+				config.payloadDisplay = DisplayType.RAW;
+			} else if (arg.equals("--dump")) {
+				config.payloadDisplay = DisplayType.DUMP;
 			} else if (arg.startsWith("--count")) {
 				String argVal = "?";
 				try {
@@ -483,7 +487,7 @@ public class PrettyDump {
 				o.println(ansi.reset());
 				jcscmpPropCount++;
 			} else {
-				o.println(AaAnsi.n().invalid("Don't recognize this argument '" + arg + "'!"));
+				o.println(AaAnsi.n().invalid("Don't recognize this argument '" + arg + "'! Try: prettydump -hm"));
 				o.println("Quitting! 💀");
 				System.exit(1);
 			}
@@ -861,8 +865,10 @@ public class PrettyDump {
 //		} else if (config.) {
 		}
 		final Thread shutdownThread = new Thread(() -> {
+			shutdownMethod();
 //			config.stop();
-			ThinkingAnsiHelper.filteringOff();
+			
+/*			ThinkingAnsiHelper.filteringOff();
 			o.print(AaAnsi.n());
 			o.println("\nShutdown hook triggered, quitting...");
 			config.isShutdown = true;
@@ -885,12 +891,19 @@ public class PrettyDump {
 			logger.info("### PrettyDump finishing!");
 			o.println("Goodbye! 👋🏼");
 			AnsiConsole.systemUninstall();
-			})
-		;
+			}
+*/
+		});
 		shutdownThread.setName("Shutdown Hook thread");
 		//        shutdownThread.setDaemon(true);  // doesn't work, still gets deadlocked if disconnected and trying to reconnect
 		// https://stackoverflow.com/questions/58972594/difference-in-adding-a-daemon-vs-non-daemon-thread-in-a-java-shutdown-hook
 		Runtime.getRuntime().addShutdownHook(shutdownThread);
+//		sun.misc.Signal.handle(new sun.misc.Signal("INT"),  // SIGINT
+//			    signal -> {
+//			    	System.out.println("Interrupted by Ctrl+C");
+//			    	System.out.println(signal.toString());
+//			    	shutdownMethod();
+//			    });
 
 		if (browser != null) {  // ok, so we're browsing... can't use async msg receive callback, have to poll the queue
 			PrinterHelper printer = new PrinterHelper();
@@ -1110,6 +1123,38 @@ public class PrettyDump {
 			if (e instanceof JCSMPTransportException) {  // all reconnect attempts failed (impossible now since we're at -1)
 				config.isShutdown = true;  // let's quit
 			}
+		}
+	}
+	
+	
+	private void shutdownMethod() {
+		{
+//		config.stop();
+		ThinkingAnsiHelper.filteringOff();
+		o.print(AaAnsi.n());
+		o.println("\nShutdown hook triggered, quitting...");
+		config.isShutdown = true;
+		if (config.isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
+			if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
+			if (directConsumer != null) directConsumer.close();
+		}
+		o.println("here1");
+		try {
+			Thread.sleep(200);
+			session.closeSession();
+			Thread.sleep(300);
+		} catch (InterruptedException e) {  // ignore, we're quitting anyway
+		}
+		o.println("here2");
+		if (config.isLastNMessagesEnabled()) {  // got some messages to dump!
+			for (MessageObject msg : config.getLastNMessages()) {
+				o.print(msg.printMessage());
+			}
+			o.println();
+		}
+		logger.info("### PrettyDump finishing!");
+		o.println("Goodbye! 👋🏼");
+		AnsiConsole.systemUninstall();
 		}
 	}
 }

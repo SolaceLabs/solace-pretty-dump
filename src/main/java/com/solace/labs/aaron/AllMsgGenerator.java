@@ -78,13 +78,14 @@ public class AllMsgGenerator {
 		ARABIC("مرحباً، هذه الجملة مكتوبة باللغة العربية."),
 		CANTONESE("你好，這句話是用粵語寫的。"),
 		LOG_ENTRY("2024-09-11T01:33:17.110+00:00 <local3.notice> solace1081 event: CLIENT: CLIENT_CLIENT_NAME_CHANGE: default PrettyDump_AaronsThinkPad3/992/00110001/EzN57TqULU Client (20) PrettyDump_AaronsThinkPad3/992/00110001/EzN57TqULU username foo changed name from AaronsThinkPad3/992/00110001/EzN57TqULU\u0000"),
-		ASCII_REPLACE_CHAR("This char \u001a 0x1a is the ASCII SUBstitution character."),
-		UTF8_REPLACE_CHAR("This contains the UTF-8 replacement � U+FFFD char."),
+		ASCII_REPLACE_CHAR("This char '\u001a' 0x1a is the ASCII SUBstitution character."),
+		UTF8_REPLACE_CHAR("This contains the UTF-8 replacement \ufffd U+FFFD char."),
 		CURRENCY("The currency of UK is £.  The curency of Japan is ¥, and € in Europe.  1/100th of $1.00 is 1¢."),
 		NULL_CHAR("NULL char here > \u0000 <"),
 		ANSI_COLORS("Console apps that have ANSI support: this word is \u001b[0;31mRED\u001b[m, this one is \u001b[0;32mGREEN\u001b[m, and this one is \u001b[5mblinking\u001b[m."),
 		ANSI_NUKE_SCREEN("Console apps that don't verify ANSI: this sequence should wipe your screen.\u001b[2J"),
-		COOL_UNICODE(UsefulUtils.UNICODE_BULLETS),
+		ANSI_INVALID_SEQ("This text contains an invalid ANSI escape sequence: \u001b[38;0m"),
+		UNICODE_BULLETS(UsefulUtils.UNICODE_BULLETS),
 		;
 		final String payload;
 		TextStrings(String payload) {
@@ -95,18 +96,19 @@ public class AllMsgGenerator {
 		}
 	}
 
-	static EnumSet<TextStrings> textPayloads2 = EnumSet.of(
-//			TextStrings.ASCII_REPLACE_CHAR,
+//	static EnumSet<TextStrings> textPayloads = EnumSet.of(
+////			TextStrings.ASCII_REPLACE_CHAR,
 //			TextStrings.ENGLISH,
 //			TextStrings.FRENCH,
 //			TextStrings.SPANISH,
 //			TextStrings.JSON_SIMPLE,
 //			TextStrings.XML_SIMPLE,
-			TextStrings.ANSI_COLORS,
-			TextStrings.ANSI_NUKE_SCREEN,
-			TextStrings.COOL_UNICODE
-			);
-//	EnumSet<Texts> textPayloads2 = EnumSet.allOf(Texts.class);
+//			TextStrings.ANSI_COLORS,
+//			TextStrings.ANSI_NUKE_SCREEN,
+//			TextStrings.ANSI_INVALID_SEQ,
+//			TextStrings.COOL_UNICODE
+//			);
+	EnumSet<TextStrings> textPayloads = EnumSet.allOf(TextStrings.class);
 
 	private static byte[] getAllByteValuesArray() {
 		byte[] allByteValsArray = new byte[256];
@@ -303,8 +305,8 @@ public class AllMsgGenerator {
 		}
 	}
 
-	class DoubleBinaryMessageSender2 extends SenderImpl {
-		public DoubleBinaryMessageSender2(String topic, byte[] payload) {
+	class DoubleBinaryMessageSender extends SenderImpl {
+		public DoubleBinaryMessageSender(String topic, byte[] payload) {
 			super(topic, payload);
 		}
 		public void send() throws JCSMPException {
@@ -370,7 +372,20 @@ public class AllMsgGenerator {
 			producer.send(msg, f.createTopic(ROOT_TOPIC + "/text/invalid"));
 		}
 	}
-	
+
+	class InvalidUtf8TextMessage implements Sender {
+		public void send() throws JCSMPException {
+			TextMessage msg = f.createMessage(TextMessage.class);
+			msg.setText("This is string contains a non UTF-8 character: '\u001f'");
+			byte[] payload = msg.getAttachmentByteBuffer().array();
+//			System.out.println(Arrays.toString(payload));
+			payload[payload.length-3] = -86;
+//			System.out.println(Arrays.toString(payload));
+//			msg.writeAttachment("This is string contains a non UTF-8 character: \u001f".getBytes());
+			producer.send(msg, f.createTopic(ROOT_TOPIC + "/text/non-utf8"));
+		}
+	}
+
 	class AnsiTopicMessage implements Sender {
 		public void send() throws JCSMPException {
 			TextMessage msg = f.createMessage(TextMessage.class);  // empty text message
@@ -408,11 +423,27 @@ public class AllMsgGenerator {
 	private final JCSMPProperties props;
 	private final JCSMPSession session;
 	
+	
+	enum Category {
+		WACKY_TOPICS,
+		ANSI_PAYLOADS,
+		LANGUAGES_SYMBOLS,
+		MALFORMED_ILLEGAL,
+		;
+	}
+	
+	
+	
 	private XMLMessageProducer producer;
 	private List<Sender> types = new ArrayList<>();
 	private static final String ROOT_TOPIC = "solace";
 	
 	public AllMsgGenerator(String... args) throws InvalidPropertiesException  {
+		if (args.length < 4) {
+			System.err.println("Usage: AllMsgGenerator broker vpn user pw");
+			System.err.println();
+			System.exit(1);
+		}
 		props = new JCSMPProperties();
 		props.setProperty(JCSMPProperties.HOST, args[0]);
 		props.setProperty(JCSMPProperties.VPN_NAME, args[1]);
@@ -420,10 +451,12 @@ public class AllMsgGenerator {
 		if (args.length > 3) props.setProperty(JCSMPProperties.PASSWORD, args[3]);
 		session = f.createSession(props);
 		
-//		types.add(new AnsiTopicMessage());
-//		types.add(new AnsiHiddenPayloadMessage());
-//		types.add(new AnsiHiddenPayloadMessage2());
-//		
+		types.add(new AnsiTopicMessage());
+		types.add(new AnsiHiddenPayloadMessage());
+		types.add(new AnsiHiddenPayloadMessage2());
+		types.add(new InvalidTextMessage());
+		types.add(new InvalidUtf8TextMessage());
+		
 //		types.add(new BytesMessageSender(ROOT_TOPIC + "/bytes/array/raw", binaryPayloads.get("all-byte-values")));
 //		types.add(new BytesMessageSender(ROOT_TOPIC + "/bytes/array/utf-8", encode(StandardCharsets.UTF_8.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString(), CharsetType.UTF_8)));
 //		types.add(new TextMessageSender(ROOT_TOPIC + "/text/array/ascii", StandardCharsets.US_ASCII.decode(ByteBuffer.wrap(binaryPayloads.get("all-byte-values"))).toString()));
@@ -431,28 +464,23 @@ public class AllMsgGenerator {
 
 //		types.add(new XmlBinaryMessageSender2(ROOT_TOPIC + "/bytes/array/raw", binaryPayloads.get("all-byte-values")));
 
-		for (TextStrings type : textPayloads2) {
-//			types.add(makeSender(TextMessageSender.class, type, null));
-//			types.add(makeSender(BytesMessageSender.class, type, CharsetType.UTF_8));
-//			types.add(makeSender(BytesMessageSender2.class, type, CharsetType.ASCII));
-//			types.add(makeSender(BytesMessageSender2.class, type, CharsetType.LATIN1));
-//			types.add(makeSender(BytesMessageSender2.class, type, CharsetType.WIN_1252));
-//			types.add(makeSender(BytesMessageSender2.class, type, CharsetType.DOS));
-//			types.add(makeSender(BytesMessageSender2.class, type, CharsetType.UTF_16));
-//			types.add(makeSender(XmlContentMessageSender2.class, type, null));
-//			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.UTF_8));
-//			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.ASCII));
-//			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.LATIN1));
-//			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.WIN_1252));
-//			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.DOS));
-//			types.add(makeSender(XmlBinaryMessageSender2.class, type, CharsetType.UTF_16));
+		for (TextStrings type : textPayloads) {
+			types.add(makeSender(TextMessageSender.class, type, null));
+			types.add(makeSender(BytesMessageSender.class, type, CharsetType.UTF_8));
+//			types.add(makeSender(BytesMessageSender.class, type, CharsetType.ASCII));
+//			types.add(makeSender(BytesMessageSender.class, type, CharsetType.LATIN1));
+//			types.add(makeSender(BytesMessageSender.class, type, CharsetType.WIN_1252));
+//			types.add(makeSender(BytesMessageSender.class, type, CharsetType.DOS));
+//			types.add(makeSender(BytesMessageSender.class, type, CharsetType.UTF_16));
+//			types.add(makeSender(XmlContentMessageSender.class, type, null));
+//			types.add(makeSender(XmlBinaryMessageSender.class, type, CharsetType.UTF_8));
+//			types.add(makeSender(XmlBinaryMessageSender.class, type, CharsetType.ASCII));
+//			types.add(makeSender(XmlBinaryMessageSender.class, type, CharsetType.LATIN1));
+//			types.add(makeSender(XmlBinaryMessageSender.class, type, CharsetType.WIN_1252));
+//			types.add(makeSender(XmlBinaryMessageSender.class, type, CharsetType.DOS));
+//			types.add(makeSender(XmlBinaryMessageSender.class, type, CharsetType.UTF_16));
 //			types.add(makeSender(DoubleBinaryMessageSender2.class, type, CharsetType.UTF_8));
 //			types.add(makeSender(DoubleBinaryMessageSender2.class, type, CharsetType.LATIN1));
-		}
-
-		
-		for (TextStrings type : textPayloads2) {
-			types.add(makeSender(TextMessageSender.class, type, null));
 		}
 	}
 	
@@ -474,33 +502,33 @@ public class AllMsgGenerator {
 
 	private Sender makeSender(Class<? extends SenderImpl> clazz, TextStrings type, CharsetType charset) {
 		if (clazz == TextMessageSender.class) {
-			return new TextMessageSender(String.format("%s/text/%s", ROOT_TOPIC, type), type.payload);
+			return new TextMessageSender(String.format("%s/textMessage/%s", ROOT_TOPIC, type), type.payload);
 		} else if (clazz == BytesMessageSender.class) {
-			return new BytesMessageSender(String.format("%s/bytes/%s/%s", ROOT_TOPIC, charset.getDisplayName(), type), encode(type.payload, charset));
+			return new BytesMessageSender(String.format("%s/bytesMessage/%s/%s", ROOT_TOPIC, charset.getDisplayName(), type), encode(type.payload, charset));
 		} else if (clazz == XmlContentMessageSender.class) {
-			return new XmlContentMessageSender(String.format("%s/xml-content/%s", ROOT_TOPIC, type), type.payload);
+			return new XmlContentMessageSender(String.format("%s/xmlContentMessage/%s", ROOT_TOPIC, type), type.payload);
 		} else if (clazz == XmlBinaryMessageSender.class) {
-			return new XmlBinaryMessageSender(String.format("%s/xml-binary/%s/%s", ROOT_TOPIC, charset.getDisplayName(), type), encode(type.payload, charset));
-		} else if (clazz == DoubleBinaryMessageSender2.class) {
-			return new DoubleBinaryMessageSender2(String.format("%s/double-binary/%s/%s", ROOT_TOPIC, charset.getDisplayName(), type), encode(type.payload, charset));
+			return new XmlBinaryMessageSender(String.format("%s/xmlContentBinaryMessage/%s/%s", ROOT_TOPIC, charset.getDisplayName(), type), encode(type.payload, charset));
+		} else if (clazz == DoubleBinaryMessageSender.class) {
+			return new DoubleBinaryMessageSender(String.format("%s/doublePayloadBinary/%s/%s", ROOT_TOPIC, charset.getDisplayName(), type), encode(type.payload, charset));
 		} else {
 			throw new AssertionError();
 		}
 	}
 
 	private void run() throws JCSMPException, IOException {
-//		
-		String blah = "  \u0000  ";
-		byte[] blah2 = blah.getBytes(StandardCharsets.UTF_8);
-		TextMessage msg = f.createMessage(TextMessage.class);
-		msg.setText(blah);
-		byte[] blah3 = new byte[msg.getAttachmentContentLength()];
-		msg.readAttachmentBytes(blah3);
-		System.out.println(Arrays.toString(blah2));
-		System.out.println(Arrays.toString(blah3));
-		String blah4 = msg.getText();
-		System.out.println(Arrays.toString(blah4.getBytes(StandardCharsets.UTF_8)));
-		
+		// test code //////////////////////////
+//		String blah = "  \u0000  ";
+//		byte[] blah2 = blah.getBytes(StandardCharsets.UTF_8);
+//		TextMessage msg = f.createMessage(TextMessage.class);
+//		msg.setText(blah);
+//		byte[] blah3 = new byte[msg.getAttachmentContentLength()];
+//		msg.readAttachmentBytes(blah3);
+//		System.out.println(Arrays.toString(blah2));
+//		System.out.println(Arrays.toString(blah3));
+//		String blah4 = msg.getText();
+//		System.out.println(Arrays.toString(blah4.getBytes(StandardCharsets.UTF_8)));
+		// end test code //////////////////////////
 		
 		session.connect();
 		producer = session.getMessageProducer(new JCSMPStreamingPublishCorrelatingEventHandler() {
