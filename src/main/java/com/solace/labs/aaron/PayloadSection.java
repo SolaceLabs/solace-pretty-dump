@@ -12,7 +12,6 @@ import org.fusesource.jansi.AnsiConsole;
 import org.htmlunit.cyberneko.parsers.SAXParser;
 import org.htmlunit.cyberneko.xerces.xni.XNIException;
 import org.htmlunit.cyberneko.xerces.xni.parser.XMLInputSource;
-import org.xml.sax.ContentHandler;
 
 import com.solace.labs.aaron.ConfigState.DisplayType;
 import com.solace.labs.aaron.MessageHelper.PrettyMsgType;
@@ -157,9 +156,9 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
     	}
     	if (config.payloadDisplay != DisplayType.RAW) {
 	    	double ratio = (1.0 * formatted.getControlCharsCount() + formatted.getReplacementCharsCount()) / formatted.getTotalCharCount();
-			if ((malformed && ratio >= 0.25) /* && !oneLineMode */ || config.payloadDisplay == DisplayType.DUMP) {  // 25%, very likely a binary file
+			if ((malformed && ratio >= 0.25) || config.payloadDisplay == DisplayType.DUMP) {  // 25%, very likely a binary file
 				formatted = UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, config.getFormattingIndent(), AnsiConsole.getTerminalWidth());
-			} else if (malformed || formatted.getControlCharsCount() > 0 || formatted.getReplacementCharsCount() > 0 /*|| config.rawPayload */) {  // any unusual control chars (not tab, LF, CR, FF, or Esc, or NUL at string end
+			} else if (malformed || formatted.getControlCharsCount() > 0 || formatted.getReplacementCharsCount() > 0) {  // any unusual control chars (not tab, LF, CR, FF, or Esc, or NUL at string end
 				if (!config.oneLineMode && config.getFormattingIndent() > 0) {  // only if not in one-line mode!
 					formatted.a('\n').aa(UsefulUtils.printBinaryBytesSdkPerfStyle(bytes, config.getFormattingIndent(), AnsiConsole.getTerminalWidth()));
 				}

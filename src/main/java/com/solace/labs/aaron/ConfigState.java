@@ -43,7 +43,6 @@ public class ConfigState {
     	;
     }
     DisplayType payloadDisplay = DisplayType.NORMAL;
-//    boolean rawPayload = false;
     
     BoundedLinkedList.ComparableList<Integer> topicsLengthList = new BoundedLinkedList.ComparableList<>(TOPICS_LENGTH_LIST_SIZE);
     List<BoundedLinkedList.ComparableList<Integer>> topicLevelsLengthList = new ArrayList<>();
