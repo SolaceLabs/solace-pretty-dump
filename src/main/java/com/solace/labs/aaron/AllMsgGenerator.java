@@ -444,6 +444,12 @@ public class AllMsgGenerator {
 			System.err.println();
 			System.exit(1);
 		}
+		System.out.println("This will generate a variety of messages (some wacky) onto your broker.");
+		System.out.println("Useful for testing payload handling capabilities.");
+		System.out.println("Currently only configured for TextMessages and UTF-8 encoded BytesMessages sent as Direct.");
+		System.out.println("See code for changing charset encoding, or populating XML content payload.");
+		System.out.println();
+		
 		props = new JCSMPProperties();
 		props.setProperty(JCSMPProperties.HOST, args[0]);
 		props.setProperty(JCSMPProperties.VPN_NAME, args[1]);
@@ -565,6 +571,15 @@ public class AllMsgGenerator {
 	
 
 	public static void main(String... args) throws JCSMPException, IOException {
+		// test code
+//		String s = "hello";
+//		System.out.print(String.format("%-20s", s));  // left justisfied
+//		System.out.println("##");
+//		System.exit(10);
+		
+		
+		
+		
 		AllMsgGenerator gen = new AllMsgGenerator(args);
 		gen.run();
 		

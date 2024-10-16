@@ -550,6 +550,13 @@ public class PrettyDump {
 			// configure the queue API object locally
 			String queueName = topics[0].substring(2);
 			queue = f.createQueue(queueName);
+			// test code to create a queue
+//			final EndpointProperties endpointProps = new EndpointProperties();
+//	        endpointProps.setPermission(EndpointProperties.PERMISSION_CONSUME);
+//	        endpointProps.setAccessType(EndpointProperties.ACCESSTYPE_EXCLUSIVE);
+//	        session.provision(queue, endpointProps, JCSMPSession.FLAG_IGNORE_ALREADY_EXISTS);
+			// end test code
+			
 			// Create a Flow be able to bind to and consume messages from the Queue.
 			final ConsumerFlowProperties flowProps = new ConsumerFlowProperties();
 			flowProps.setEndpoint(queue);
@@ -1138,14 +1145,12 @@ public class PrettyDump {
 			if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
 			if (directConsumer != null) directConsumer.close();
 		}
-		o.println("here1");
 		try {
-			Thread.sleep(200);
-			session.closeSession();
-			Thread.sleep(300);
+			Thread.sleep(250);
 		} catch (InterruptedException e) {  // ignore, we're quitting anyway
+		} finally {
+			session.closeSession();
 		}
-		o.println("here2");
 		if (config.isLastNMessagesEnabled()) {  // got some messages to dump!
 			for (MessageObject msg : config.getLastNMessages()) {
 				o.print(msg.printMessage());

@@ -414,6 +414,7 @@ public class AaAnsi /* implements CharSequence */ {
 		return rawSb.length();
 	}
 	
+	// this is unnecessary now, since we maintain the rawSb non-coloured version
 	static int calcLength(String ansiString) {
 		int count = 0;
 		int pos = 0;

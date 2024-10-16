@@ -109,7 +109,7 @@ Usage: prettydump [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [i
  - Default parameters will be: localhost:55555 default foo bar '#noexport/>' 2
  - Subscribing options (arg 5, or shortcut mode arg 1), one of:
     • Comma-separated list of Direct topic subscriptions
-       - Strongly consider prefixing with "#noexport/" if using DMR or MNR
+       - Automatic "#noexport/" prefixes added for DMR/MNR; disable with --export
     • q:queueName to consume from queue
     • b:queueName to browse a queue (all messages, or range by MsgSpoolID or RGMID)
     • f:queueName to browse/dump only first oldest message on a queue
@@ -117,10 +117,12 @@ Usage: prettydump [host] [vpn] [user] [pw] [topics|[qbf]:queueName|tq:topics] [i
  - Indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode
  - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume defaults
     • Or if first arg parses as integer, select as indent, rest default options
- - Additional non-ordered args: --count, --filter, --selector, --trim
+ - Additional args: --count, --filter, --selector, --trim, --ts, --raw, --compressed
+ - Any JCSMP Session property (use --defaults to see all)
  - Environment variables for decoding charset and colour mode
- 
-prettydump -hm for more help on indent, count, Seletor, Filter, charsets, and colours
+
+prettydump -hm  for more help on indent, additional parameters, charsets, and colours
+prettydump -he  for examples
 ```
 
 
@@ -437,8 +439,8 @@ There are a number of (argument order doesn't matter) parameters that have been 
 
 - `--selector="blah"` See [Selectors](#selectors) above
 - `--filter="blah"` See [Client-side Filtering](#client-side-filtering) above
-- `--count=n` If you specify a number > 0, then PrettyDump will quit after receiving this many messages.  If you specify a number < 0, then PrettyDump will read/store this many messages and hold them internally until you quit `Ctrl+C` the app, at which point it will dump them to the screen.  This is exceptionally useful for browsing the last, say, 100 messages off a very deep queue.  Note if _consuming_ from a queue (`q:queueName`) then it will consume/ACK (aka delete) these messages.
-- `--raw` Do not perform any pretty-print formatting on text string payloads. This applies to JSON and XML. Binary encodings such as SDTMaps, SDTStreams, Protobuf, etc. will be unaffected.
+- `--count=n` See [COunt](#count) above
+- `--raw` Do not perform any pretty-print formatting on text string payloads, just leave alone. This applies to JSON and XML. Binary encodings such as SDTMaps, SDTStreams, Protobuf, etc. will be unaffected.
 - `--dump` Binary dump (à la SdkPerf `-md`) all message payloads to screen. This parameter overrides `--raw`.
 - `--trim` In one-line mode, trim payloads to console width to keep terminal display nice and neat 
 - `--ts` Print the time-of-day the message was received by PrettyDump (not actual message timestamp). Works in both regular and one-line mode. Very useful if needing to observe timings between messages or exactly when live messages were received.
