@@ -1,11 +1,11 @@
-# Download a Docker tarball from https://github.com/SolaceLabs/pretty-dump/releases
-# Load into Docker Images with: docker load -i solace-pretty-dump-1.0.0.tar.gz
+# Download a Docker tarball from https://github.com/SolaceLabs/solace-pretty-dump/releases
+# Load into Docker Images with: docker load -i solace-pretty-dump-1.1.0.tar.gz
 #
 # To RUN:
 #
-#     docker run -it --rm -e "TERM=xterm-256color" solace-pretty-dump:latest broker.messaging.solace.cloud vpn-name user pw ">" -1
+#     docker run -it --rm solace-pretty-dump:latest broker.messaging.solace.cloud vpn-name user pw ">" -1
 #
-# or make an alias: pretty='docker run -it --rm -e "TERM=xterm-256color" solace-pretty-dump:latest'
+# or make an alias: pretty='docker run -it --rm solace-pretty-dump:latest'
 #
 #
 # To RUN in "wrap" mode around SdkPerf:  (can't use -t pseudo-TTY mode since pipe | doesn't work
@@ -21,20 +21,18 @@
 # To BUILD:
 #
 #     1) ./gradlew clean assemble      (or download a pre-built release from GitHub)
-#     2) cd build/distributions
-#     3) unzip prettydump.zip
-#     4) cd ../..
-#     5) docker build -t solace-pretty-dump:latest --file Dockerfile .
-#     6) docker save solace-pretty-dump:latest | gzip > solace-pretty-dump-1.0.0.tar.gz
+#     2) docker build -t solace-pretty-dump:latest -t solace-pretty-dump:1.1.0 --file Dockerfile .
+#
+# Optional, for distribution:
+#
+#     3) docker save solace-pretty-dump:latest | gzip > solace-pretty-dump-x.y.z.tar.gz
 #
 
-# Go and make a custom JRE in the distribution lib folder:
-# jlink --add-modules ALL-MODULE-PATH --strip-debug --no-man-pages --no-header-files --compress=2  --output ../jre
 
-# greetings.Dockerfile
+# This is where the actual Dockerfile starts
 
-#FROM amazoncorretto:17-alpine as corretto-jdk
 FROM amazoncorretto:22-alpine as corretto-jdk
+#FROM amazoncorretto:17-alpine as corretto-jdk
 
 # required for strip-debug to work
 RUN apk add --no-cache binutils
@@ -58,6 +56,12 @@ RUN mkdir -p /opt/pretty
 WORKDIR /opt/pretty
 
 # after doing ./gradlew assemble, unzip a distribution, and then this will copy all the build/staged into the Docker image
-COPY build/distributions/prettydump/ ./
+COPY build/staged/ ./
 
 ENTRYPOINT ["./bin/prettydump"] 
+
+ENV TERM="xterm-256color"
+
+LABEL version=1.1.0
+LABEL author="Aaron @ Solace"
+LABEL repo="https://github.com/SolaceLabs/solace-pretty-dump"

@@ -20,10 +20,15 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.google.protobuf.ByteString;
 import com.solace.labs.aaron.AaAnsi.ColorMode;
 import com.solacesystems.common.util.ByteArray;
 import com.solacesystems.jcsmp.Destination;
+import com.solacesystems.jcsmp.SDTMap;
+import com.solacesystems.jcsmp.SDTStream;
 
 /**
  * Used by AaAnsi, my wrapper around the JAnsi library to give me better controls over colours.
@@ -46,18 +51,20 @@ public enum Elem {
 	DESTINATION,
 	TOPIC_SEPARATOR,
 	MSG_BREAK,
+	WARN,
 	ERROR,
 	UNKNOWN,
 	DEFAULT,
 	;
 
+	private static final Logger logger = LogManager.getLogger(Elem.class);
 	static Map<AaAnsi.ColorMode, Map<Elem, Col>> colorMap = new HashMap<>();
 	static {
 		colorMap.put(AaAnsi.ColorMode.STANDARD, new HashMap<>());
 		Map<Elem, Col> map = colorMap.get(AaAnsi.ColorMode.STANDARD);
 		map.put(KEY, new Col(12));
 		map.put(DATA_TYPE, new Col(4));
-		map.put(PAYLOAD_TYPE, new Col(-1));
+		map.put(PAYLOAD_TYPE, new Col(15));
 		map.put(NULL, new Col(1, false, true));
 		map.put(STRING, new Col(2));
 		map.put(CHAR, new Col(10));
@@ -68,31 +75,54 @@ public enum Elem {
 		map.put(BYTES_CHARS, new Col(6));
 		map.put(BRACE, new Col(-1));
 		map.put(DESTINATION, new Col(14));
-		map.put(TOPIC_SEPARATOR, new Col(-1));
+		map.put(TOPIC_SEPARATOR, new Col(6));
 		map.put(MSG_BREAK, new Col(-1,true));
-		map.put(ERROR, new Col(196));
+		map.put(WARN, new Col(208));
+		map.put(ERROR, new Col(9));
 		map.put(UNKNOWN, new Col(198, false, true));
 		map.put(DEFAULT, new Col(-1));
 
 		colorMap.put(AaAnsi.ColorMode.MINIMAL, new HashMap<>());
 		map = colorMap.get(AaAnsi.ColorMode.MINIMAL);
-		map.put(KEY, new Col(12));
+//		map.put(KEY, new Col(12));
+//		map.put(DATA_TYPE, new Col(-1));
+//		map.put(PAYLOAD_TYPE, new Col(-1));
+//		map.put(NULL, new Col(2, false, true));
+//		map.put(STRING, new Col(2));
+//		map.put(CHAR, new Col(2));
+//		map.put(NUMBER, new Col(-1));
+//		map.put(FLOAT, new Col(-1));
+//		map.put(BOOLEAN, new Col(2));
+//		map.put(BYTES, new Col(5));
+//		map.put(BYTES_CHARS, new Col(2));
+//		map.put(BRACE, new Col(-1));
+//		map.put(DESTINATION, new Col(14));
+//		map.put(TOPIC_SEPARATOR, new Col(6));
+//		map.put(MSG_BREAK, new Col(-1));
+//		map.put(WARN, new Col(11));
+//		map.put(ERROR, new Col(9));
+//		map.put(UNKNOWN, new Col(13, false, true));
+//		map.put(DEFAULT, new Col(-1));
+		map.put(KEY, new Col(-1));
 		map.put(DATA_TYPE, new Col(-1));
-		map.put(PAYLOAD_TYPE, new Col(-1));
+		map.put(PAYLOAD_TYPE, new Col(15));
 		map.put(NULL, new Col(2, false, true));
-		map.put(STRING, new Col(2));
-		map.put(CHAR, new Col(2));
+		map.put(STRING, new Col(-1));
+		map.put(CHAR, new Col(-1));
 		map.put(NUMBER, new Col(-1));
 		map.put(FLOAT, new Col(-1));
-		map.put(BOOLEAN, new Col(2));
-		map.put(BYTES, new Col(2));
-		map.put(BYTES_CHARS, new Col(2));
+		map.put(BOOLEAN, new Col(-1));
+		map.put(BYTES, new Col(5));
+		map.put(BYTES_CHARS, new Col(-1));
 		map.put(BRACE, new Col(-1));
-		map.put(DESTINATION, new Col(14));
-		map.put(TOPIC_SEPARATOR, new Col(6));
-		map.put(MSG_BREAK, new Col(-1));
-		map.put(ERROR, new Col(1));
-		map.put(UNKNOWN, new Col(1, false, true));
+//		map.put(DESTINATION, new Col(14));
+//		map.put(TOPIC_SEPARATOR, new Col(6));
+		map.put(DESTINATION, new Col(42));
+		map.put(TOPIC_SEPARATOR, new Col(36));
+		map.put(MSG_BREAK, new Col(-1, true));
+		map.put(WARN, new Col(11));
+		map.put(ERROR, new Col(9));
+		map.put(UNKNOWN, new Col(13, false, true));
 		map.put(DEFAULT, new Col(-1));
 		
 		colorMap.put(AaAnsi.ColorMode.VIVID, new HashMap<>());
@@ -112,12 +142,14 @@ public enum Elem {
 		map.put(BYTES_CHARS, new Col(87));
 		map.put(BRACE, new Col(230));
 		map.put(DESTINATION, new Col(49));
-		map.put(TOPIC_SEPARATOR, new Col(43));
-		map.put(MSG_BREAK, new Col(-1,true));
-		map.put(ERROR, new Col(196));
+//		map.put(TOPIC_SEPARATOR, new Col(43));
+		map.put(TOPIC_SEPARATOR, new Col(36));
+		map.put(MSG_BREAK, new Col(-1, true));
+		map.put(WARN, new Col(208));
+		map.put(ERROR, new Col(9));
 		map.put(UNKNOWN, new Col(196, false, true));
 //		defaults.put(DEFAULT, new Col(66));
-		map.put(DEFAULT, new Col(102));
+		map.put(DEFAULT, new Col(245));
 
 		colorMap.put(AaAnsi.ColorMode.LIGHT, new HashMap<>());
 		map = colorMap.get(AaAnsi.ColorMode.LIGHT);
@@ -143,7 +175,8 @@ public enum Elem {
 //		map.put(TOPIC_SEPARATOR, new Col(42));
 		map.put(TOPIC_SEPARATOR, new Col(30));
 		map.put(MSG_BREAK, new Col(247));
-		map.put(ERROR, new Col(196));
+		map.put(WARN, new Col(172));
+		map.put(ERROR, new Col(160));
 		map.put(UNKNOWN, new Col(196, false, true));
 		map.put(DEFAULT, new Col(241));
 	
@@ -165,9 +198,16 @@ public enum Elem {
 		map.put(DESTINATION, new Col(47));
 		map.put(TOPIC_SEPARATOR, new Col(34));
 		map.put(MSG_BREAK, new Col(35, true));
+		map.put(WARN, new Col(154));
 		map.put(ERROR, new Col(157));
 		map.put(UNKNOWN, new Col(157, false, true));
 		map.put(DEFAULT, new Col(28));
+
+		colorMap.put(AaAnsi.ColorMode.OFF, new HashMap<>());
+		map = colorMap.get(AaAnsi.ColorMode.OFF);
+		map.put(WARN, new Col(11));
+		map.put(ERROR, new Col(9));
+		map.put(DEFAULT, new Col(-1));
 	}
 	
 	static Elem guessByType(Object value) {
@@ -183,6 +223,8 @@ public enum Elem {
 		if (value instanceof ByteArray || value instanceof ByteString) return Elem.BYTES;
 		if (value instanceof Boolean) return Elem.BOOLEAN;
 		if (value instanceof Destination) return Elem.DESTINATION;
+		if (value instanceof SDTMap || value instanceof SDTStream) return Elem.UNKNOWN;  // doesn't matter, this will get formatted anyway
+		logger.warn("Found a value that couldn't be guessed! " + value.toString() + ", " + value.getClass().getName());
 		return Elem.UNKNOWN;
 	}
 	
@@ -212,7 +254,15 @@ public enum Elem {
 		lookup.put(this, newColor);
 	}
 
+//	static final int[] MATRIX_COLORS = new int[] { /* 22, */ 28, 34, 40, 46, /* 83, 120, */ 157 }; 
+	static final int[] MATRIX_COLORS = new int[] { /* 22, */ 28, 34, 40, 46, 120, /* 157 */ }; 
+
 	Col getCurrentColor() {
+		if (AaAnsi.getColorMode() == ColorMode.MATRIX) {
+			return new Col(MATRIX_COLORS[(int)(Math.random() * MATRIX_COLORS.length)]);
+			// if you comment this out, check: public AaAnsi aa(AaAnsi aa)
+		}
+		// else...
 		return lookup.get(this);
 	}
 	

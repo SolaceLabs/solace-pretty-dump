@@ -29,7 +29,12 @@ public class RegexTests {
 		m = p.matcher(key);
 		System.out.println(m.find());
 		
-	
+		String ansi = "\u001b[2;30m] color ";
+		Pattern p2 = Pattern.compile("\u001b\\[[0-9; ]*m");
+//		String ansi = "\u001b[2;30m] color ";
+//		Pattern p2 = Pattern.compile("\u001b");
+		System.out.println(p2);
+		System.out.println(p2.matcher(ansi).find());
 	
 	}
 }

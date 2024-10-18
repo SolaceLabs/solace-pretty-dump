@@ -50,6 +50,33 @@ public class ProtoBufUtils {
 			return dataType.toString();
     	}
     }
+    
+    static void lookForAllParseFromMethods(String className) {
+    	
+    	try {
+			Class<?> clazz = Class.forName(className);
+			boolean foundMethod = false;
+			for (Method method : clazz.getMethods()) {  // loop through all the methods
+				if (method.getName().startsWith("parseFrom")) {
+					System.out.println("Found a parseFrom()");
+					
+					
+//					if (method.getParameterCount() == 1  && method.getParameterTypes()[0] == byte[].class) {  // the one I want!
+//					}
+				}
+			}
+
+    	} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally {
+    		
+    	}
+    	
+    	
+    	
+    	
+    }
 	
 	static Map<Sub, Method> loadProtobufDefinitions() {
 	    Map<Sub, Method> protobufCallbacks = new HashMap<>();
@@ -58,8 +85,8 @@ public class ProtoBufUtils {
 		final String appConfigPath = "protobuf.properties";
 		URL url = Thread.currentThread().getContextClassLoader().getResource(appConfigPath);
 		if (url == null) {
-			System.out.println(new AaAnsi().invalid("WARN: could not locate " + appConfigPath + " on classpath").toString());
-			logger.warn("Could not find " + appConfigPath + " on classpath.  Normally inside ./lib/protobufs/");
+			System.out.println(AaAnsi.n().invalid("WARN: could not locate " + appConfigPath + " on classpath").toString());
+			logger.warn("Could not find " + appConfigPath + " on classpath.  Normally inside ./lib/classes/");
 		} else {
 	    	try {
 //				System.out.println("Loading topic subscriptions and protobuf mappings");
@@ -70,7 +97,7 @@ public class ProtoBufUtils {
 				logger.info("This is what I loaded: {}", protobufProps);
 		    	for (Entry<Object,Object> entry : protobufProps.entrySet()) {
 		    		try {
-		    			logger.debug("Verifying topic subscription {}", entry.getKey().toString());
+		    			logger.info("Verifying topic subscription {}", entry.getKey().toString());
 		    			Sub sub = new Sub(entry.getKey().toString());
 		    			logger.debug("Attempting to load class {}", entry.getValue().toString());
 		    			Class<?> clazz = Class.forName(entry.getValue().toString());
@@ -104,13 +131,13 @@ public class ProtoBufUtils {
 		    		}
 		    	}
 		    	if (issues) {
-		    		System.out.println(new AaAnsi().invalid("WARN: had issues loading Protobuf definitions, check log file").toString());
+		    		System.out.println(AaAnsi.n().invalid("WARN: had issues loading Protobuf definitions, check log file").toString());
 		    	} else {
 		    		logger.info("Successfully loaded all Protobuf definitions");
 		    	}
 	    	} catch (Exception e) {
 	    		logger.warn("Caught while trying to load protobuf definitions", e);
-	    		System.out.println(new AaAnsi().invalid("WARN: had issues loading Protobuf definitions, check log file").toString());
+	    		System.out.println(AaAnsi.n().invalid("WARN: had issues loading Protobuf definitions, check log file").toString());
 	    	}
 		}
 		return protobufCallbacks;
@@ -128,10 +155,10 @@ public class ProtoBufUtils {
 	}
 	
 	private static AaAnsi handleMessage(Map<FieldDescriptor, Object> map, final int indent, final int indentFactor) {
-		AaAnsi ansi = new AaAnsi();
+		AaAnsi ansi = AaAnsi.n();
 		handleMessage(map, ansi, indent, indentFactor);
 //		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('{') + ansi.toString() + new AaAnsi().fg(Elem.BRACE).a('}').reset();
-		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('{').a(ansi).fg(Elem.BRACE).a('}');//.reset();
+		if (indentFactor <= 0) return AaAnsi.n().fg(Elem.BRACE).a('{').aa(ansi).a('}');//.reset();
 		else return ansi;//.reset().toString();
 	}
 	
@@ -198,9 +225,11 @@ public class ProtoBufUtils {
 							while (listIt.hasNext()) {
 								Object o = listIt.next();
 								ansi.fg(Elem.NUMBER).a(o.toString());
-								String ts = UsefulUtils.guessIfTimestamp(fd.getName(), (long)val);
-								if (ts != null) {
-									ansi.makeFaint().a(ts);
+								if (indentFactor > 0) {
+									String ts = UsefulUtils.guessIfTimestampLong(fd.getName(), (long)val);
+									if (ts != null) {
+										ansi.faintOn().a(ts);
+									}
 								}
 								if (list.iterator().hasNext()) {
 									ansi.reset().a(',');
@@ -211,9 +240,11 @@ public class ProtoBufUtils {
 						}
 					} else {
 						ansi.fg(Elem.NUMBER).a(val.toString());
-						String ts = UsefulUtils.guessIfTimestamp(fd.getName(), (long)val);
-						if (ts != null) {
-							ansi.makeFaint().a(ts);
+						if (indentFactor > 0) {
+							String ts = UsefulUtils.guessIfTimestampLong(fd.getName(), (long)val);
+							if (ts != null) {
+								ansi.faintOn().a(ts);
+							}
 						}
 					}
 					break;
@@ -304,7 +335,7 @@ public class ProtoBufUtils {
 								if (indentFactor > 0) ansi.a(indent(indent + (indent/2)));
 								ansi.fg(Elem.DATA_TYPE).a("(MESSAGE)").reset();
 								if (indentFactor > 0) ansi.a(":\n");
-								ansi.a(handleMessage(obj.getAllFields(), indent + indentFactor, indentFactor));
+								ansi.aa(handleMessage(obj.getAllFields(), indent + indentFactor, indentFactor));
 								if (listIt.hasNext()) {
 									if (indentFactor > 0) ansi.a('\n');
 									else ansi.reset().a(',');
@@ -314,7 +345,7 @@ public class ProtoBufUtils {
 						}						
 					} else {  // not repeated, just a message
 						if (indentFactor > 0) ansi.a('\n');
-						ansi.a(handleMessage(((AbstractMessage)val).getAllFields(), indent+indentFactor, indentFactor));
+						ansi.aa(handleMessage(((AbstractMessage)val).getAllFields(), indent+indentFactor, indentFactor));
 					}
 					break;
 //				case GROUP:
@@ -341,15 +372,30 @@ public class ProtoBufUtils {
 		}
 	}
 	
-	
-	
 	private static void addByteString(ByteString bs, AaAnsi ansi, FieldDescriptor fd) {
 		if (bs.size() == 4 && fd.getName().toLowerCase().contains("ip")) {  // assume IP address
 			ansi.fg(Elem.BYTES).a(UsefulUtils.bytesToSpacedHexString(bs.toByteArray()));
-			ansi.makeFaint().a(UsefulUtils.ipAddressBytesToIpV4String(bs.toByteArray()));
+			ansi.faintOn().a(UsefulUtils.ipAddressBytesToIpV4String(bs.toByteArray()));
 		} else {
 			ansi.fg(Elem.BYTES).a(UsefulUtils.bytesToSpacedHexString(bs.toByteArray()));
 		}
 	}
+
+	
+	
+	
+	
+	public static void main(String... args) {
+
+		lookForAllParseFromMethods("io.opentelemetry.proto.trace.v1.TracesData");
+	
+	
+	
+	
+	
+	}
+	
+	
+	
 	
 }

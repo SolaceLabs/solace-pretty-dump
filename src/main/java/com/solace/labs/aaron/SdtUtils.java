@@ -27,30 +27,62 @@ import com.solacesystems.jcsmp.SDTStream;
 import com.solacesystems.jcsmp.Topic;
 
 public class SdtUtils {
+	
+	static int countElements(SDTMap map) {
+		int count = 0;
+		try {
+			Iterator<String> it = map.keySet().iterator();
+			while (it.hasNext()) {
+				Object value = map.get(it.next());
+				if (value instanceof SDTMap) {
+					count += countElements((SDTMap)value);
+				} else if (value instanceof SDTStream) {
+					count += countElements((SDTStream)value);
+				} else count++;  // just a regular element
+			}
+		} catch (SDTException e) {  // shouldn't happen, we know it's well-defined since we received it
+			return -1;
+		}
+		return count;
+	}
+	
+	static int countElements(SDTStream stream) {
+		int count = 0;
+		try {
+			while (stream.hasRemaining()) {
+				Object value = stream.read();
+				if (value instanceof SDTMap) {
+					count += countElements((SDTMap)value);
+				} else if (value instanceof SDTStream) {
+					count += countElements((SDTStream)value);
+				} else count++;  // just a regular element
+			}
+		} catch (SDTException e) {  // shouldn't happen, we know it's well-defined since we received it
+			return -1;
+		}
+		return count;
+	}
 
 	static AaAnsi printMap(SDTMap map, final int indentFactor) {
 		try {
-			return privPrintMap(map, indentFactor, indentFactor == 4 ? 2 : indentFactor);
+			return privPrintMap(map, indentFactor, indentFactor).reset();
 		} catch (SDTException e) {
 			throw new IllegalArgumentException("Could not parse SDT", e);
 		}
 	}
 
-	private static AaAnsi privPrintMap(SDTMap map, final int indent, final int indentFactor) throws SDTException {
-		AaAnsi aa = new AaAnsi();
-		privPrintMap(map, indent, indentFactor, aa);
-//		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a("{ ") + ansi.toString() + new AaAnsi().fg(Elem.BRACE).a(" }");
-//		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('{') + aa.toString() + new AaAnsi().fg(Elem.BRACE).a('}').reset();
-		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('{').a(aa).fg(Elem.BRACE).a('}');
-		else return aa;
-//		else return ansi.toString() + AaAnsi.n().fg(Elem.BRACE).a(" }").reset();
+	private static AaAnsi privPrintMap(SDTMap map, final int curIndent, final int indentFactor) throws SDTException {
+		AaAnsi ansi = AaAnsi.n();
+		privPrintMap(map, curIndent, indentFactor, ansi);
+		if (indentFactor <= 0) return AaAnsi.n().fg(Elem.BRACE).a('{').aa(ansi).a('}');
+		else return ansi;
 	}
 	
-	private static void privPrintMap(SDTMap map, final int indent, final int indentFactor, AaAnsi ansi) throws SDTException {
+	private static void privPrintMap(SDTMap map, final int curIndent, final int indentFactor, AaAnsi ansi) throws SDTException {
 		if (map == null) {
 			return;
 		} else if (map.isEmpty()) {
-			ansi.a(indent(indent)).fg(Elem.NULL).a("<EMPTY>").reset();
+			ansi.a(indent(curIndent)).fg(Elem.NULL).a("<EMPTY>").reset();
 			return;
 		}
 //		String strIndent = indent(indent);
@@ -59,7 +91,7 @@ public class SdtUtils {
 			String key = it.next();
 			Object value = map.get(key);
 			String strValue = String.valueOf(value);
-			AaAnsi ansiValue = AaAnsi.n().fg(Elem.guessByType(value)).a(strValue);
+			AaAnsi ansiValue = null; // AaAnsi.n().fg(Elem.guessByType(value)).a(strValue);
 			String type = "NULL";  // default value of the type for now, will get overwritten with actual object type
 			// that's how SdkPerf JCSMP does it:
 			if (value != null) {
@@ -73,55 +105,69 @@ public class SdtUtils {
 				} else if (value instanceof Character && indentFactor > 0) {
 					strValue = "'" + strValue + "'";  // single quotes for chars
 				} else if (value instanceof ByteArray) {
-					strValue = UsefulUtils.bytesToSpacedHexString(((ByteArray)value).asBytes());
+					if (((ByteArray)value).getLength() > 16 && indentFactor > 0) {
+						
+					} else {
+						strValue = UsefulUtils.bytesToSpacedHexString(((ByteArray)value).asBytes());
+					}
 				}
-				ansiValue = AaAnsi.n().fg(Elem.guessByType(value)).a(strValue); // update
 				if (value instanceof SDTMap) {
-					AaAnsi inner = new AaAnsi();
+					AaAnsi inner = AaAnsi.n();
 					if (indentFactor > 0) inner.a("\n");
 //					else inner.a(" ");
-					inner.a(privPrintMap((SDTMap) value, indent + indentFactor, indentFactor));
+					inner.aa(privPrintMap((SDTMap) value, curIndent + indentFactor, indentFactor));
 					ansiValue = inner;
 //					strValue = inner.toString();  // overwrite
 				} else if (value instanceof SDTStream) {
-					AaAnsi inner = new AaAnsi();
+					AaAnsi inner = AaAnsi.n();
 					if (indentFactor > 0) inner.a("\n");
 //					else inner.a(" ");
-					inner.a(privPrintStream((SDTStream) value, indent + indentFactor, indentFactor));
+					inner.aa(privPrintStream((SDTStream) value, curIndent + indentFactor, indentFactor));
 					ansiValue = inner;
 //					strValue = inner.toString();  // overwrite
+				} else {  // everything else
+					ansiValue = AaAnsi.n().fg(Elem.guessByType(value)).a(strValue); // update
 				}
-			} else {  // value is null, but there is no way to query the map for the 
-//				map.
+			} else {  // value is null, but there is no way to query the map for the data type
+				ansiValue = AaAnsi.n().fg(Elem.NULL).a(strValue); // update
 			}
-			ansi.a(indent(indent));
-			if (indentFactor > 0) ansi.a("Key ");
-			ansi.fg(Elem.KEY).a("'").a(key).a("'").reset();
-			if (indentFactor > 0) ansi.a(' ');
-//			ansi.reset().a(indent(indent));
+			ansi.reset().a(indent(curIndent));
+//			if (indentFactor > 0) ansi.a("Key ");
+//			ansi.fg(Elem.KEY).a("'").a(key).a("'").reset();
+//			if (indentFactor > 0) ansi.a(' ');
+			if (indentFactor > 0) ansi.a("Key ").fg(Elem.KEY).a("'").a(key).a("' ");//.reset();
+			else ansi.fg(Elem.KEY).a(key);  // no more single quotes on key name for compressed view
+			
+			//			ansi.reset().a(indent(indent));
 //			if (indentFactor > 0) {
 //				ansi.a("Key ").fg(Elem.KEY).a("'").a(key).a("' ").reset();
 //			} else {
 //				ansi.fg(Elem.KEY).a(key).reset();
 //			}
-			ansi.fg(Elem.DATA_TYPE);
-			ansi.a('(').a(type).a(')').reset();
-			if (indentFactor > 0) ansi.a(": ");
-//			else ansi.a(":");
+			if (indentFactor > 0) {
+				ansi.fg(Elem.DATA_TYPE);
+				ansi.a('(').a(type).a(')');
+//			} else {
+//				ansi.reset().a('=');
+			}
+			ansi.reset();
+			if (indentFactor > 0) ansi.a(':').a(' ');
+			else ansi.a('=');
 			if (value instanceof Topic) ansi.colorizeTopic(strValue, -1).reset();
 			else {
-//				Elem guess = Elem.guessByType(value);
-				ansi./* fg(guess). */a(ansiValue).reset();
-				if (value instanceof Long) {
-					String ts = UsefulUtils.guessIfTimestamp(key, (long)value);
-					if (ts != null) {
-//						ansi.fg(Elem.CHAR).a(ts);
-						ansi.fg(Elem.NUMBER).faintOn().a(ts).reset();
-					}
-				} else if (value instanceof String) {
-					String ts = UsefulUtils.guessIfTimestamp(key, (String)value);
-					if (ts != null) {
-						ansi.fg(Elem.STRING).faintOn().a(ts).reset();
+				ansi.aa(ansiValue).reset();
+				if (indentFactor > 0) {  // i.e. not compressed
+					if (value instanceof Long) {
+						String ts = UsefulUtils.guessIfTimestampLong(key, (long)value);
+						if (ts != null) {
+	//						ansi.fg(Elem.CHAR).a(ts);
+							ansi.fg(Elem.NUMBER).faintOn().a(ts).reset();
+						}
+					} else if (value instanceof String) {
+						String ts = UsefulUtils.guessIfTimestampString(key, (String)value);
+						if (ts != null) {
+							ansi.fg(Elem.STRING).faintOn().a(ts).reset();
+						}
 					}
 				}
 			}
@@ -137,18 +183,18 @@ public class SdtUtils {
 	
 	static AaAnsi printStream(SDTStream stream, final int indentFactor) {
 		try {
-			return privPrintStream(stream, indentFactor, indentFactor == 4 ? 2 : indentFactor);
+			return privPrintStream(stream, indentFactor, indentFactor).reset();
 		} catch (SDTException e) {
 			throw new IllegalArgumentException("Could not parse SDT", e);
 		}
 	}
 	
-	private static AaAnsi privPrintStream(SDTStream stream, final int indent, final int indentFactor) throws SDTException {
-		AaAnsi aa = new AaAnsi();
-		privPrintStream(stream, indent, indentFactor, aa);
+	private static AaAnsi privPrintStream(SDTStream stream, final int curIndent, final int indentFactor) throws SDTException {
+		AaAnsi ansi = AaAnsi.n();
+		privPrintStream(stream, curIndent, indentFactor, ansi);
 //		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('[') + ansi.toString() + new AaAnsi().fg(Elem.BRACE).a(']').reset();
-		if (indentFactor <= 0) return new AaAnsi().fg(Elem.BRACE).a('[').a(aa).fg(Elem.BRACE).a(']');
-		else return aa;
+		if (indentFactor <= 0) return AaAnsi.n().fg(Elem.BRACE).a('[').a(' ').aa(ansi).a(' ').a(']');
+		else return ansi;
 	}
 
 	
@@ -163,7 +209,7 @@ public class SdtUtils {
 		while (stream.hasRemaining()) {
 			Object value = stream.read();
 			String strValue = String.valueOf(value);
-			AaAnsi strValue2 = AaAnsi.n().fg(Elem.guessByType(value)).a(String.valueOf(strValue));
+			AaAnsi strValue2 = null;// AaAnsi.n().fg(Elem.guessByType(value)).a(String.valueOf(strValue));
 			String type = "NULL";
 			if (value != null) {
 				Class<?> valuClass = value.getClass();
@@ -177,35 +223,39 @@ public class SdtUtils {
 				} else if (value instanceof ByteArray) {
 					strValue = UsefulUtils.bytesToSpacedHexString(((ByteArray)value).asBytes());
 				}
-				strValue2 = AaAnsi.n().fg(Elem.guessByType(value)).a(String.valueOf(strValue));  // update
+//				strValue2 = AaAnsi.n().fg(Elem.guessByType(value)).a(String.valueOf(strValue));  // update
 				if (value instanceof SDTMap) {
-					AaAnsi inner = new AaAnsi();
+					AaAnsi inner = AaAnsi.n();
 					if (indentFactor > 0) inner.a("\n");
 //					else inner.a(" ");
-					inner.a(privPrintMap((SDTMap) value, indent + indentFactor, indentFactor));
+					inner.aa(privPrintMap((SDTMap) value, indent + indentFactor, indentFactor));
 //					else
 //						a.a("{ ").reset().a(privPrintMap((SDTMap) value, indent + indentFactor, indentFactor)).a(" }").reset();
 //					strValue = inner.toString();  // overwrite
 					strValue2 = inner;
 				} else if (value instanceof SDTStream) {
-					AaAnsi inner = new AaAnsi();
+					AaAnsi inner = AaAnsi.n();
 					if (indentFactor > 0) inner.a("\n");
 //					else inner.a(" ");
-					inner.a(privPrintStream((SDTStream) value, indent + indentFactor, indentFactor));
+					inner.aa(privPrintStream((SDTStream) value, indent + indentFactor, indentFactor));
 //					else
 //						inner.fg(Elem.BYTES).a("[ ").reset().a(privPrintStream((SDTStream)value, indent + indentFactor, indentFactor)).reset().a(" ]").reset();
 //					strValue = inner.toString();  // overwrite
 					strValue2 = inner;
+				} else {
+					strValue2 = AaAnsi.n().fg(Elem.guessByType(value)).a(strValue);  // update
 				}
+			} else {  // value must be null
+				strValue2 = AaAnsi.n().fg(Elem.NULL).a(strValue);  // update
 			}
 			ansi.reset().a(indent(indent));
 			if (indentFactor > 0) {
 				ansi.fg(Elem.DATA_TYPE).a('(').a(type).a(")").reset().a(": ");
 			} else {
-				ansi.fg(Elem.DATA_TYPE).a('(').a(type).a(")").reset();
+//				ansi.fg(Elem.DATA_TYPE).a('(').a(type).a(")").reset();
 			}
 			if (value instanceof Topic) ansi.colorizeTopic(strValue, -1).reset();
-			else ansi.a(strValue2).reset();
+			else ansi.aa(strValue2).reset();
 			if (stream.hasRemaining() ) {
 				if (indentFactor > 0) ansi.a("\n");
 				else ansi.a(",");

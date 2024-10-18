@@ -12,7 +12,30 @@ plugins {
     java
     eclipse
     idea
+    //id("com.gradleup.shadow") version "8.3.2"  // https://gradleup.com/shadow/
 }
+
+version = "1.1.0"
+
+eclipse {
+    classpath {
+        isDownloadJavadoc = true
+        isDownloadSources = true
+    }
+    jdt {
+        //if you want to alter the java versions (by default they are configured with gradle java plugin settings):
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+}
+
+idea {
+    module {
+        isDownloadJavadoc = true
+        isDownloadSources = true
+    }
+}
+
 
 repositories {
     mavenCentral()
@@ -26,8 +49,6 @@ sourceSets {
     main {
         java {
             srcDir("src/main/java")
-            //srcDir("src/dist")
-            //srcDir("protobuf/protobufs/protobufs")   // so eclipse can find the properties file
             srcDir("schemas/classes/classes")   // so eclipse can find the properties file
         }
     }
@@ -41,24 +62,34 @@ buildscript {
     }
 }
 
-
-
-tasks.register<Copy>("copyReadme") {
-    //from(layout.buildDirectory.file("reports/my-report.pdf"))
-    from("README.md")
-    into(layout.buildDirectory.dir("toArchive"))
-    //into(layout.buildDirectory.dir)
+distributions {
+    main {
+        //distributionBaseName = "prettydump"
+        //distributionClassifier = "beta"
+        contents {
+            from("README.md")
+            from("LICENSE")
+            from("scripts") {
+                into("scripts")
+	    }
+        }
+    }
 }
 
-//tasks.withType<Copy> {
-//  dependsOn("assemble")
-//}
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
+}
 
+tasks.withType<JavaExec> {
+     // uncomment this out if you want faster compiled code with all assertion checks removed
+     //enableAssertions = false
+}
 
 dependencies {
 
     // versions after 10.22 have about 40 netty deps
     implementation("com.solacesystems:sol-jcsmp:10.+")
+    //implementation("com.solacesystems:sol-jcsmp:10.22.+")
     //runtimeOnly("org.slf4j:slf4j2-log4j12:1.7.6')
     implementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.+")
 
@@ -80,7 +111,9 @@ dependencies {
     // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
     implementation("com.google.protobuf:protobuf-java:3.+")
 
+    implementation("org.htmlunit:neko-htmlunit:4.+")
     implementation("org.apache.avro:avro:1.+")
+    implementation("io.opentelemetry.proto:opentelemetry-proto:1.3.+");
 
     implementation(fileTree(mapOf("dir" to "include", "include" to listOf("*.jar"))))
 //    implementation(fileTree(mapOf("dir" to "protobuf/jars", "include" to listOf("*.jar"))))
@@ -101,12 +134,18 @@ dependencies {
 }
 
 
-
-
 tasks.jar {
     manifest {
-        archiveBaseName.set("solace-pretty-dump-1.0.0")
+        archiveBaseName.set("solace-pretty-dump")
     }
+}
+
+tasks.installDist {
+    destinationDir = file(layout.buildDirectory.dir("staged"))
+}
+
+tasks.assemble {
+    dependsOn("installDist")
 }
 
 application {
@@ -115,6 +154,7 @@ application {
     //classpath += files("config/")
     //project.logger.lifecycle("my message visible by default")
     //project.logger.lifecycle($runtimeClasspath)
+    applicationDefaultJvmArgs = listOf("-ea")
 }
 
 fun createAdditionalScript(name: String, configureStartScripts: CreateStartScripts.() -> Unit) =
@@ -123,6 +163,10 @@ fun createAdditionalScript(name: String, configureStartScripts: CreateStartScrip
     applicationName = name
     outputDir = File(project.layout.buildDirectory.get().asFile, "scripts")
     classpath = tasks.getByName("jar").outputs.files + configurations.runtimeClasspath.get()
+    //defaultJvmOpts = [ "-ea" ]  // enable assertions
+    defaultJvmOpts = listOf("-ea")  // enable assertions
+    //defaultJvmOpts = listOf("networkaddress.cache.ttl=0")  // disable DNS caching
+    //defaultJvmOpts = listOf("-ea").iterator().asSequence().toList()  // enable assertions
   }.also {
     application.applicationDistribution.into("bin") {
       from(it)
@@ -131,8 +175,43 @@ fun createAdditionalScript(name: String, configureStartScripts: CreateStartScrip
     }
   }
 
-//createAdditionalScript("PrettyDumpWrap") {
-//  mainClass = "com.solace.labs.aaron.PrettyWrap"
+createAdditionalScript("AllMsgGenerator") {
+  mainClass = "com.solace.labs.aaron.AllMsgGenerator"
+}
+
+//createAdditionalScript("KeyboardHandler") {
+//  mainClass = "com.solace.labs.aaron.KeyboardHandler"
+//}
+
+//tasks {
+//    named<ShadowJar>("shadowJar") {
+//        archiveBaseName.set("shadow")
+//        mergeServiceFiles()
+//        manifest {
+//            attributes(mapOf("Main-Class" to "com.github.csolem.gradle.shadow.kotlin.example.App"))
+//        }
+//    }
+//}
+
+// Output to build/libs/shadow.jar
+//tasks {
+//   named("shadowJar") {
+//   //, com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+//        archiveBaseName.set("shadow")
+	//mergeServiceFiles()
+        //archiveClassifier.set("mega")
+        //archiveVersion.set("0.0.4")
+//    }
+//}
+
+//tasks.withType<ShadowJar> {
+//    archiveFileName.set("app.jar")
+//}
+
+//tasks {
+//    build {
+//        dependsOn(shadowJar)
+//    }
 //}
 
 //createAdditionalScript("bar") {
