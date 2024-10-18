@@ -16,7 +16,11 @@
 
 package com.solace.labs.aaron;
 
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
@@ -31,6 +35,29 @@ public class UsefulUtils {
 //	private static Charset DEFAULT_CHARSET = StandardCharsets.ISO_8859_1;
 //	private static CharsetDecoder DECODER = DEFAULT_CHARSET.newDecoder();
 
+	// https://en.wikipedia.org/wiki/Bullet_(typography)#In_Unicode
+	// https://stackoverflow.com/a/36743430/101766
+    // https://stackoverflow.com/a/56545033/101766
+	static final String UNICODE_BULLETS = "\n"
+			+ "  ├\u2027┤ hyphenation point           U+2027\n"  // half-width in some fonts
+			+ "  ├\u22c5┤ dot operator                U+22C5\n"     // half-width in some fonts
+			+ "  ├\u2024┤ one dot leader              U+2024\n" 
+			+ "  ├\u002e┤ period                      U+002E\n" 
+			+ "  ├" + '·' + "┤ my default bullet " + Integer.toHexString(Character.getNumericValue('·')) + '\n'
+			+ "  ├\u00b7┤ middle dot                  U+00B7\n"
+			+ "  ├" + '•' + "┤ my larger bullet " + Integer.toHexString(Character.getNumericValue('•')) + '\n'
+			+ "  ├\u2022┤ bullet (black small circle) U+2022\n" 
+			+ "  ├\u2219┤ bullet operator             U+2219\n"
+			+ "  ├\u2981┤ z notation spot             U+2981\n"  // half-width in some fonts
+			+ "  ├\u25e6┤ white bullet                U+25E6\n"
+			+ "  ├\u25cb┤ white circle                U+25CB\n"
+			+ "  ├\u25cc┤ dotted circle               U+25CC\n"
+			+ "  ├\u25cf┤ black circle                U+25CF\n"
+			+ "  ├\u002d┤ hyphen-minus                U+002D\n"
+			+ "  ├\u2010┤ hyphen                      U+2010\n"
+			+ "  ├\u2012┤ figure dash                 U+2012\n"
+			+ "End.";
+	
 	public static final char[] HARDCODED = new char[] {
 //			'€','·','‚','ƒ','„','…','†','‡','ˆ','‰','Š','‹','Œ','·','Ž','·',  // from win-1252
 //			'·','‘','’','“','”','•','–','—','˜','™','š','›','œ','·','ž','Ÿ',  // from win-1252
@@ -59,11 +86,11 @@ public class UsefulUtils {
 			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
 //			'α','ß','Γ','π','Σ','σ','µ','τ','Φ','Θ','Ω','δ','∞','φ','ε','∩',
 //			'≡','±','≥','≤','⌠','⌡','÷','≈','°','∙','·','√','ⁿ','²','■','·',
-			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
+			/* '•','·', '○',*/'•','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
 			'·','·','·','·','·','·','·','·','·','·','·','·','·','·','·','·',
 //			/* '╳'*/'∅'/*'Ø'*/,'☺','☻','♥','♦','♣','♠','•','◘','○','◙','♂','♀','♪','♫','☼',  // how to represent NULL?
 //			'►','◄','↕','‼','¶','§','▬','↨','↑','↓','→','←','∟','↔','▲','▼',
-			/* '␣', */' ','!','"','#','$','%','&','\'','(',')','*','+',',','-','.','/',
+			/* '␣', '.','‒',*/'·','!','"','#','$','%','&','\'','(',')','*','+',',','-','.','/',
 			'0','1','2','3','4','5','6','7','8','9',':',';','<','=','>','?',
 			'@','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O',
 			'P','Q','R','S','T','U','V','W','X','Y','Z','[','\\',']','^','_',
@@ -159,6 +186,7 @@ public class UsefulUtils {
 			}
 		}
 	}
+	
 	public static String getByteRepresentation(byte b) {
 		if (b < 0) return BYTE_REPS[b + 256];
 		return BYTE_REPS[b];
@@ -184,10 +212,11 @@ public class UsefulUtils {
 	}
 
 	/**
-	 * Returns a nicer-looking String: "[51 7f 0c 20 b3 52 4d]"
+	 * Returns a nicer-looking String: "[51,7f,0c,20,b3,52,4d] (len=7)"
 	 * @param bytes
 	 * @return
 	 */
+	// now it's comma separated..!
 	public static String bytesToSpacedHexString(byte[] bytes) {
 		if (bytes.length == 0) return "[]";
 		StringBuilder sb = new StringBuilder("[");
@@ -199,10 +228,12 @@ public class UsefulUtils {
         	for (int i = 1; i < bytes.length; i++) {
 //        		int v = bytes[i] & 0xFF;
 //        		sb.append(' ').append(TEST[v >>> 4]).append(TEST[v & 0x0F]);
-                sb.append(' ').append(getByteRepresentation(bytes[i]));
+                sb.append(',').append(getByteRepresentation(bytes[i]));
         	}
         }
-        return sb.append(']').toString();
+        sb.append(']');
+        if (bytes.length > 8) sb.append(" (len=").append(bytes.length).append(')');
+        return sb.toString();
 //	    return new String(hexChars, StandardCharsets.US_ASCII);
 	}
 
@@ -231,13 +262,14 @@ public class UsefulUtils {
 	    return blah;
 	}
 
+	@SuppressWarnings("unused")
 	private static String printBinaryBytesSdkPerfStyle2(byte[] bytes) {
 		return printBinaryBytesSdkPerfStyle2(bytes, 0);
 	}
 
 	private static String printBinaryBytesSdkPerfStyle2(byte[] bytes, int indent) {
 		ByteArray ba = new ByteArray(bytes);
-		byte[] ba2 = ba.asBytes();
+//		byte[] ba2 = ba.asBytes();
 		if (ba.getLength() > 100) {
 			String ts = ba.toString();  // this toString() only returns the first 100 bytes of the array
 			ts = ts.replace("]", ",...]");  // to indicate there is more
@@ -255,141 +287,162 @@ public class UsefulUtils {
 //	}
 	
 	static AaAnsi printBinaryBytesSdkPerfStyle(byte[] bytes, int indent, int terminalWidth) {
-		if (terminalWidth > 149) return printBytes(bytes, indent, 32);  // widescreen
-//		if (terminalWidth > 147 + indent) return printBytes(bytes, indent, 32);
-		else return printBytes(bytes, indent, 16);
+		if (indent <= 0) {
+//			return new AaAnsi().reset().a("[").fg(Elem.BYTES_CHARS).a(getSimpleString(bytes)).reset().a("]").toString();  // just a long string of chars
+//			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset();  // byte values
+			return AaAnsi.n().reset().fg(Elem.BYTES).a(bytesToSpacedHexString(bytes)).reset();  // byte values
+		}
+		if (terminalWidth > 151) return printBytes3(bytes, indent, 32);  // widescreen
+		else return printBytes3(bytes, indent, 16);
 	}
 	
 //	static final int WIDTH = 32;
 	static final int COLS = 8;
 	
-	/*  Orig SdkPerf dump format:
+	/*  Orig SdkPerf dump format:    (we've added row numbers now)
 	  1d 00 a3 5b 7b 22 6e 61    6d 65 22 3a 22 74 65 73    ...[{"name":"tes
 	  74 20 70 72 6f 64 75 63    74 22 2c 22 71 75 61 6e    t.product","quan
 	  74 69 74 79 22 3a 35 2c    22 70 72 69 63 65 22 3a    tity":5,"price":
 	  31 30 2e 39 39 2c 22 74    6f 74 61 6c 22 3a 35 30    10.99,"total":50
 	  7d 2c 7b 22 6e 61 6d 65    22 3a 22 43 72 65 61 74    },{"name":"Creat
 		 */
-	
+
+
 	/** this should only be called if we know it's not a UTF-8 (or whatever) string */
-	private static AaAnsi printBytes(byte[] bytes, int indent, int width) {
-		if (indent <= 0) {
-//			return new AaAnsi().reset().a("[").fg(Elem.BYTES_CHARS).a(getSimpleString(bytes)).reset().a("]").toString();  // just a long string of chars
-			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset();  // byte values
-		}
+	@SuppressWarnings("unused")
+	private static AaAnsi printBytes2(byte[] bytes, int indent, int width) {
+		// width must be either 16 or 32 for wide-screen
 		indent = 2;  // force override, 2 is what SdkPerf does too
 //		String[] hex = bytesToHexStringArray(bytes);
 		String hex2 = bytesToLongHexString(bytes);
-		AaAnsi aa = new AaAnsi();
-		for (int i=0; i < bytes.length; i++) {
+		AaAnsi ansi = AaAnsi.n();
+		int roundedLenghth = (int)(Math.ceil(bytes.length * 1.0 / width) * width);
+		StringBuilder bytesSoFar = new StringBuilder();
+		for (int i=0; i < roundedLenghth; i++) {
 			if (i % width == 0) {
-				aa.a(indent(indent)).fg(Elem.BYTES);
+				// some extra row values to show the complete hex code here
+				ansi.fg(Elem.DATA_TYPE).a(String.format("%04x0   ",(i / 16) % (4096))).fg(Elem.BYTES);
+				bytesSoFar.setLength(0);  // reuse
 			}
 //			ansi.a(hex[i]).a(" ");
-			aa.a(hex2.substring(i*2, (i*2)+2)).a(" ");
+			if (i == bytes.length) ansi.faintOn();  // when we've run out of bytes
+//			if (i < bytes.length) aa.a(hex2.substring(i*2, (i*2)+2)).a(' ');
+//			else aa.a('·').a('·').a(' ');
+//			if (i % COLS == COLS-1) {
+//				aa.a(' ').a(' ');
+//			}
+			if (i < bytes.length) bytesSoFar.append(hex2.substring(i*2, (i*2)+2)).append(' ');
+			else bytesSoFar.append("·· ");
 			if (i % COLS == COLS-1) {
-				aa.a("   ");
+				bytesSoFar.append("  ");
 			}
+
 			if (i % width == width-1) {
-				aa.fg(Elem.BYTES_CHARS);
+				/* if (i >= bytes.length) */ ansi.faintOff();
+				ansi.a(bytesSoFar.toString());
+				bytesSoFar.setLength(0);  // reuse
+				ansi.a(' ').fg(Elem.BYTES_CHARS);
 				for (int j=i-(width-1); j<=i; j++) {
-					aa.a(getSimpleChar2(bytes[j]));
-					if (j % 8 == 7) aa.a("  ");
+					if (j < bytes.length) {
+						ansi.a(getSimpleChar2(bytes[j]));
+						if (j % 8 == 7 && j != i) ansi.a(' ').a(' ');
+					}
 //					if (j % 16 == 15) ansi.a(" ");
 				}
-				aa.reset().a('\n');
+				ansi.reset();
+				if (i < bytes.length-1) ansi.a('\n');
 //				if (i < bytes.length-1 || indent > 0) ansi.a('\n');
 			}
 		}
+		if ("1".equals("1")) return ansi;
 		// last trailing bit, if not evenly divisible by WIDTH
 		// works for everthing except 24
 		if (bytes.length % width != 0) {
-			aa.reset();
+			ansi.reset();
 			int leftover = bytes.length % width;
 			for (int i=0; i < width - leftover; i++) {
-				aa.a("   ");
+				ansi.a(' ').a(' ').a(' ');
 			}
 			int extraGaps = (width - leftover - 1) / COLS;
 			for (int i=0; i <= extraGaps; i++) {
-				aa.a("   ");
+				ansi.a(' ').a(' ');
 			}
-			aa.fg(Elem.BYTES_CHARS);
+			ansi.a(' ');
+			ansi.fg(Elem.BYTES_CHARS);
 			for (int i= bytes.length - leftover; i<bytes.length; i++) {
-				aa.a(getSimpleChar2(bytes[i]));
-				if (i % 8 == 7) aa.a("  ");
+				ansi.a(getSimpleChar2(bytes[i]));
+				if (i % 8 == 7) ansi.a(' ').a(' ');
 //				if (i % 16 == 15) ansi.a(" ");
 			}
-			aa.reset();
+			ansi.reset();
 //			if (indent > 0) ansi.a('\n');
 		}
-		return aa;
+		return ansi;
+	}
+
+	
+	/** this should only be called if we know it's not a UTF-8 (or whatever) string */
+	private static AaAnsi printBytes3(byte[] bytes, int indent, int width) {
+		// width must be either 16 or 32 for wide-screen
+		indent = 2;  // force override, 2 is what SdkPerf does too
+		String hex2 = bytesToLongHexString(bytes);
+		AaAnsi ansi = AaAnsi.n();
+		int numRows = (int)Math.ceil(bytes.length * 1.0 / width);
+		for (int i=0; i < numRows; i++) {
+			ansi.fg(Elem.DATA_TYPE).a(String.format("%04x0   ", i % 4096)).fg(Elem.BYTES);
+			for (int j=0; j<width; j++) {
+				int pos = i * width + j;
+				if (pos < bytes.length) ansi.a(hex2.charAt(pos*2)).a(hex2.charAt(pos*2 + 1)).a(' ');
+				else {
+					if (pos == bytes.length) ansi.faintOn();  // when we've run out of bytes
+					ansi.a('·').a('·').a(' ');//.append("·· ");
+				}
+				if (j % COLS == COLS-1) {
+					ansi.a(' ').a(' ');
+				}
+			}
+			ansi.a(' ').fg(Elem.BYTES_CHARS);
+			if (i == numRows-1) ansi.faintOff();  // last row, might have turned on faint
+//			for (int j=i-(width-1); j<=i; j++) {
+			for (int j=0; j<width; j++) {
+				int pos = i * width + j;
+				if (pos < bytes.length) {
+					ansi.a(getSimpleChar2(bytes[pos]));
+//					if (j % 8 == 7 && j != i) aa.a(' ').a(' ');
+					if (j % 8 == 7 && j != width-1) ansi.a(' ').a(' ');  // if on a column && not the last column
+				}
+			}
+//			aa.reset();
+			if (i < numRows-1) ansi.a('\n');
+//				if (i < bytes.length-1 || indent > 0) ansi.a('\n');
+		}
+		return ansi.reset();
+	}
+
+	
+
+	private static final String[] INDENTS = new String[80];
+	static {
+		for (int i=0; i<80; i++) {
+			INDENTS[i] = pad(i, ' ');
+		}
 	}
 	
-	
 	static String indent(int amount) {
+		if (amount < 80) return INDENTS[amount];
 		return pad(amount, ' ');
 	}
 
 	static String pad(int amount, char c) {
+		if (Math.abs(amount) > 500) {
+			return "  <CODING PROBLEM! Tell Aaron>  ";
+		}
 		StringBuilder sb = new StringBuilder();
 		for (int i=0; i<amount; i++) {
 			sb.append(c);
 		}
 		return sb.toString();
 	}
-	
-	
-	
-	
-	
-/*	static void reflectionUtils(String className) throws IOException {
-		try {
-			Class<?> clazz = Class.forName(className);
-			reflectionUtils(clazz);
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		} finally {
-			
-		}
-	}
-	
-
-	static void reflectionUtils(Class<?> clazz) throws IOException {
-		
-		try {
-			for (Method m : clazz.getMethods()) {
-				System.out.println(m);
-			}
-			Class<?>[] inners = clazz.getClasses();
-			for (Class<?> inner : inners) {
-				System.out.printf("###################%n%s%n",inner.getName());
-//				System.in.read();
-//				reflectionUtils(inner);
-			}
-			reflectionListInners(clazz);
-		} catch (SecurityException e) {
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			e.printStackTrace();
-		}
-	}
-
-	
-	static void reflectionListInners(Class<?> clazz) throws IOException {
-		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-		try {
-			Class<?>[] inners = clazz.getClasses();
-			for (Class<?> inner : inners) {
-				System.out.println(inner.getName());
-//				reader.readLine();
-				if (inner.getName().startsWith(clazz.getName())) reflectionListInners(inner);
-			}
-		} catch (SecurityException e) {
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			e.printStackTrace();
-		}
-	}*/
 
 
 	// 5 year range around whatever today is
@@ -442,7 +495,7 @@ public class UsefulUtils {
 //	private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat(PATTERN);
 	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat(PATTERN);
 	
-	static String guessIfTimestamp(String keyName, long l) {
+	static String guessIfTimestampLong(String keyName, long l) {
 		keyName = keyName.toLowerCase();
 		if (l > LOWER_MS && l < UPPER_MS) {  // milliseconds
 			if (timeNameContains(TIME_MS_KEYWORDS, keyName) || (keyName.contains("ms") && PATTERN_MS.matcher(keyName).find())) {
@@ -462,7 +515,7 @@ public class UsefulUtils {
 		return null;
 	}
 	
-	static String guessIfTimestamp(String keyName, double d) {
+	static String guessIfTimestampDouble(String keyName, double d) {
 		keyName = keyName.toLowerCase();
 		if (d > LOWER_MS/1_000 && d < UPPER_MS/1_000 && timeNameContains(TIME_SEC_KEYWORDS, keyName)) {  // seconds
 			return DATE_FORMAT.format(new Date(Math.round(d * 1_000)));
@@ -482,16 +535,16 @@ public class UsefulUtils {
 		return null;
 	}
 
-	static String guessIfTimestamp(String keyName, String val) {
+	static String guessIfTimestampString(String keyName, String val) {
 		keyName = keyName.toLowerCase();
 		if (val.length() > 5 && Character.isDigit(val.charAt(0)) && Character.isDigit(val.charAt(4))) {  // 5th char is a digit, so doesn't match timestamps: 2024-01-23
 			try {
 				double d = Double.parseDouble(val);
 				try {
 					long l = Long.parseLong(val);
-					return guessIfTimestamp(keyName, l);
+					return guessIfTimestampLong(keyName, l);
 				} catch (NumberFormatException e) {  // a double, but not a long
-					return guessIfTimestamp(keyName, d);
+					return guessIfTimestampDouble(keyName, d);
 				}
 			} catch (NumberFormatException e) {  // not a number
 				return null;
@@ -515,9 +568,9 @@ public class UsefulUtils {
     private static String formatMapLookingThing(String s) {
     	s = s.trim();
     	assert s.startsWith("{");
-    	assert s.startsWith("}");
+    	assert s.endsWith("}");
     	s = s.substring(1, s.length()-1);
-    	AaAnsi aa = AaAnsi.n().fg(Elem.BRACE).a('{');
+    	AaAnsi ansi = AaAnsi.n().fg(Elem.BRACE).a('{');
     	String[] tokens = s.split(SPLIT_ON_COMMAS);  //,-1);
     	boolean validForColons = true;
     	boolean validForEquals = true;
@@ -528,7 +581,7 @@ public class UsefulUtils {
         	if (splitOnEquals.length != 2) validForEquals = false;
     	}
     	if (!(validForColons ^ validForEquals)) {  // either both true, or both false
-    		return aa.reset().a(s).fg(Elem.BRACE).a('}').toString();  // don't know which to split on, so bail out
+    		return ansi.reset().a(s).fg(Elem.BRACE).a('}').toString();  // don't know which to split on, so bail out
     	}
     	final String whichSplit = validForColons ? SPLIT_ON_COLONS : SPLIT_ON_EQUALS;
     	final char separator = validForColons ? ':' : '=';
@@ -536,11 +589,92 @@ public class UsefulUtils {
     	while (it.hasNext()) {
     		String[] keyValPair = it.next().split(whichSplit, -1);
 //    		aa.fg(Elem.KEY).a('\'').a(keyValPair[0]).a('\'').reset().a(separator);
-    		aa.fg(Elem.KEY).a(keyValPair[0]).reset().a(separator);
-    		aa.a(SaxHandler.guessAndFormatChars(keyValPair[1], keyValPair[0]));
-    		if (it.hasNext()) aa.reset().a(',');
+    		ansi.fg(Elem.KEY).a(keyValPair[0]).reset().a(separator);
+    		ansi.aa(SaxHandler.guessAndFormatChars(keyValPair[1], keyValPair[0], 0));
+    		if (it.hasNext()) ansi.reset().a(',');
     	}
-    	return aa.fg(Elem.BRACE).a('}').toString();
+    	return ansi.fg(Elem.BRACE).a('}').reset().toString();
     }
+    
+    public static String capitalizeFirst(String s) {
+    	if (s == null) return null;
+    	if (s.isEmpty()) return null;
+    	StringBuilder sb = new StringBuilder();
+    	sb.append(s.substring(0, 1).toUpperCase()).append(s.substring(1));
+    	return sb.toString();
+    }
+    
+    public static boolean setContainsIgnoreCase(Set<String> set, String string) {
+    	for (String key : set) {
+    		if (key.equalsIgnoreCase(string)) return true;
+    	}
+    	return false;
+    }
+
+    public static String setGetIgnoreCase(Set<String> set, String string) {
+    	for (String key : set) {
+    		if (key.equalsIgnoreCase(string)) return key;
+    	}
+    	return null;
+    }
+    
+    
+    /* This is only called if I have a DEFLATE bytes message arrive, but it's actually a TextMessage
+     * How could this actually happen??
+     */
+    // TODO ??
+    public static String textMessageBytesToString(byte[] bytes) {
+    	if (bytes[bytes.length-1] != 0x00) return null;  // last byte must be null;
+    	int len = bytes.length;
+    	switch (bytes[0]) {
+	    	case 0x1c:
+	        	if (bytes.length < 3) return null;
+	    		if (Byte.toUnsignedInt(bytes[1]) == len) {  // that's good!
+	    			return new String(Arrays.copyOfRange(bytes, 2, len-1), StandardCharsets.UTF_8);
+	    		}
+	    		break;
+	    	case 0x1d: {
+	    		if (bytes.length < 4) return null;
+	    		if (len == (Byte.toUnsignedInt(bytes[1]) << 8) + Byte.toUnsignedInt(bytes[2])) {
+	    			return new String(Arrays.copyOfRange(bytes, 3, len-1), StandardCharsets.UTF_8);
+	    		}
+	    		break;
+	    	}
+	    	case 0x1e: {
+	        	if (bytes.length < 5) return null;
+	    		int check = Byte.toUnsignedInt(bytes[1]) << 16 + Byte.toUnsignedInt(bytes[2]) << 8 + Byte.toUnsignedInt(bytes[3]);
+	    		if (check == len) {
+	    			return new String(Arrays.copyOfRange(bytes, 4, len-1), StandardCharsets.UTF_8);
+	    		}
+	    		break;
+	    	}
+	    	case 0x1f: {
+	        	if (bytes.length < 6) return null;
+	    		int check = Byte.toUnsignedInt(bytes[1]) << 24 + Byte.toUnsignedInt(bytes[2]) << 16;
+	    		check += Byte.toUnsignedInt(bytes[3]) << 8 + Byte.toUnsignedInt(bytes[4]);
+	    		if (check == len) {
+	    			return new String(Arrays.copyOfRange(bytes, 5, len-1), StandardCharsets.UTF_8);
+	    		}
+	    		break;
+	       	}
+    	}
+    	return null;
+    }
+    
+    
+	private static DateTimeFormatter DTF = DateTimeFormatter.ofPattern(ConfigState.DTF_FORMAT);  
+
+	/** returns something that looks like "HH:mm:ss.S " (one space at end of timestamp) */
+	public static String getCurrentTimestamp() {
+		return DTF.format(LocalDateTime.now());
+	}
+
+	/** returns something that looks like "HH:mm:ss.S " (one space at end of timestamp) */
+	public static String getTimestamp(long epochMillis) {
+		return DTF.format(Instant.ofEpochMilli(epochMillis));
+	}
+
+
+	
 
 }

@@ -125,12 +125,20 @@ The `protobuf.properties` file (Step 2) is used by PrettyDump to figure out whic
 
 _**You will need:**_ `[topic-subscription] = [package-name].[class-name]$[proto-message-name]`
 
+### Package Name
+
 In each `.proto` definitions file, it should list the _package_ name:
 ```bash
 $ grep package receive_v1.proto
 package com.blah.proto.package.name.v1;
 ```
 
+Nota that there mmight be a specified Java package name as well, use that instead.
+
+
+
+
+### Class Name
 
 The generated _class_ name should be a PascalCase version of the `.proto` filename.  E.g.`receive_v1.proto` -> "ReceiveV1".
 This should also be seen inside the corresponding `classes` subdirectory:
@@ -139,6 +147,10 @@ $ ls -R1 classes | grep "\\.class" | grep -v "\\$"
 ReceiveV1.class
 ```
 
+
+
+
+### Message Name
 
 The _Message_ name can also be found inside the `.proto` definition as a top-level Message object:
 

@@ -64,7 +64,7 @@ public class Banner {
 	}
 	
     private static String printBannerStandard(String[] banner) {
-    	AaAnsi ansi = new AaAnsi();
+    	AaAnsi ansi = AaAnsi.n();
     	ansi.fg(10).a(banner[0]).a('\n');
     	ansi.fg(2).a(banner[1]).a('\n');
     	ansi.fg(14).a(banner[2]).a('\n');
@@ -76,7 +76,7 @@ public class Banner {
     
 
     private static String printBannerLight(String[] banner) {
-    	AaAnsi ansi = new AaAnsi();
+    	AaAnsi ansi = AaAnsi.n();
     	ansi.fg(20).a(banner[0]).a('\n');
     	ansi.fg(90).a(banner[1]).a('\n');
     	ansi.fg(124).a(banner[2]).a('\n');
@@ -88,7 +88,7 @@ public class Banner {
 
 	// 22, 28, 34, 40, 46, 83, 120, 157, 194, 231
     private static String printBannerMatrix(String[] banner) {
-    	AaAnsi ansi = new AaAnsi();
+    	AaAnsi ansi = AaAnsi.n();
     	ansi.fg(83).a(banner[0]).a('\n');
     	ansi.fg(120).a(banner[1]).a('\n');
     	ansi.fg(46).a(banner[2]).a('\n');
@@ -210,13 +210,13 @@ public class Banner {
     		maxLen = Math.max(maxLen, s.length());
     	}
     	int pieceLen = maxLen / 6;
-    	preprocessBanner(banner);
-    	AaAnsi ansi = new AaAnsi();
+    	preprocessBanner(banner);  // make the drop shadow
+    	AaAnsi ansi = AaAnsi.n();
     	for (int i=0; i<banner.length; i++) {
     		for (int j=0; j<banner[i].length(); j++) {
     			ansi.reset();
     			if (banner[i].charAt(j) == '*') {
-    				ansi.makeFaint().fg(getCol(i-1, pieceLen, j-2)).a(banner[i-1].charAt(j-2));
+    				ansi.faintOn().fg(getCol(i-1, pieceLen, j-2)).a(banner[i-1].charAt(j-2));
     			} else {
     				ansi.fg(getCol(i, pieceLen, j)).a(banner[i].charAt(j));
     			}
