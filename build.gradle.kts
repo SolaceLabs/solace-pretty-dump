@@ -64,7 +64,7 @@ buildscript {
 
 distributions {
     main {
-        distributionBaseName = "solace-prettydump"
+        distributionBaseName = "solace-pretty-dump"
         //distributionClassifier = "beta"
         contents {
             from("README.md")
