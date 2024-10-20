@@ -42,11 +42,10 @@ idea {
     }
 }
 
-
 repositories {
     mavenCentral()
     flatDir {
-        dirs("include")  // extra JARs
+        dirs("lib")  // extra JARs
         //dirs("protobuf/protobufs/protobufs")  // some class files
     }
 }
@@ -99,8 +98,6 @@ dependencies {
     //runtimeOnly("org.slf4j:slf4j2-log4j12:1.7.6')
     implementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.+")
 
-
-    //implementation("com.solacesystems:sol-jcsmp:10.22.0")
     //implementation("org.json:json:20230227")
     // XML stuff...
 //    implementation("org.dom4j:dom4j:2+")
@@ -121,7 +118,7 @@ dependencies {
     implementation("org.apache.avro:avro:1.+")
     implementation("io.opentelemetry.proto:opentelemetry-proto:1.3.+");
 
-    implementation(fileTree(mapOf("dir" to "include", "include" to listOf("*.jar"))))
+    implementation(fileTree(mapOf("dir" to "lib", "include" to listOf("*.jar"))))
 //    implementation(fileTree(mapOf("dir" to "protobuf/jars", "include" to listOf("*.jar"))))
     //implementation(files("protobuf/classes"))
     //implementation(files("protobuf/jars"))
@@ -143,6 +140,9 @@ dependencies {
 tasks.jar {
     manifest {
         archiveBaseName.set("solace-pretty-dump")
+        archiveClassifier.set("dev")
+//        distributionBaseName = "solace-pretty-dump"
+//        distributionClassifier = "dev"
     }
 }
 
