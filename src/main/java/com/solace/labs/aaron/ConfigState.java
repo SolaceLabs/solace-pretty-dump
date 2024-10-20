@@ -27,8 +27,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import com.solace.labs.aaron.utils.BoundedLinkedList;
 import com.solace.labs.topic.Sub;
+
+import dev.solace.aaron.useful.BoundedLinkedList;
 
 public class ConfigState {
 

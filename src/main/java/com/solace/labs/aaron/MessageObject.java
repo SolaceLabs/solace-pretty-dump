@@ -18,11 +18,12 @@ package com.solace.labs.aaron;
 
 import org.fusesource.jansi.AnsiConsole;
 
-import com.solace.labs.aaron.utils.BoundedLinkedList;
 import com.solacesystems.jcsmp.BytesXMLMessage;
 import com.solacesystems.jcsmp.DeliveryMode;
 import com.solacesystems.jcsmp.Queue;
 import com.solacesystems.jcsmp.XMLMessage;
+
+import dev.solace.aaron.useful.BoundedLinkedList;
 
 public class MessageObject {
 	

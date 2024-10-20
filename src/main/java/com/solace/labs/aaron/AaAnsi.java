@@ -25,7 +25,7 @@ import org.fusesource.jansi.Ansi;
 import org.fusesource.jansi.Ansi.Attribute;
 import org.fusesource.jansi.AnsiConsole;
 
-import com.solace.labs.aaron.utils.BoundedLinkedList;
+import dev.solace.aaron.useful.BoundedLinkedList;
 
 /**
  * Kind of a wrapper around the JAnsi library.  Modified for my own uses.

@@ -15,7 +15,13 @@ plugins {
     //id("com.gradleup.shadow") version "8.3.2"  // https://gradleup.com/shadow/
 }
 
-version = "1.1.0"
+version = "1.1.1"
+
+
+tasks.withType<JavaCompile> {
+    sourceCompatibility = "1.8"
+    targetCompatibility = "1.8"
+}
 
 eclipse {
     classpath {
@@ -65,7 +71,7 @@ buildscript {
 distributions {
     main {
         distributionBaseName = "solace-pretty-dump"
-        //distributionClassifier = "beta"
+        distributionClassifier = "dev"
         contents {
             from("README.md")
             from("LICENSE")
