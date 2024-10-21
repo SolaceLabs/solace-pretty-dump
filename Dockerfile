@@ -1,5 +1,5 @@
 # Download a Docker tarball from https://github.com/SolaceLabs/solace-pretty-dump/releases
-# Load into Docker Images with: docker load -i solace-pretty-dump-docker-1.1.0.tar.gz
+# Load into Docker Images with: docker load -i solace-pretty-dump-docker-1.1.1.tar.gz
 #
 # To RUN:
 #
@@ -25,7 +25,7 @@
 # To BUILD:
 #
 #     1) ./gradlew clean assemble      (or download a pre-built release from GitHub)
-#     2) docker build -t solace-pretty-dump:latest -t solace-pretty-dump:1.1.0 --file Dockerfile .
+#     2) docker build -t solace-pretty-dump:latest -t solace-pretty-dump:1.1.1 --file Dockerfile .
 #
 # Optional, for distribution:
 #
@@ -66,6 +66,6 @@ ENTRYPOINT ["./bin/prettydump"]
 
 ENV TERM="xterm-256color"
 
-LABEL version=1.1.0
+LABEL version=1.1.1
 LABEL author="Aaron @ Solace"
 LABEL repo="https://github.com/SolaceLabs/solace-pretty-dump"
