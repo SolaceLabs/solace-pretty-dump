@@ -102,13 +102,14 @@ public class Banner {
     	String[] banner = banners.get(which);
     	switch (AaAnsi.getColorMode()) {
     	case VIVID:
+    	case STANDARD:
     		return printBannerVivid2(banner);
     	case MATRIX:
     		return printBannerMatrix(banner);
     	case LIGHT:
     		return printBannerLight(banner);
     	default:
-    		return printBannerStandard(banner);
+    		return printBannerStandard(banner);  // uh, minimal?  and off, but that will be plain
     	}
     }
 
