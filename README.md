@@ -1,3 +1,5 @@
+👋🏼 If you find this utiliy useful, please give it a ⭐ above!  Thanks! 🙏🏼
+
 ![PrettyDump Banner](src/prettydump5.png)
 # Pretty-print for dumped Solace messages
 
