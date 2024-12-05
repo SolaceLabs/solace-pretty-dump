@@ -483,7 +483,7 @@ Reminder: check the [JCSMP API docs](https://docs.solace.com/API-Developer-Onlin
 
 ### OAuth2
 
-For OAuth authentication to work, you'll need to out-of-band mechanism to fetch a token for PrettyDump to use.  For my testing, I managed to make this work with my Azure OAuth provider using a `curl` script:
+For OAuth authentication to work, you'll need an out-of-band mechanism to fetch a token for PrettyDump to use.  For my testing, I managed to make this work with my Azure OAuth provider using a `curl` script:
 ```
 curl https://login.microsoftonline.com/xxxxxxx/oauth2/v2.0/token -d 'grant_type=client_credentials&client_id=xxxxxx&client_secret=xxxxxxxx&scope=api://xxxxxxxx/.default'
 
@@ -495,14 +495,14 @@ curl https://login.microsoftonline.com/xxxxxxx/oauth2/v2.0/token -d 'grant_type=
 }
 ```
 
-Then copy the entire text of the `access_token`, maybe set it as an environment variable, and use that when running PrettyDump:
+Then copy the value of the `access_token` tuple, maybe set it as an environment variable, and use that when running PrettyDump:
 ```
 prettydump tcps://abc123.messaging.solace.cloud:55443 vpnName \
   --OAUTH2_ACCESS_TOKEN=xxxxx \
   --AUTHENTICATION_SCHEME=AUTHENTICATION_SCHEME_OAUTH2
 ```
 
-JCSMP support both OAuth2 access tokens (`--OAUTH2_ACCESS_TOKEN`) and OIDC ID tokens (`--OIDC_ID_TOKEN`), however only one can be specified at a time.
+JCSMP support both OAuth2 access tokens (`--OAUTH2_ACCESS_TOKEN=`) and OIDC ID tokens (`--OIDC_ID_TOKEN=`), however only one can be specified at a time.
 
 
 
@@ -515,19 +515,23 @@ JCSMP support both OAuth2 access tokens (`--OAUTH2_ACCESS_TOKEN`) and OIDC ID to
 
 When using one-line mode, you can do some extra stuff:
 
- - press 't' [ENTER] to enable trim for message payloads... will cause the payload to get truncated at the terminal width
- - this can also be enabled with arg `--trim` when starting
+
+### Trim
+
+Press **'t' [ENTER]** to enable trim for message payloads... will cause the payload to get truncated at the terminal width.  This can also be enabled with arg `--trim` when starting.
 ```
-bus_trak/gps/v2/022A/01228/001.32266/0103.69693/21/OK       {"psgrCap":0.75,"heading":176,"busNu…(len=178)
-bus_trak/gps/v2/036X/01431/001.37858/0103.92294/32/STOPPED  {"psgrCap":0.5,"heading":288,"busNum…(len=175)
-bus_trak/gps/v2/012A/01271/001.38968/0103.76101/31/STOPPED  {"psgrCap":0,"heading":254,"busNum":…(len=181)
-bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK       {"psgrCap":0.75,"heading":272,"busNu…(len=177)
+bus_trak/gps/v2/022A/01228/001.32266/0103.69693/21/OK       {"psgrCap":0.75,"heading":176,"b…(len=178)
+bus_trak/gps/v2/036X/01431/001.37858/0103.92294/32/STOPPED  {"psgrCap":0.5,"heading":288,"bu…(len=175)
+bus_trak/gps/v2/012A/01271/001.38968/0103.76101/31/STOPPED  {"psgrCap":0,"heading":254,"busN…(len=181)
+bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK       {"psgrCap":0.75,"heading":272,"b…(len=177)
 ```
 
 
- - press '+' [ENTER] to add spacing to the topic hierarchy display, more of a "column" view of the topic levels
- - press '-' [ENTER] to go back to regular (compressed) topic display
- - this can also be enabled with by changing indent argument from `-` to `+` when starting
+### Topic level alignment
+
+Press '+' [ENTER] to add spacing to the topic hierarchy display, more of a "column" view of the topic levels<br>
+Press '-' [ENTER] to go back to regular (compressed) topic display<br>
+This can also be enabled with by changing indent argument from `-` to `+` when starting
 ```
 #STATS...../VPN..../sgdemo1.../aaron.............../vpn_stats
 #STATS...../SYSTEM./sgdemo1.../stats_client_detail
@@ -537,9 +541,17 @@ bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK       {"psgrCap":0.75,"hea
 #STATSPUMP./STATS../sg3501vmr./poller-stats......../show-msg-spool
 ```
 
- - press '1..n' [ENTER] to highlight a specific level of the topic hierarchy (very useful for demos)
- - press '0' [ENTER] to go back to regular full-topic highlighting
- - obviously you need a colour mode enabled to see this
+
+### Topic level highlighting
+
+Press '1..n' [ENTER] to highlight a specific level of the topic hierarchy (very useful for demos)<br>
+Press '0' [ENTER] to go back to regular full-topic highlighting<br>
+
+
+
+### Colour Scheme
+
+
 
 
 
@@ -638,6 +650,8 @@ TracesData ProtoBuf:
                     'string_value' (STRING): "10.8.1.152" } }
 SNIP
 ```
+
+You can also configure the `otlphttp` exporter to use JSON instead of Protobuf by including `encoding: json`, then you don't need to worry about Protobuf decoders.
 
 
 
