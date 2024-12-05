@@ -520,18 +520,18 @@ When using one-line mode, you can do some extra stuff:
 
 Press **'t' [ENTER]** to enable trim for message payloads... will cause the payload to get truncated at the terminal width.  This can also be enabled with arg `--trim` when starting.
 ```
-bus_trak/gps/v2/022A/01228/001.32266/0103.69693/21/OK       {"psgrCap":0.75,"heading":176,"b…(len=178)
-bus_trak/gps/v2/036X/01431/001.37858/0103.92294/32/STOPPED  {"psgrCap":0.5,"heading":288,"bu…(len=175)
-bus_trak/gps/v2/012A/01271/001.38968/0103.76101/31/STOPPED  {"psgrCap":0,"heading":254,"busN…(len=181)
-bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK       {"psgrCap":0.75,"heading":272,"b…(len=177)
+bus_trak/gps/v2/022A/01228/001.32266/0103.69693/21/OK       {"psgrCap":0.75,"heading":176,"…(len=178)
+bus_trak/gps/v2/036X/01431/001.37858/0103.92294/32/STOPPED  {"psgrCap":0.5,"heading":288,"b…(len=175)
+bus_trak/gps/v2/012A/01271/001.38968/0103.76101/31/STOPPED  {"psgrCap":0,"heading":254,"bus…(len=181)
+bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK       {"psgrCap":0.75,"heading":272,"…(len=177)
 ```
 
 
 ### Topic level alignment
 
-Press '+' [ENTER] to add spacing to the topic hierarchy display, more of a "column" view of the topic levels<br>
-Press '-' [ENTER] to go back to regular (compressed) topic display<br>
-This can also be enabled with by changing indent argument from `-` to `+` when starting
+Press **'+' [ENTER]** to add spacing to the topic hierarchy display, more of a "column" view of the topic levels<br>
+Press **'-' [ENTER]** to go back to regular (compressed) topic display<br>
+This can also be enabled with by changing indent argument from `-` to `+` when starting (e.g. `-0` indent for spaced topic-only view).
 ```
 #STATS...../VPN..../sgdemo1.../aaron.............../vpn_stats
 #STATS...../SYSTEM./sgdemo1.../stats_client_detail
@@ -544,14 +544,24 @@ This can also be enabled with by changing indent argument from `-` to `+` when s
 
 ### Topic level highlighting
 
-Press '1..n' [ENTER] to highlight a specific level of the topic hierarchy (very useful for demos)<br>
-Press '0' [ENTER] to go back to regular full-topic highlighting<br>
+Press **'1..n' [ENTER]** to highlight a specific level of the topic hierarchy (very useful for demos)<br>
+Press **'0' [ENTER]** to go back to regular full-topic highlighting<br>
 
 
 
-### Colour Scheme
+### Colour Modes
 
+**cs [ENTER]** for standard colour mode
+**cv [ENTER]** for vivid colour mode
+**cm [ENTER]** for minimal colour mode
+**cl [ENTER]** for light (inverted) colour mode
+**cx [ENTER]** for matrix (the movie) colour mode
+**co [ENTER]** to disable all colours
 
+The colour mode can also be set by overriding the environment varible `PRETTY_COLORS`.  E.g.:
+```
+$ export PRETTY_COLORS=vivid
+```
 
 
 
