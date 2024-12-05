@@ -30,6 +30,7 @@ import java.util.regex.Pattern;
 import com.solace.labs.topic.Sub;
 
 import dev.solace.aaron.useful.BoundedLinkedList;
+import dev.solace.aaron.useful.WordUtils;
 
 public class ConfigState {
 
@@ -46,6 +47,7 @@ public class ConfigState {
 
     int highlightTopicLevel = -1;
     int INDENT = 2;  // default starting value, keeping it all-caps for retro v0.0.1 value
+    String indentStr = "2";  // only useful to see if we've changed the indent from the default
     boolean oneLineMode = false;
     boolean noPayload = false;
     boolean onlyPayload = false;
@@ -180,7 +182,7 @@ public class ConfigState {
 	    		int max = topicLevelsLengthList.get(i).max();
 	    		if (i < levels.length-1) {
 		    		if (max > levels[i].length()) {
-						sb.append(UsefulUtils.pad(max - levels[i].length(), /*'⋅'*/ '·' ));
+						sb.append(WordUtils.pad(max - levels[i].length(), /*'⋅'*/ '·' ));
 		    		}
 		    		if (INDENT == Integer.MIN_VALUE) sb.append("·/");// ("⋅/");  // always space out topic-only mode
 		    		else sb.append('/');
@@ -207,6 +209,7 @@ public class ConfigState {
     
     /** Throws NumberFormat if it can't be parsed, or IllegalArgument if it is a number, but invalid */
     public void dealWithIndentParam(String indentStr) throws NumberFormatException, IllegalArgumentException {
+    	String origStr = indentStr;  // keep the orig first
     	// first, switch any pluses to minuses
     	if (indentStr.startsWith("+") && indentStr.length() >= 2) {
     		autoSpaceTopicLevels = true;
@@ -250,6 +253,7 @@ public class ConfigState {
 				throw new IllegalArgumentException();
 			}
 		}
+		this.indentStr = origStr;
     }
 	
 	public void setRegexFilterPattern(Pattern regex) {

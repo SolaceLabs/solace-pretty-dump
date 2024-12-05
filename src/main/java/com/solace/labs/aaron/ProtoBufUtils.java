@@ -16,8 +16,6 @@
 
 package com.solace.labs.aaron;
 
-import static com.solace.labs.aaron.UsefulUtils.indent;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -37,6 +35,8 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.Type;
 import com.google.protobuf.MessageOrBuilder;
 import com.solace.labs.topic.Sub;
+
+import dev.solace.aaron.useful.WordUtils;
 
 public class ProtoBufUtils {
 
@@ -181,7 +181,7 @@ public class ProtoBufUtils {
 	private static void handleMessage(Map<FieldDescriptor, Object> map, AaAnsi ansi, final int indent, final int indentFactor) {
 		if (map == null) return;
 		if (map.isEmpty()) {
-			ansi.a(indent(indent)).fg(Elem.NULL).a("<EMPTY>").reset();
+			ansi.a(WordUtils.indent(indent)).fg(Elem.NULL).a("<EMPTY>").reset();
 			return;
 		}
 		try {
@@ -189,7 +189,7 @@ public class ProtoBufUtils {
 			while (it.hasNext()) {
 				FieldDescriptor fd = it.next();
 				Object val = map.get(fd);  // can't be null, by protobuf definition
-				ansi.reset().a(indent(indent));
+				ansi.reset().a(WordUtils.indent(indent));
 				// key
 //				if (indentFactor > 0) ansi.a("Key ");
 				ansi.fg(Elem.KEY).a("'").a(fd.getName()).a("'");
@@ -340,17 +340,28 @@ public class ProtoBufUtils {
 //					if (indentFactor > 0) inner.a('\n');
 					if (val instanceof List) {  // repeated    TODO can anything be repeated??  I think so..!
 						List<?> list = (List<?>)val;
-						ansi.fg(Elem.BRACE).a("[");
+						ansi.fg(Elem.BRACE).a("[ ");
 						Iterator<?> listIt = list.iterator();
 						if (!listIt.hasNext()) {  // empty!
 							ansi.fg(Elem.NULL).a("<EMPTY>").fg(Elem.BRACE).a("]");  // empty 
 						} else {
-							if (indentFactor > 0) ansi.a('\n');
+							if (indentFactor > 0) {
+								ansi.faintOn().a('(').a(list.size()).a(')').reset();
+								ansi.a('\n');
+							}
 							while (listIt.hasNext()) {
 								AbstractMessage obj = (AbstractMessage)listIt.next();
-								if (indentFactor > 0) ansi.a(indent(indent + (indent/2)));
-								ansi.fg(Elem.DATA_TYPE).a("(MESSAGE)").reset();
-								if (indentFactor > 0) ansi.a(":\n");
+								if (indentFactor > 0) ansi.a(WordUtils.indent(indent + (indentFactor/2)));
+//								if (indentFactor > 0) ansi.a(WordUtils.indent(indent/2));  // we've already indented "indent" amount
+								ansi.fg(Elem.DATA_TYPE).a("(MESSAGE)").reset().a(':');
+								ansi.fg(Elem.BRACE).a(' ').a('{');
+								if (indentFactor > 0) {
+//									ansi.a(empty ? ' ' : '\n');
+									ansi.faintOn().a(" (").a(obj.getAllFields().size()).a(')').reset();
+									ansi.a('\n');
+								}
+								ansi.reset();
+//								if (indentFactor > 0) ansi.a(":\n");
 								ansi.aa(handleMessage(obj.getAllFields(), indent + indentFactor, indentFactor));
 								if (listIt.hasNext()) {
 									if (indentFactor > 0) ansi.a('\n');
@@ -360,8 +371,19 @@ public class ProtoBufUtils {
 							ansi.fg(Elem.BRACE).a(" ]");
 						}						
 					} else {  // not repeated, just a message
-						if (indentFactor > 0) ansi.a('\n');
-						ansi.aa(handleMessage(((AbstractMessage)val).getAllFields(), indent+indentFactor, indentFactor));
+						ansi.fg(Elem.BRACE).a('{');
+						if (((AbstractMessage)val).getAllFields().size() == 0) {  // it's empty
+							ansi.a(' ');  // if the Message is empty, print on one line
+							ansi.aa(handleMessage(((AbstractMessage)val).getAllFields(), 0, 1));
+						}
+						else {
+							if (indentFactor > 0) {
+								ansi.faintOn().a(" (").a(((AbstractMessage)val).getAllFields().size()).a(')').reset();
+								ansi.a('\n');
+							}
+							ansi.aa(handleMessage(((AbstractMessage)val).getAllFields(), indent+indentFactor, indentFactor));
+						}
+						ansi.reset();
 					}
 					break;
 //				case GROUP:

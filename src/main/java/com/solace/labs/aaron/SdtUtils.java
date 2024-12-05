@@ -16,8 +16,6 @@
 
 package com.solace.labs.aaron;
 
-import static com.solace.labs.aaron.UsefulUtils.indent;
-
 import java.util.Iterator;
 
 import com.solacesystems.common.util.ByteArray;
@@ -26,18 +24,20 @@ import com.solacesystems.jcsmp.SDTMap;
 import com.solacesystems.jcsmp.SDTStream;
 import com.solacesystems.jcsmp.Topic;
 
+import dev.solace.aaron.useful.WordUtils;
+
 public class SdtUtils {
 	
-	static int countElements(SDTMap map) {
+	static int countElementsRecursive(SDTMap map) {
 		int count = 0;
 		try {
 			Iterator<String> it = map.keySet().iterator();
 			while (it.hasNext()) {
 				Object value = map.get(it.next());
 				if (value instanceof SDTMap) {
-					count += countElements((SDTMap)value);
+					count += countElementsRecursive((SDTMap)value);
 				} else if (value instanceof SDTStream) {
-					count += countElements((SDTStream)value);
+					count += countElementsRecursive((SDTStream)value);
 				} else count++;  // just a regular element
 			}
 		} catch (SDTException e) {  // shouldn't happen, we know it's well-defined since we received it
@@ -45,20 +45,28 @@ public class SdtUtils {
 		}
 		return count;
 	}
-	
-	static int countElements(SDTStream stream) {
+
+	static int countElementsRecursive(SDTStream stream) {
 		int count = 0;
 		try {
 			while (stream.hasRemaining()) {
 				Object value = stream.read();
 				if (value instanceof SDTMap) {
-					count += countElements((SDTMap)value);
+					count += countElementsRecursive((SDTMap)value);
 				} else if (value instanceof SDTStream) {
-					count += countElements((SDTStream)value);
+					count += countElementsRecursive((SDTStream)value);
 				} else count++;  // just a regular element
 			}
 		} catch (SDTException e) {  // shouldn't happen, we know it's well-defined since we received it
 			return -1;
+		}
+		return count;
+	}
+
+	static int countElementsInStream(SDTStream stream) {
+		int count = 0;
+		while (stream.hasRemaining()) {
+			count++;
 		}
 		return count;
 	}
@@ -82,7 +90,7 @@ public class SdtUtils {
 		if (map == null) {
 			return;
 		} else if (map.isEmpty()) {
-			ansi.a(indent(curIndent)).fg(Elem.NULL).a("<EMPTY>").reset();
+			ansi.a(WordUtils.indent(curIndent)).fg(Elem.NULL).a("<EMPTY>").reset();
 			return;
 		}
 //		String strIndent = indent(indent);
@@ -131,7 +139,7 @@ public class SdtUtils {
 			} else {  // value is null, but there is no way to query the map for the data type
 				ansiValue = AaAnsi.n().fg(Elem.NULL).a(strValue); // update
 			}
-			ansi.reset().a(indent(curIndent));
+			ansi.reset().a(WordUtils.indent(curIndent));
 //			if (indentFactor > 0) ansi.a("Key ");
 //			ansi.fg(Elem.KEY).a("'").a(key).a("'").reset();
 //			if (indentFactor > 0) ansi.a(' ');
@@ -146,7 +154,7 @@ public class SdtUtils {
 //			}
 			if (indentFactor > 0) {
 				ansi.fg(Elem.DATA_TYPE);
-				ansi.a('(').a(type).a(')');
+				ansi.a('(').a(type.toUpperCase()).a(')');
 //			} else {
 //				ansi.reset().a('=');
 			}
@@ -203,7 +211,7 @@ public class SdtUtils {
 		if (stream == null) {
 			return;
 		} else if (!stream.hasRemaining()) {
-			ansi.a(indent(indent)).fg(Elem.NULL).a("<EMPTY>").reset();
+			ansi.a(WordUtils.indent(indent)).fg(Elem.NULL).a("<EMPTY>").reset();
 		}
 //		String strIndent = ;
 		while (stream.hasRemaining()) {
@@ -248,9 +256,9 @@ public class SdtUtils {
 			} else {  // value must be null
 				strValue2 = AaAnsi.n().fg(Elem.NULL).a(strValue);  // update
 			}
-			ansi.reset().a(indent(indent));
+			ansi.reset().a(WordUtils.indent(indent));
 			if (indentFactor > 0) {
-				ansi.fg(Elem.DATA_TYPE).a('(').a(type).a(")").reset().a(": ");
+				ansi.fg(Elem.DATA_TYPE).a('(').a(type.toUpperCase()).a(")").reset().a(": ");
 			} else {
 //				ansi.fg(Elem.DATA_TYPE).a('(').a(type).a(")").reset();
 			}

@@ -24,6 +24,8 @@ import org.xml.sax.SAXException;
 import org.xml.sax.ext.LexicalHandler;
 import org.xml.sax.helpers.DefaultHandler;
 
+import dev.solace.aaron.useful.WordUtils;
+
 /**
  * Taken/inspired by my StatsPump code from a long time ago.
  * Pretty basic pretty-print formatter for XML docs.
@@ -81,7 +83,7 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 		}
 		startTagForLater = AaAnsi.n();  // reset for new start tag
 		if (indentFactor > 0 && level > 0) {
-			startTagForLater.a(UsefulUtils.indent(indentFactor * level));
+			startTagForLater.a(WordUtils.indent(indentFactor * level));
 		}
 		startTagForLater.a('<').fg(Elem.KEY).a(qName);
 		for (int i=0; i<atts.getLength(); i++) {
@@ -140,7 +142,7 @@ public class SaxHandler extends DefaultHandler implements LexicalHandler, ErrorH
 		} else {  // previous tag was another END tag
 			if (indentFactor > 0) ansi.a('\n');  // aaron debug june 25
 			if (indentFactor > 0 && level > 0) {
-				ansi.a(UsefulUtils.indent(indentFactor * level));
+				ansi.a(WordUtils.indent(indentFactor * level));
 			}
 			if (chars.length() > 0) ansi.aa(guessAndFormatChars(chars, qName, indentFactor)).reset();
 			ansi.a("</").fg(Elem.KEY).a(qName).reset().a('>');

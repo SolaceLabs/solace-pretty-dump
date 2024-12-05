@@ -80,6 +80,7 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
 	
 	void formatString(final String text, final byte[] bytes, String contentType, boolean decodedFromBytes) {
 		if (contentType == null) contentType = "";  // empty string, for easier matching later
+		contentType = contentType.toLowerCase();
 		size = bytes.length;
 		if (text == null) {  // that shouldn't happen?
 			formatted = AaAnsi.n();
@@ -125,36 +126,55 @@ class PayloadSection {  // like, the XML payload and the binary payload; but als
 	//    			formatted = new AaAnsi().setError().a("ERROR: ").a(e.getMessage()).reset().a('\n').a(text).reset().toString();
 	    			formatted = AaAnsi.n().ex(e).a('\n').a(trimmed);
 				}
-	    	} else if ((trimmed.startsWith("<") && trimmed.endsWith(">")) ||
-	    			"application/xml".equals(contentType)  || contentType.contains("text/xml") ||
-	    			"text/html".equals(contentType)  || contentType.contains("html")) {  // try XML
-	    		// I'm looking for the ASCII substitution char, and replacing it with � what is that?  FFFD?
-	//    		String substitutionReplacedTrimmed = trimmed.replaceAll("\\Q\u001a\\E", "� ");
+	    	} else if (contentType.contains("html")) {  // maybe it's HTML?
 	    		String substitutionReplacedTrimmed = trimmed.replaceAll("\\Q\u001a\\E", "\ufffd");
-				try {
-					if ("application/xml".equals(contentType)  || contentType.contains("text/xml")) throw new SaxParserException("");  // throw to the catch for HTML processing
-					SaxHandler handler = new SaxHandler(config.getFormattingIndent());
-					SaxParser.parseString(substitutionReplacedTrimmed, handler);
-	                formatted = handler.getResult();  // overwrite
-	                type = (decodedFromBytes ? config.charset.displayName() + " charset, " : "") + "XML document";
-				} catch (SaxParserException e) {
-					// maybe it's HTML?
+	    		try {
 					final StringReader sr = new StringReader(substitutionReplacedTrimmed);
 					final XMLInputSource htmlInputSource = new XMLInputSource(null, "foo", null, sr, config.charset.name());
 					final SAXParser htmlParser = new SAXParser();
 					SaxHandler handler = new SaxHandler(config.getFormattingIndent(), false);
 					htmlParser.setContentHandler(handler);
-					// this doesn't work that well... first<p>second<p>third<p> become <p>second</p><p>third</p>
+					// this parser doesn't work that well... first<p>second<p>third<p> become <p>second</p><p>third</p>
 					// probably works well on modern html that have proper open/close tags
-					try {
-						htmlParser.parse(htmlInputSource);
-		                formatted = handler.getResult();  // overwrite
-		                type = (decodedFromBytes ? config.charset.displayName() + " charset, " : "") + "HTML document";
-					} catch (XNIException | IOException e1) {
-						logger.warn("Couldn't parse xml or html", e);
+//				try {
+					htmlParser.parse(htmlInputSource);
+	                formatted = handler.getResult();  // overwrite
+	                type = (decodedFromBytes ? config.charset.displayName() + " charset, " : "") + "HTML document";
+				} catch (XNIException | IOException e) {
+					logger.warn("Couldn't parse html", e);
+					type = (decodedFromBytes ? config.charset.displayName() + " charset, " : "") + "INVALID HTML payload";
+	    			formatted = AaAnsi.n().ex(e).a('\n').a(trimmed);
+				}
+	    		
+	    	} else if ((trimmed.startsWith("<") && trimmed.endsWith(">")) || "application/xml".equals(contentType)  || "text/xml".equals(contentType)) {  // try XML
+	    		// I'm looking for the ASCII substitution char, and replacing it with � what is that?  FFFD?
+	//    		String substitutionReplacedTrimmed = trimmed.replaceAll("\\Q\u001a\\E", "� ");
+	    		// TODO why am I only doing this for XML, and not JSON?
+	    		String substitutionReplacedTrimmed = trimmed.replaceAll("\\Q\u001a\\E", "\ufffd");
+				try {
+//					if ("application/html".equals(contentType)  || "text/html".equals(contentType.contains("text/html")) throw new SaxParserException("");  // throw to the catch for HTML processing
+					SaxHandler handler = new SaxHandler(config.getFormattingIndent());
+					SaxParser.parseString(substitutionReplacedTrimmed, handler);
+	                formatted = handler.getResult();  // overwrite
+	                type = (decodedFromBytes ? config.charset.displayName() + " charset, " : "") + "XML document";
+				} catch (SaxParserException e) {
+					// maybe it's HTML?  no, from now on, it has to say "HTML" or we won't try 
+//					final StringReader sr = new StringReader(substitutionReplacedTrimmed);
+//					final XMLInputSource htmlInputSource = new XMLInputSource(null, "foo", null, sr, config.charset.name());
+//					final SAXParser htmlParser = new SAXParser();
+//					SaxHandler handler = new SaxHandler(config.getFormattingIndent(), false);
+//					htmlParser.setContentHandler(handler);
+//					// this doesn't work that well... first<p>second<p>third<p> become <p>second</p><p>third</p>
+//					// probably works well on modern html that have proper open/close tags
+//					try {
+//						htmlParser.parse(htmlInputSource);
+//		                formatted = handler.getResult();  // overwrite
+//		                type = (decodedFromBytes ? config.charset.displayName() + " charset, " : "") + "HTML document";
+//					} catch (XNIException | IOException e1) {
+						logger.warn("Couldn't parse xml", e);
 						type = (decodedFromBytes ? config.charset.displayName() + " charset, " : "") + "INVALID XML payload";
 		    			formatted = AaAnsi.n().ex(e).a('\n').a(trimmed);
-					}
+//					}
 				}
 	    	} else {  // it's neither JSON or XML, but has text content
 	//    		type = charset.displayName() + " String";

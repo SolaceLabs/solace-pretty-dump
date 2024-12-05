@@ -70,7 +70,7 @@ buildscript {
 distributions {
     main {
         distributionBaseName = "solace-pretty-dump"
-        distributionClassifier = "dev"
+        //distributionClassifier = "dev"
         contents {
             from("README.md")
             from("LICENSE")

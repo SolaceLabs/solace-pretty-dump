@@ -305,14 +305,28 @@ public class AaAnsi /* implements CharSequence */ {
 		return this;
 	}
 
-	public AaAnsi ex(Exception e) {
-		String exception = e.getClass().getSimpleName() + " - " + e.getMessage();
-		return invalid(exception);
+	public AaAnsi ex(Throwable e) {
+		return ex("", e);
+//		String exception = e.getClass().getSimpleName() + " - " + e.getMessage();
+//		String exception = String.format("%s - %s", e.getClass().getSimpleName(), e.getMessage());
+//		while (e.getCause() != null) {
+//			e = e.getCause();
+//			exception += ", caused by: " + String.format("%s - %s", e.getClass().getSimpleName(), e.getMessage());
+//		}
+//		return invalid(exception);
 	}
 
-	public AaAnsi ex(String s, Exception e) {
-		String exception = String.format("%s: %s - %s", s, e.getClass().getSimpleName(), e.getMessage());
-		return invalid(exception);
+	public AaAnsi ex(String s, Throwable e) {
+		StringBuilder sb = new StringBuilder();
+		if (s != null && !s.isEmpty()) sb.append(s).append(": ");
+//		String exception = String.format("%s - %s", e.getClass().getSimpleName(), e.getMessage());
+		sb.append(e.getClass().getSimpleName()).append(" - ").append(e.getMessage());
+		while (e.getCause() != null) {
+			e = e.getCause();
+//			exception += ", caused by: " + String.format("%s - %s", e.getClass().getSimpleName(), e.getMessage());
+			sb.append(e.getClass().getSimpleName()).append(" - ").append(e.getMessage());
+		}
+		return invalid(sb.toString());
 	}
 
 	public AaAnsi fg(Elem elem) {
