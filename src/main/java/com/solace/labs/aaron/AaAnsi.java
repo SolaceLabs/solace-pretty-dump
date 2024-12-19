@@ -490,7 +490,7 @@ public class AaAnsi /* implements CharSequence */ {
 		if (pos < s.length()) return sb.toString();//.append(AaAnsi.n()).toString();  // append a reset() to my sb
 		else {
 			logger.warn("FYI, AaAnsi just ended up in the final else block, and shouldn't have.  Len == "+len+" and this is "+this.toString());
-			return sb.append(AaAnsi.n()).toString();  // the whole thing   ... this should be impossible now due to implementing charCount
+			return sb.append(AaAnsi.n().toString()).toString();  // the whole thing   ... this should be impossible now due to implementing charCount
 		}
 		
 	}
@@ -500,7 +500,7 @@ public class AaAnsi /* implements CharSequence */ {
 //		if (len == 1 ) return "…";
 		if (getTotalCharCount() <= len) return toString();
 		StringBuilder sb = new StringBuilder();
-		return sb.append(chop(len-1)).append('…').append(AaAnsi.n()).toString();
+		return sb.append(chop(len-1)).append('…').append(AaAnsi.n().toString()).toString();
 //		final String s = toString();
 //		int count = 0;
 //		int pos = 0;

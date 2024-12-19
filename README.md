@@ -1,4 +1,6 @@
-![PrettyDump Banner](src/prettydump5.png)
+👋🏼 If you find this utility useful, please give it a ⭐ above!  Thanks! 🙏🏼
+
+![PrettyDump Banner](src/images/prettydump5.png)
 # Pretty-print for dumped Solace messages
 
 A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON**, **XML**, **Protobuf**, and Solace **SDT** Maps and Streams. (And binary too).
@@ -13,7 +15,7 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 - [Count, Selectors and Filtering](#count-selectors-and-filtering)
 - [Additional Parameters](#additional-parameters)
 - [Certificates and OAuth Authentication](#certificates-and-oauth-authentication)
-- [One-line Mode: Runtime options](#one-line-mode-runtime-options)
+- [Runtime options](#runtime-options)
 - [Charset Encoding](#charset-encoding)
 - [Error Checking](#error-checking)
 - [Protobuf Stuff](#protobuf-stuff) & Distributed Trace
@@ -154,7 +156,7 @@ If connecting to a mesh of brokers, take care that adding subscriptions could pu
 
 To disable this feature, include the argument `--export` and PrettyDump will not add the `#noexport/` prefix.
 
-See the [Solace docs](https://docs.solace.com/Messaging/No-Export.htm) for more details.
+See the [Solace docs on Subscription Export](https://docs.solace.com/Messaging/No-Export.htm) for more details.
 
 
 ### Queue Consume
@@ -180,15 +182,14 @@ To find the Message Spool ID or RGMID of the messages on a queue, either use Pub
 ```
 solace> show queue q1 message-vpn default messages newest detail
 ```
-![View Message IDs in PubSubPlus Manager](https://github.com/SolaceLabs/pretty-dump/blob/main/src/browse-msgs.png)
+![View Message IDs in PubSubPlus Manager](https://github.com/SolaceLabs/pretty-dump/blob/main/src/images/browse-msgs.png)
 
-I'm working on some bash shell scripts to help with this stuff.
 
 **NOTE:** Use `f:<queueName>` to browse just the _first/oldest_ message on the queue. Very useful for "poison pills" or "head-of-line blocking" messages.  This the same as regular browse with `--count=1`.
 
-Here, I enter a spcific Message Spool ID of a message that I want, with a count of 1 to only dump that one message:
+Here, I enter a spcific Message Spool ID of a message that I want (PrettyDump will filter messages until then), with a count of 1 to only dump that one message:
 ```
-$ prettydump aaron.messaging.solace.cloud aaron-demo-singapore me pw f:q1 --count=1
+$ prettydump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1 --count=1
 
 PrettyDump initializing...
 PrettyDump connected to VPN 'aaron-demo-singapore' on broker 'aaron.messaging.solace.cloud'.
@@ -206,7 +207,7 @@ Starting. Press Ctrl-C to quit.
 Destination:                            Topic 'bus_trak/gps/v2/004M/01398/001.31700/0103.80721/30/OK'
 Priority:                               4
 Class Of Service:                       USER_COS_1
-DeliveryMode:                           NON_PERSISTENT
+DeliveryMode:                           PERSISTENT
 Message Id:                             31737085
 Replication Group Message ID:           rmid1:102ee-0b5760c9706-00000000-01e444fd
 Message Type:                           SDT TextMessage
@@ -498,7 +499,7 @@ curl https://login.microsoftonline.com/xxxxxxx/oauth2/v2.0/token -d 'grant_type=
 Then copy the value of the `access_token` tuple, maybe set it as an environment variable, and use that when running PrettyDump:
 ```
 prettydump tcps://abc123.messaging.solace.cloud:55443 vpnName \
-  --OAUTH2_ACCESS_TOKEN=xxxxx \
+  --OAUTH2_ACCESS_TOKEN=xxxxxsuperlongstringxxxxx \
   --AUTHENTICATION_SCHEME=AUTHENTICATION_SCHEME_OAUTH2
 ```
 
@@ -511,20 +512,21 @@ JCSMP support both OAuth2 access tokens (`--OAUTH2_ACCESS_TOKEN=`) and OIDC ID t
 
 
 
-## One-Line mode: runtime options
+## Runtime options
 
-When using one-line mode, you can do some extra stuff:
+While PrettyDump is running, you can toggle/configure some stuff.  Most of these are more useful in one-line mode.
 
 
 ### Trim
 
-Press **'t' [ENTER]** to enable trim for message payloads... will cause the payload to get truncated at the terminal width.  This can also be enabled with arg `--trim` when starting.
+Press **'t' [ENTER]** to enable trim for message payloads, which will cause the payload to get truncated at the terminal width in one-line mode, keeping the display nice and neat.  This can also be enabled with arg `--trim` when starting.
 ```
 bus_trak/gps/v2/022A/01228/001.32266/0103.69693/21/OK       {"psgrCap":0.75,"heading":176,"…(len=178)
 bus_trak/gps/v2/036X/01431/001.37858/0103.92294/32/STOPPED  {"psgrCap":0.5,"heading":288,"b…(len=175)
 bus_trak/gps/v2/012A/01271/001.38968/0103.76101/31/STOPPED  {"psgrCap":0,"heading":254,"bus…(len=181)
 bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK       {"psgrCap":0.75,"heading":272,"…(len=177)
 ```
+
 
 
 ### Topic level alignment
@@ -563,6 +565,20 @@ The colour mode can also be set by overriding the environment varible `PRETTY_CO
 $ export PRETTY_COLORS=vivid
 ```
 
+
+
+### Add timestamp
+
+Type **'ts' [ENTER]** to toggle received message timestamps.
+
+
+
+
+### Update client-side regex filter
+
+Type **'f:<PATTERN>' [ENTER]** to update the client-side filter using a regular expression syntax.  This can be useful if receiving too many messages, and only want to look for / print certain messages.  The regex filter is applied against the entire printed (formatted) contents of the dumped message.  It is case sensitive.
+
+Type **'f' [ENTER]** or **'f:' [ENTER]** to clear the client-side filter.
 
 
 

@@ -35,7 +35,6 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.Type;
 import com.google.protobuf.MessageOrBuilder;
 import com.solace.labs.topic.Sub;
-
 import dev.solace.aaron.useful.WordUtils;
 
 public class ProtoBufUtils {
@@ -340,28 +339,17 @@ public class ProtoBufUtils {
 //					if (indentFactor > 0) inner.a('\n');
 					if (val instanceof List) {  // repeated    TODO can anything be repeated??  I think so..!
 						List<?> list = (List<?>)val;
-						ansi.fg(Elem.BRACE).a("[ ");
+						ansi.fg(Elem.BRACE).a("[");
 						Iterator<?> listIt = list.iterator();
 						if (!listIt.hasNext()) {  // empty!
 							ansi.fg(Elem.NULL).a("<EMPTY>").fg(Elem.BRACE).a("]");  // empty 
 						} else {
-							if (indentFactor > 0) {
-								ansi.faintOn().a('(').a(list.size()).a(')').reset();
-								ansi.a('\n');
-							}
+							if (indentFactor > 0) ansi.a('\n');
 							while (listIt.hasNext()) {
 								AbstractMessage obj = (AbstractMessage)listIt.next();
 								if (indentFactor > 0) ansi.a(WordUtils.indent(indent + (indentFactor/2)));
-//								if (indentFactor > 0) ansi.a(WordUtils.indent(indent/2));  // we've already indented "indent" amount
-								ansi.fg(Elem.DATA_TYPE).a("(MESSAGE)").reset().a(':');
-								ansi.fg(Elem.BRACE).a(' ').a('{');
-								if (indentFactor > 0) {
-//									ansi.a(empty ? ' ' : '\n');
-									ansi.faintOn().a(" (").a(obj.getAllFields().size()).a(')').reset();
-									ansi.a('\n');
-								}
-								ansi.reset();
-//								if (indentFactor > 0) ansi.a(":\n");
+								ansi.fg(Elem.DATA_TYPE).a("(MESSAGE)").reset();
+								if (indentFactor > 0) ansi.a(":\n");
 								ansi.aa(handleMessage(obj.getAllFields(), indent + indentFactor, indentFactor));
 								if (listIt.hasNext()) {
 									if (indentFactor > 0) ansi.a('\n');
@@ -371,19 +359,8 @@ public class ProtoBufUtils {
 							ansi.fg(Elem.BRACE).a(" ]");
 						}						
 					} else {  // not repeated, just a message
-						ansi.fg(Elem.BRACE).a('{');
-						if (((AbstractMessage)val).getAllFields().size() == 0) {  // it's empty
-							ansi.a(' ');  // if the Message is empty, print on one line
-							ansi.aa(handleMessage(((AbstractMessage)val).getAllFields(), 0, 1));
-						}
-						else {
-							if (indentFactor > 0) {
-								ansi.faintOn().a(" (").a(((AbstractMessage)val).getAllFields().size()).a(')').reset();
-								ansi.a('\n');
-							}
-							ansi.aa(handleMessage(((AbstractMessage)val).getAllFields(), indent+indentFactor, indentFactor));
-						}
-						ansi.reset();
+						if (indentFactor > 0) ansi.a('\n');
+						ansi.aa(handleMessage(((AbstractMessage)val).getAllFields(), indent+indentFactor, indentFactor));
 					}
 					break;
 //				case GROUP:

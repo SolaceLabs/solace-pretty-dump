@@ -154,7 +154,7 @@ public class MessageObject {
 	
 	AaAnsi printMessageEnd() {
 		if (config.includeTimestamp) {
-			return printMessageBoundary(String.format(" %s- End Message #%d ", lockedTimestamp, lockedMsgCountNumber));
+			return printMessageBoundary(String.format(" %s- End Message #%d ^^", lockedTimestamp, lockedMsgCountNumber));
 		} else {
             return printMessageBoundary(String.format(" End Message #%d ", lockedMsgCountNumber));
 		}
@@ -165,7 +165,7 @@ public class MessageObject {
 	}
 	
 	static AaAnsi printMessageEnd(int num) {
-		return printMessageBoundary(String.format(" %s- End Message #%d ", UsefulUtils.getCurrentTimestamp(), num));
+		return printMessageBoundary(String.format(" %s- End Message #%d ^^", UsefulUtils.getCurrentTimestamp(), num));
 	}
 	
 	private void handlePayloadSection(PayloadSection ps, AaAnsi ansi) {
@@ -215,6 +215,7 @@ public class MessageObject {
 //                		systemOut.println(new AaAnsi().a(line));
                 		systemOut.println("User Property Map:                      " + userProps.numElements + " elements");
                 		systemOut.println(userProps.formatted);
+//                		systemOut.println(config.isAutoTrimPayload() ? userProps.formatted.trim(1000) : userProps.formatted.toString());
             		}
             		if (config.getFormattingIndent() > 0 && !config.isNoPayload()) systemOut.println();
             	} else if (line.startsWith("User Data:") && userData != null) {

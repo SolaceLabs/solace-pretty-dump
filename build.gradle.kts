@@ -186,7 +186,7 @@ createAdditionalScript("AllMsgGenerator") {
 }
 
 //createAdditionalScript("KeyboardHandler") {
-//  mainClass = "com.solace.labs.aaron.KeyboardHandler"
+//  mainClass = "com.solace.labs.aaron.utils.KeyboardHandler"
 //}
 
 //tasks {

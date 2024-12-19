@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
@@ -1161,38 +1162,56 @@ public class PrettyDump {
 			userInput = reader.readLine();
 		}
 		if (userInput != null && !userInput.isEmpty()) {
-			try {
-				userInput = userInput.toLowerCase();
-				int highlight = Integer.parseInt(userInput);
-				if (highlight >= 0 && highlight < 125) {
-					config.setHighlightedTopicLevel(highlight - 1);  // so 0 -> -1 (highlight off), 1 -> 0 (level 1), etc.
+//			userInput = userInput.toLowerCase();
+			if (userInput.charAt(0) >= '0' && userInput.charAt(0) <= '9') {  // some number
+				try {
+					int highlight = Integer.parseInt(userInput);
+					if (highlight >= 0 && highlight < 125) {
+						config.setHighlightedTopicLevel(highlight - 1);  // so 0 -> -1 (highlight off), 1 -> 0 (level 1), etc.
+					}
+				} catch (NumberFormatException e) {
+					logger.warn(String.format("Tried to set the topic highlight, but couldn't parse the input '%' as number", userInput), e);
 				}
-			} catch (NumberFormatException e) {
-				if ("+".equals(userInput)) {
-					config.setAutoSpaceTopicLevels(true);
-				} else if ("-".equals(userInput)) {
-					config.setAutoSpaceTopicLevels(false);
-				} else if ("t".equals(userInput)) {
-					config.toggleAutoTrimPayload();
-				} else if ("q".equals(userInput)) {
-					config.isShutdown = true;  // quit
-				} else if (userInput.charAt(0) == 'c' && userInput.length() == 2) {
-					// assume we're trying to switch colours
-					ColorMode temp = null;
-					switch (userInput.charAt(1)) {
-					case 'v': temp = ColorMode.VIVID; break;
-					case 's': temp = ColorMode.STANDARD; break;
-					case 'm': temp = ColorMode.MINIMAL; break;
-					case 'l': temp = ColorMode.LIGHT; break;
-					case 'o': temp = ColorMode.OFF; break;
-					case 'x': temp = ColorMode.MATRIX; break;
+			} else if ("+".equals(userInput)) {
+				config.setAutoSpaceTopicLevels(true);
+			} else if ("-".equals(userInput)) {
+				config.setAutoSpaceTopicLevels(false);
+			} else if ("t".equals(userInput)) {
+				config.toggleAutoTrimPayload();
+			} else if ("q".equals(userInput)) {
+				config.isShutdown = true;  // quit
+			} else if (userInput.charAt(0) == 'c' && userInput.length() == 2) {
+				// assume we're trying to switch colours
+				ColorMode temp = null;
+				switch (userInput.charAt(1)) {
+				case 'v': temp = ColorMode.VIVID; break;
+				case 's': temp = ColorMode.STANDARD; break;
+				case 'm': temp = ColorMode.MINIMAL; break;
+				case 'l': temp = ColorMode.LIGHT; break;
+				case 'o': temp = ColorMode.OFF; break;
+				case 'x': temp = ColorMode.MATRIX; break;
+				}
+				if (temp != null) {
+					Elem.updateColors(temp);
+					AaAnsi.MODE = temp;
+				}
+			} else if ("ts".equals(userInput)) {
+				config.includeTimestamp = !config.includeTimestamp;
+			} else if (userInput.charAt(0) == 'f') {
+				if (userInput.length() == 1 && (userInput.length() == 2 && userInput.charAt(1) == ':')) {
+					config.setRegexFilterPattern(null);  // blank the regex filter
+				} else if (userInput.length() > 2 && userInput.charAt(1) == ':') {  // trying to change the current filter
+					try {
+						Pattern p = Pattern.compile(userInput.substring(2), Pattern.MULTILINE | Pattern.DOTALL);//| Pattern.CASE_INSENSITIVE);
+						config.setRegexFilterPattern(p);
+//						o.println("Regex pattern set to: " + p.toString());
+						AaAnsi ansi = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a("Regex pattern set to: '");
+						ansi.fg(Elem.STRING).a(p.toString()).fg(Elem.PAYLOAD_TYPE).a('\'').reset();
+						o.println(ansi);
+					} catch (PatternSyntaxException e) {
+						logger.warn(String.format("Tried to set the local regex filter, but couldn't parse the input '%s' as pattern", userInput), e);
+						o.println(AaAnsi.n().ex(String.format("Couldn't parse input '%s' as regex", userInput), e));
 					}
-					if (temp != null) {
-						Elem.updateColors(temp);
-						AaAnsi.MODE = temp;
-					}
-				} else if ("ts".equals(userInput)) {
-					config.includeTimestamp = !config.includeTimestamp;
 				}
 			}
 		}
