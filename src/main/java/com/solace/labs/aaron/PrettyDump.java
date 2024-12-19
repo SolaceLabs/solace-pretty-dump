@@ -1198,9 +1198,9 @@ public class PrettyDump {
 			} else if ("ts".equals(userInput)) {
 				config.includeTimestamp = !config.includeTimestamp;
 			} else if (userInput.charAt(0) == 'f') {
-				if (userInput.length() == 1 && (userInput.length() == 2 && userInput.charAt(1) == ':')) {
+				if (userInput.length() == 1 && (userInput.length() == 2 && userInput.charAt(1) == '=')) {
 					config.setRegexFilterPattern(null);  // blank the regex filter
-				} else if (userInput.length() > 2 && userInput.charAt(1) == ':') {  // trying to change the current filter
+				} else if (userInput.length() > 2 && userInput.charAt(1) == '=') {  // trying to change the current filter
 					try {
 						Pattern p = Pattern.compile(userInput.substring(2), Pattern.MULTILINE | Pattern.DOTALL);//| Pattern.CASE_INSENSITIVE);
 						config.setRegexFilterPattern(p);

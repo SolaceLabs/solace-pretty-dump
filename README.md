@@ -419,9 +419,9 @@ Use "first message" browse mode `f:queueName` to stop after the first message th
 
 As requested by a user, PrettyDump supports the ability to search/filter for specific words or patterns occuring within the entire message output, and only display messages that match this Filter.  This is far less performant than using a Selector (broker-side) as it has to pull down the message first and parse it before it can apply the Filter (client-side).  However, Filters can be used with Direct messages, and can be used in conjunction with Selectors.
 
-Currently, the Filter is treated as a regular expression / regex, and the entire message contents (headers, properties, payload(s)) are evaluated against it.  So a filter of `Aaron` will search each message looking for the case-sensitive word "Aaron".  A filter of `(?i)Aaron.*Singapore` will look for the case-insensitive word "aaron" followed somewhere by "singapore".
+Currently, the Filter is treated as a [regular expression / regex](https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html), and the entire message contents (headers, properties, payload(s)) are evaluated against it.  So a filter of `Aaron` will search each message looking for the case-sensitive word "Aaron".  A filter of `(?i)Aaron.*Singapore` will look for the case-insensitive word "aaron" followed somewhere by "singapore".
 
-A Filter is specified by the command line argument `--filter="blah"` when runnning PrettyDump.  This argument can appear anywhere in the arguments, and won't impact the other ones.
+A Filter is specified by the command line argument `--filter="blah"` when runnning PrettyDump, or by typing `f=<PATTERN>` [while running](#update-client-side-regex-filter).  This argument can appear anywhere in the arguments, and won't impact the other ones.
 
 ```
 ^^^^^^^^^^^^^^^^^^^^ End Message #26710 ^^^^^^^^^^^^^^^^^^^
@@ -576,9 +576,9 @@ Type **'ts' [ENTER]** to toggle received message timestamps.
 
 ### Update client-side regex filter
 
-Type **'f:&lt;PATTERN&gt;' [ENTER]** to update the client-side filter using a regular expression syntax.  This can be useful if receiving too many messages, and only want to look for / print certain messages.  The regex filter is applied against the entire printed (formatted) contents of the dumped message.  It is case sensitive.
+Type **'f=&lt;PATTERN&gt;' [ENTER]** to update the client-side filter using a [regular expression syntax](https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html).  This can be useful if receiving too many messages, and only want to look for / print certain messages.  The regex filter is applied against the entire printed (formatted) contents of the dumped message.  It is case sensitive.
 
-Type **'f' [ENTER]** or **'f:' [ENTER]** to clear the client-side filter.
+Type **'f' [ENTER]** or **'f=' [ENTER]** to clear the client-side filter.
 
 
 
