@@ -576,7 +576,7 @@ Type **'ts' [ENTER]** to toggle received message timestamps.
 
 ### Update client-side regex filter
 
-Type **'f:<PATTERN>' [ENTER]** to update the client-side filter using a regular expression syntax.  This can be useful if receiving too many messages, and only want to look for / print certain messages.  The regex filter is applied against the entire printed (formatted) contents of the dumped message.  It is case sensitive.
+Type **'f:&lt;PATTERN&gt;' [ENTER]** to update the client-side filter using a regular expression syntax.  This can be useful if receiving too many messages, and only want to look for / print certain messages.  The regex filter is applied against the entire printed (formatted) contents of the dumped message.  It is case sensitive.
 
 Type **'f' [ENTER]** or **'f:' [ENTER]** to clear the client-side filter.
 
