@@ -532,8 +532,8 @@ bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK       {"psgrCap":0.75,"hea
 ### Topic level alignment
 
 Press **'+' [ENTER]** to add spacing to the topic hierarchy display, more of a "column" view of the topic levels<br>
-Press **'-' [ENTER]** to go back to regular (compressed) topic display<br>
-This can also be enabled with by changing indent argument from `-` to `+` when starting (e.g. `-0` indent for spaced topic-only view).
+Press **'–' [ENTER]** to go back to regular (compressed) topic display<br>
+This can also be enabled with by changing indent argument from `–` to `+` when starting (e.g. `-0` indent for spaced topic-only view).
 ```
 #STATS...../VPN..../sgdemo1.../aaron.............../vpn_stats
 #STATS...../SYSTEM./sgdemo1.../stats_client_detail
