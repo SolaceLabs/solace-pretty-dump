@@ -11,7 +11,7 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 - [Running](#running)
 - [Command-line parameters](#command-line-parameters)
 - Subscribing options: [Direct topic subscriptions](#direct-subscriptions), [Queue consume](#queue-consume), [Browsing a queue](#browsing-a-queue), [TempQ with subs](#temporary-queue-with-subscriptions)
-- [Output Indent options](#output-indent-options-the-6th-argument) ([One-line Mode](#one-line-mode-indent--0))
+- [Output Indent options](#output-indentdisplay-options-the-6th-argument) ([One-line Mode](#one-line-mode-indent--0))
 - [Count, Selectors and Filtering](#count-selectors-and-filtering)
 - [Additional Parameters](#additional-parameters)
 - [Certificates and OAuth Authentication](#certificates-and-oauth-authentication)
@@ -54,7 +54,7 @@ For Docker: `docker run -it --rm solace-pretty-dump:latest broker vpn user pw ">
 $ prettydump
 
 PrettyDump initializing...
-PrettyDump connected to VPN 'default' on broker 'localhost'.
+PrettyDump PID '38135' connected to VPN 'default' on broker 'localhost'.
 
 Subscribed to Direct topic: '#noexport/>'
 
@@ -78,7 +78,7 @@ UTF-8 charset, JSON Object:
 $ prettydump demo.messaging.solace.cloud demo-vpn user pw q:q1
 
 PrettyDump initializing...
-PrettyDump connected to VPN 'demo-vpn' on broker 'demo.messaging.solace.cloud'.
+PrettyDump PID '5911' connected to VPN 'demo-vpn' on broker 'demo.messaging.solace.cloud'.
 
 Attempting to bind to queue 'q1' on the broker... success!
 ```
@@ -88,7 +88,7 @@ Attempting to bind to queue 'q1' on the broker... success!
 $ prettydump "solace/>" -30 --trim
 
 PrettyDump initializing...
-PrettyDump connected to VPN 'default' on broker 'localhost'.
+PrettyDump PID '49732' connected to VPN 'default' on broker 'localhost'.
 
 Indent=-30 (one-line mode, topic width=30, auto-trim payload)
 Subscribed to Direct topic: '#noexport/solace/>'
@@ -192,7 +192,7 @@ Here, I enter a spcific Message Spool ID of a message that I want (PrettyDump wi
 $ prettydump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1 --count=1
 
 PrettyDump initializing...
-PrettyDump connected to VPN 'aaron-demo-singapore' on broker 'aaron.messaging.solace.cloud'.
+PrettyDump PID '19563' connected to VPN 'aaron-demo-singapore' on broker 'aaron.messaging.solace.cloud'.
 
 Attempting to browse queue 'q1' on the broker... success!
 
@@ -249,7 +249,7 @@ Subscribed tempQ to topic: '#noexport/orders/>'
 
 
 
-## Output Indent options: the 6th argument
+## Output Indent/Display options: the 6th argument
 
 ### Regular: indent > 0
 
