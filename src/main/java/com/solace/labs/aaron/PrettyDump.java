@@ -640,11 +640,17 @@ public class PrettyDump {
 		});
 		session.connect();  // connect to the broker... could throw JCSMPException, so best practice would be to try-catch here..!
 		config.isConnected = true;
+		String clientName;
 		if (properties.getProperty(JCSMPProperties.CLIENT_NAME) == null) {  // we haven't tried to set it on the command line
 			session.setProperty(JCSMPProperties.CLIENT_NAME, "PrettyDump_" + session.getProperty(JCSMPProperties.CLIENT_NAME));
+			clientName = session.getProperty(JCSMPProperties.CLIENT_NAME).toString().split("/")[1];
+		} else {
+			clientName = properties.getProperty(JCSMPProperties.CLIENT_NAME).toString();
 		}
-		o.printf("%s connected to VPN '%s' on broker '%s' v%s.%n%n",
-				APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE),
+		o.printf("%s PID '%s' connected to VPN '%s' on broker '%s' v%s.%n%n",
+				APP_NAME,
+				clientName,
+				session.getProperty(JCSMPProperties.VPN_NAME_IN_USE),
 				session.getCapability(CapabilityType.PEER_ROUTER_NAME),
 				session.getCapability(CapabilityType.PEER_SOFTWARE_VERSION));
 
