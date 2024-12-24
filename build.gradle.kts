@@ -15,7 +15,7 @@ plugins {
     //id("com.gradleup.shadow") version "8.3.2"  // https://gradleup.com/shadow/
 }
 
-version = "1.1.1"
+version = "1.2.0"
 
 
 tasks.withType<JavaCompile> {
