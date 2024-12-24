@@ -70,6 +70,7 @@ buildscript {
 distributions {
     main {
         distributionBaseName = "solace-pretty-dump"
+	// uncomment this next line when doing the actual release build
         //distributionClassifier = "dev"
         contents {
             from("README.md")
