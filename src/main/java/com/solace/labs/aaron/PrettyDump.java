@@ -446,24 +446,6 @@ public class PrettyDump {
 					HelperText.printHelpMoreText();
 					o.println("See README.md for more detailed help.");
 				}
-			} else if (arg.equals("--trim")) {
-				config.setAutoTrimPayload(true);
-			} else if (arg.equals("--ts")) {
-				config.includeTimestamp = true;
-			} else if (arg.equals("--export")) {
-				config.noExport = false;
-			} else if (arg.equals("--compressed")) {
-				config.isCompressed = true;  // doesn't really matter, we never use this again
-				properties.setProperty(JCSMPProperties.CLIENT_CHANNEL_PROPERTIES_COMPRESSION_LEVEL, 9);  // this is kind of a hidden feature, usually you have to create a ClientChannelProperties object
-			} else if (arg.equals("--raw")) {
-				config.payloadDisplay = DisplayType.RAW;
-			} else if (arg.equals("--dump")) {
-				config.payloadDisplay = DisplayType.DUMP;
-			} else if (arg.startsWith("--topics=")) {
-				topics = parseTopics(arg.substring("--topics=".length()));
-			} else if (arg.startsWith("--indent=")) {
-				String indentStr = arg.substring("--indent=".length());
-				parseIndentString(indentStr);
 			} else if (arg.startsWith("--count=")) {
 				String argVal = "?";
 				try {
@@ -483,6 +465,33 @@ public class PrettyDump {
 					HelperText.printHelpMoreText();
 					System.exit(1);
 				}
+			} else if (arg.equals("--raw")) {
+				config.payloadDisplay = DisplayType.RAW;
+			} else if (arg.equals("--dump")) {
+				config.payloadDisplay = DisplayType.DUMP;
+			} else if (arg.equals("--trim")) {
+				config.setAutoTrimPayload(true);
+			} else if (arg.equals("--ts")) {
+				config.includeTimestamp = true;
+			} else if (arg.equals("--export")) {
+				config.noExport = false;
+			} else if (arg.equals("--compressed")) {
+				config.isCompressed = true;  // doesn't really matter, we never use this again
+				properties.setProperty(JCSMPProperties.CLIENT_CHANNEL_PROPERTIES_COMPRESSION_LEVEL, 9);  // this is kind of a hidden feature, usually you have to create a ClientChannelProperties object
+			} else if ("--defaults".equals(arg) || "-defaults".equals(arg)) { // || "--defaultsAll".equals(arg)) {
+				// skip for now // NOPE let's print it now!
+				o.println("These are the default JCSMPProperties that PrettyDump uses.");
+				o.println("Most are defaults in JCSMP, some have been overriden.");
+				o.println("Not all of these are settable, see Javadocs for more info.");
+				o.println(printJcsmpProperties(properties));
+				o.print("For all possible JCSMPProperties, see Javadocs here: ");
+				o.println(new Ansi().fg(4).a(Attribute.UNDERLINE).a("https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html").reset());
+				System.exit(0);
+			} else if (arg.startsWith("--topics=")) {
+				topics = parseTopics(arg.substring("--topics=".length()));
+			} else if (arg.startsWith("--indent=")) {
+				String indentStr = arg.substring("--indent=".length());
+				parseIndentString(indentStr);
 /*			} else if (arg.startsWith("--skip=")) {
 				String argVal = "?";
 				try {
@@ -578,23 +587,21 @@ public class PrettyDump {
 //				o.println("Overriding JCSMPProperties." + propName + "=" + properties.getProperty(propName));
 				o.println(ansi.reset());
 				jcscmpPropCount++;
-			} else if ("--defaults".equals(arg) || "-defaults".equals(arg) || "--defaultsAll".equals(arg)) {
-				// skip for now
 			} else {
 				o.println(AaAnsi.n().invalid("Don't recognize this argument '" + arg + "'!\nTry: prettydump -hm  or  prettydump --defaults"));
 				o.println("Quitting! 💀");
 				System.exit(1);
 			}
 		}
-		if (specialArgsList.contains("--defaults") || specialArgsList.contains("-defaults")) {
-			o.println("These are the default JCSMPProperties that PrettyDump uses.");
-			o.println("Most are defaults in JCSMP, some have been overriden.");
-			o.println("Not all of these are settable, see Javadocs for more info.");
-			o.println(printJcsmpProperties(properties));
-			o.print("For all possible JCSMPProperties, see Javadocs here: ");
-			o.println(new Ansi().fg(4).a(Attribute.UNDERLINE).a("https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html").reset());
-			System.exit(0);
-		}  // end of --defaults
+//		if (specialArgsList.contains("--defaults") || specialArgsList.contains("-defaults")) {
+//			o.println("These are the default JCSMPProperties that PrettyDump uses.");
+//			o.println("Most are defaults in JCSMP, some have been overriden.");
+//			o.println("Not all of these are settable, see Javadocs for more info.");
+//			o.println(printJcsmpProperties(properties));
+//			o.print("For all possible JCSMPProperties, see Javadocs here: ");
+//			o.println(new Ansi().fg(4).a(Attribute.UNDERLINE).a("https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html").reset());
+//			System.exit(0);
+//		}  // end of --defaults
 		if (specialArgsList.contains("--defaultsAll")) {
 			o.println("Here are all of the JCSMPProperties constants:");
 			o.print(AaAnsi.n().fg(Elem.KEY));
