@@ -449,6 +449,9 @@ There are a number of (argument order doesn't matter) parameters that have been 
 - `--export` By default, PrettyDump adds `#noexport/` prefix to every topic subscription, to help not overload DMR/MNR links by subscribing to things accidentally.  See https://docs.solace.com/Messaging/No-Export.htm.  Use this to disable.
 - `--compressed` Tell PrettyDump you want to connect using streaming compression (not payload compression new feature). This is super useful when connecting over long RTT / WAN links. For non-TLS, this is port 55003.
 - `--defaults` Print all the JCSMPProperties that you might be able to override.  Or check the [JCSMP API docs](https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html).
+- `--topics=<blah>` Rather than providing the topic subscriptions or queue to consumer or browse as the 5th command-line argument (usual) or 1st (shortcut mode), you can specify this argument as a parameter; very useful for non-basic authentication schemes where you only need to provide host and VPN to connect to.
+- `--indent=n` As above, specify the indent as a named parameter instead of as the 6th (or 2nd) argument
+
 
 
 

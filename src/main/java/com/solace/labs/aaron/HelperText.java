@@ -36,7 +36,7 @@ public class HelperText {
 		o.println("  Localhost broker using default credentials, browse queue \"q1\", compress payload display");
 		o.println();
 		o.println("prettydump ws://localhost:8008 testvpn test pa55word '>' -1");
-		o.println("  Localhost broker using WebSockets, \"testvpn\" VPN, user \"test\", subscribe to \"#noexport/>\", and enable auto-indent one-line mode");
+		o.println("  Localhost broker using WebSockets, \"testvpn\" VPN, user \"test\", subscribe to \"#noexport/>\", and enable auto-indent one-line mode (OLM)");
 		o.println();
 		o.println("prettydump tcps://demo.messaging.solace.cloud:55443 demo solace-cloud-client pw123 --export 'logs/>' -2");
 		o.println("  Solace Cloud broker, subscribe to \"logs/>\", and enable two-line mode");
@@ -45,7 +45,7 @@ public class HelperText {
 		o.println("  Network broker, \"uat\" VPN, user \"browser\", browse queue \"q.stg.logging\" but only dump last 100 messages, and hide payload");
 		o.println();
 		o.println("prettydump 'tq:>,!bus/>,!stats/>' -50");
-		o.println("  Localhost broker, subscribe to everything BUT \"bus\" and \"stats\" topics (need a tempQ for NOT subscriptions), one-line mode, trim topic to 50 chars");
+		o.println("  Localhost broker, subscribe to everything BUT \"bus\" and \"stats\" topics (need a tempQ for NOT subscriptions), OLM, trim topic to 50 chars");
 		o.println();
 		o.println("prettydump 10.0.7.49 uat app1 secretPw q:dmq.dev.app1 --count=1 --SUB_ACK_WINDOW_SIZE=1 ");
 		o.println("  Network broker, consume/ACK & dump one message off queue \"dmq.dev.app1\", and set the AD window size to 1");
@@ -63,7 +63,8 @@ public class HelperText {
 		o.println("t  : in one-line/compressed modes: trim the payload to the terminal width");
 //		o.println("     in regular mode, trime user props and payload to 30 lines");
 		o.println("+  : in one-line mode, enable topic level spacing");
-		
+		o.println("f=abc : client-side filter for 'abc', only show messages that contain that string");
+		o.println("ts : toggle printing of message received timestamp");
 	}
 	
 	
@@ -117,11 +118,12 @@ public class HelperText {
 		o.println("    • --export      disables the automatic prefixing of \"#noexport/\" to the start of all topics");
 		o.println("    • --compressed  tells JCSMP API to use streaming compression (TCP only, not WebSockets)");
 		o.println("    • --defaults    show all possible JCSMP Session properties to set/override");
-		o.println(" - One-Line runtime options: type the following into the console while the app is running");
-		o.println("    • Press \"t\" ENTER to toggle payload trim to terminal width (or argument --trim)");
-		o.println("    • Press \"+\" or \"-\" ENTER to toggle topic level spacing/alignment (or argument \"+indent\")");
+		o.println(" - Runtime options: type the following into the console while the app is running");
+		o.println("    • Press \"t\" ENTER to toggle payload trim to terminal width (or argument --trim) in OLM");
+		o.println("    • Press \"+\" or \"-\" ENTER to toggle topic level alignment (or argument \"+indent\") in OLM");
 		o.println("    • Press \"[1-n]\" ENTER to highlight a particular topic level (\"0\" ENTER to revert)");
 		o.println("    • Type \"c[svlmxo]\" ENTER\" to set colour mode: standard, vivid, light, minimal, matrix, off");
+		o.println("    • Type \"f=<PATTERN>\" ENTER\" to start filtering for messages containing PATTERN");
 		o.println("Environment variable options:");
 		o.println(" - Default charset is UTF-8. Override by setting: export PRETTY_CHARSET=ISO-8859-1");
 		//		o.println("    - e.g. export PRETTY_CHARSET=ISO-8859-1  (or \"set\" on Windows)");
@@ -133,6 +135,7 @@ public class HelperText {
 //		o.println();
 		o.println("SdkPerf Wrap mode: use any SdkPerf as usual, pipe command to \" | prettydump wrap\" to prettify");
 		o.println();
+		o.println("prettydump -he  for examples");
 		o.println("See the README.md for more explanations of every feature and capability");
 		o.println("https://github.com/SolaceLabs/solace-pretty-dump");
 		o.println("https://solace.community/discussion/3238/sdkperf-but-pretty-for-json-and-xml");
@@ -150,7 +153,7 @@ public class HelperText {
 		o.println("    • b:queueName to browse a queue (all messages, or range by MsgSpoolID or RGMID)");
 		o.println("    • f:queueName to browse/dump only first oldest message on a queue");
 		o.println("    • tq:topics   provision a tempQ with optional topics  (can use NOT '!' topics)");
-		if (full) o.println(" - Indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode");
+		if (full) o.println(" - Indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode (OLM)");
 		//		o.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
 		o.println(" - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume defaults");
 		o.println("    • Or if first arg parses as integer, select as indent, rest default options");
