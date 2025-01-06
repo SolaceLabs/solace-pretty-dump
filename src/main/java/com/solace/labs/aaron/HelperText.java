@@ -149,10 +149,10 @@ public class HelperText {
 		o.println(" - Subscribing options (arg 5, or shortcut mode arg 1), one of:");
 		o.println("    • Comma-separated list of Direct topic subscriptions");
 		o.println("       - Automatic \"#noexport/\" prefixes added for DMR/MNR; disable with --export");
-		o.println("    • q:queueName to consume from queue");
-		o.println("    • b:queueName to browse a queue (all messages, or range by MsgSpoolID or RGMID)");
-		o.println("    • f:queueName to browse/dump only first oldest message on a queue");
-		o.println("    • tq:topics   provision a tempQ with optional topics  (can use NOT '!' topics)");
+		o.println("    • q:queueName  to consume from queue");
+		o.println("    • b:queueName  to browse a queue (all messages, or range by MsgSpoolID or RGMID)");
+		o.println("    • f:queueName  to browse/dump only first oldest message on a queue");
+		o.println("    • tq:[topics]  provision a tempQ with optional topics  (can use NOT '!' topics)");
 		if (full) o.println(" - Indent: integer, default==2; ≥ 0 normal, = 00 no payload, ≤ -0 one-line mode (OLM)");
 		//		o.println(" - Optional count: stop after receiving n number of msgs; or if < 0, only show last n msgs");
 		o.println(" - Shortcut mode: first arg looks like a topic, or starts '[qbf]:', assume defaults");
