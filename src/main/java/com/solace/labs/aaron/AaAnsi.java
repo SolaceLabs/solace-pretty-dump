@@ -50,7 +50,7 @@ public class AaAnsi /* implements CharSequence */ {
 				MODE = ColorMode.valueOf(System.getenv("PRETTY_COLORS").toUpperCase());
 				Elem.updateColors(MODE);
 			} catch (IllegalArgumentException e) {
-				System.err.println(AaAnsi.n().invalid(String.format("Invalid value for environment variable PRETTY_COLORS \"%s\"", System.getenv("PRETTY_COLORS"))));
+				System.err.println(AaAnsi.n().invalid(String.format("Invalid value for environment variable PRETTY_COLORS \"%s\"", System.getenv("PRETTY_COLORS"))).toString());
 //				System.out.println(AaAnsi.n().invalid("asdlfkjalsdkfj"));
 				System.err.println("Valid values are: standard, vivd, light, minimal, matrix, off");
 			}
