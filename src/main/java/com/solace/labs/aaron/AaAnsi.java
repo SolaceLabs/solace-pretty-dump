@@ -50,7 +50,7 @@ public class AaAnsi /* implements CharSequence */ {
 				MODE = ColorMode.valueOf(System.getenv("PRETTY_COLORS").toUpperCase());
 				Elem.updateColors(MODE);
 			} catch (IllegalArgumentException e) {
-				System.err.println(AaAnsi.n().invalid(String.format("Invalid value for environment variable PRETTY_COLORS \"%s\"", System.getenv("PRETTY_COLORS"))));
+				System.err.println(AaAnsi.n().invalid(String.format("Invalid value for environment variable PRETTY_COLORS \"%s\"", System.getenv("PRETTY_COLORS"))).toString());
 //				System.out.println(AaAnsi.n().invalid("asdlfkjalsdkfj"));
 				System.err.println("Valid values are: standard, vivd, light, minimal, matrix, off");
 			}
@@ -305,14 +305,28 @@ public class AaAnsi /* implements CharSequence */ {
 		return this;
 	}
 
-	public AaAnsi ex(Exception e) {
-		String exception = e.getClass().getSimpleName() + " - " + e.getMessage();
-		return invalid(exception);
+	public AaAnsi ex(Throwable e) {
+		return ex("", e);
+//		String exception = e.getClass().getSimpleName() + " - " + e.getMessage();
+//		String exception = String.format("%s - %s", e.getClass().getSimpleName(), e.getMessage());
+//		while (e.getCause() != null) {
+//			e = e.getCause();
+//			exception += ", caused by: " + String.format("%s - %s", e.getClass().getSimpleName(), e.getMessage());
+//		}
+//		return invalid(exception);
 	}
 
-	public AaAnsi ex(String s, Exception e) {
-		String exception = String.format("%s: %s - %s", s, e.getClass().getSimpleName(), e.getMessage());
-		return invalid(exception);
+	public AaAnsi ex(String s, Throwable e) {
+		StringBuilder sb = new StringBuilder();
+		if (s != null && !s.isEmpty()) sb.append(s).append(": ");
+//		String exception = String.format("%s - %s", e.getClass().getSimpleName(), e.getMessage());
+		sb.append(e.getClass().getSimpleName()).append(" - ").append(e.getMessage());
+		while (e.getCause() != null) {
+			e = e.getCause();
+//			exception += ", caused by: " + String.format("%s - %s", e.getClass().getSimpleName(), e.getMessage());
+			sb.append(e.getClass().getSimpleName()).append(" - ").append(e.getMessage());
+		}
+		return invalid(sb.toString());
 	}
 
 	public AaAnsi fg(Elem elem) {
@@ -476,7 +490,7 @@ public class AaAnsi /* implements CharSequence */ {
 		if (pos < s.length()) return sb.toString();//.append(AaAnsi.n()).toString();  // append a reset() to my sb
 		else {
 			logger.warn("FYI, AaAnsi just ended up in the final else block, and shouldn't have.  Len == "+len+" and this is "+this.toString());
-			return sb.append(AaAnsi.n()).toString();  // the whole thing   ... this should be impossible now due to implementing charCount
+			return sb.append(AaAnsi.n().toString()).toString();  // the whole thing   ... this should be impossible now due to implementing charCount
 		}
 		
 	}
@@ -486,7 +500,7 @@ public class AaAnsi /* implements CharSequence */ {
 //		if (len == 1 ) return "…";
 		if (getTotalCharCount() <= len) return toString();
 		StringBuilder sb = new StringBuilder();
-		return sb.append(chop(len-1)).append('…').append(AaAnsi.n()).toString();
+		return sb.append(chop(len-1)).append('…').append(AaAnsi.n().toString()).toString();
 //		final String s = toString();
 //		int count = 0;
 //		int pos = 0;

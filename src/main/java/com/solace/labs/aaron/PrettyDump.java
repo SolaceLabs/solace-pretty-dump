@@ -20,6 +20,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
@@ -28,10 +30,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -100,7 +105,7 @@ public class PrettyDump {
 	private XMLMessageConsumer directConsumer = null;  // for Direct
 
 	final private MessageHelper ph;
-	final private ConfigState config = new ConfigState();
+	final private ConfigState config;
 	private long origMsgCount = Long.MAX_VALUE;
 	private long msgCountRemaining = Long.MAX_VALUE;
 //	private long skipMsgCount = 0;
@@ -113,7 +118,8 @@ public class PrettyDump {
 	private ReplicationGroupMessageId browseFromRGMID = null;
 
 	private PrettyDump() {
-		this.ph = new MessageHelper(config);
+		config = new ConfigState();  // we'll configure/update this thing as we get started
+		ph = new MessageHelper(config);
 	}
 
 	
@@ -180,20 +186,105 @@ public class PrettyDump {
 		o.println(ansi);
 	}
 	
-	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
-		PrettyDump dump = new PrettyDump();
-		dump.run(args);
+	private static AaAnsi printJcsmpProperties(JCSMPProperties properties) {
+		List<String> upperProps = new ArrayList<>();
+		Map<String, String> propsMap = new HashMap<>();
+		for (String key : properties.propertyNames()) {
+			upperProps.add(key.toUpperCase());
+			propsMap.put(key.toUpperCase(), key);
+		}
+		upperProps.sort(null);
+		AaAnsi ansi = AaAnsi.n();
+		for (String key : upperProps) {
+			Object o = properties.getProperty(propsMap.get(key));
+			if (o == null || o.toString().isEmpty() ) {  // this property doesn't have anything set for it
+//				continue;  // skip it
+			}
+//			aa.fg(Elem.KEY).a(key).reset().a('=');
+			if (o instanceof Integer) {
+				ansi.fg(Elem.KEY).a('-').a('-').a(key).reset().a('=');
+				ansi.fg(Elem.NUMBER).a(o.toString()).a('\n');
+			} else if (o instanceof Boolean) {
+				ansi.fg(Elem.KEY).a('-').a('-').a(key).reset().a('=');
+				ansi.fg(Elem.BOOLEAN).a(o.toString()).a('\n');
+			} else if (o instanceof String) {
+				ansi.fg(Elem.KEY).a('-').a('-').a(key).reset().a('=');
+				ansi.fg(Elem.STRING).a(o.toString()).a('\n');
+				if (o.toString() == "") {
+//					System.out.println(key + ": empty String");
+				}
+			} else {  //skip this one (could be a class/object
+//				ansi.fg(Elem.KEY).a(key).reset().a('=');
+//				ansi.fg(Elem.DATA_TYPE).a(o.getClass().getSimpleName()).a(' ').a(o.toString());
+			}
+		}
+		return ansi.reset();
+	}
+	
+	/** Will exit application if parameter can not be parsed */
+	private void parseIndentString(String indentStr) throws NumberFormatException, IllegalArgumentException {
+//		String indentStr = arg;  // grab the correct command-line argument
+		try {
+			config.dealWithIndentParam(indentStr);
+		} catch (IllegalArgumentException e) {
+			o.println(AaAnsi.n().invalid(String.format("Invalid value for indent: '%s'.  ", indentStr)));
+			o.println();
+			HelperText.printHelpIndent();
+			o.println();
+			o.println("prettydump -h  or  -hm for more help details, or see README.md for more details");
+			System.exit(1);
+		}
 	}
 	
 	
+	private static String[] parseTopics(String arg) {
+		if (arg.matches("^[qbf]:.+")) {
+			return new String[] { arg };  // just the one, queue name will get parsed out later
+		} else return arg.split("\\s*,\\s*");  // split on commas, remove any whitespace around them, might start with tq:
+	}
+	
+	
+	public static void main(String... args) throws JCSMPException, IOException, InterruptedException, IllegalAccessException {
+		PrettyDump dump = new PrettyDump();
+		try {
+			AnsiConsole.systemInstall();
+			dump.run(args);
+		} catch (Exception e) {
+			logger.warn("Uncaught exception thrown out of run()", e);
+			o.println(AaAnsi.n().ex("Uncaught exception thrown", e).a("; check ~/.pretty/pretty.log for details. "));
+			o.println("Quitting! 💀");
+		} finally {
+			AnsiConsole.systemUninstall();
+		}
+	}
 	
 	
 	// MAIN!
 
 	@SuppressWarnings("deprecation")  // this is for our use of Message ID for the browser
-	public void run(String... args) throws JCSMPException, IOException, InterruptedException {
-		
-		//		
+	public void run(String... args) throws JCSMPException, IOException, InterruptedException, IllegalArgumentException, IllegalAccessException {
+		Map<String,String> allJcsmpPropertiesStaticVarsNames = new LinkedHashMap<>();
+		{
+			List<Field> allStaticFields =  Arrays.stream(JCSMPProperties.class.getDeclaredFields()).filter(f ->
+			        Modifier.isStatic(f.getModifiers())).collect(Collectors.toList());
+			allStaticFields.sort(new Comparator<Field>() {
+				@Override
+				public int compare(Field o1, Field o2) {
+					return o1.getName().compareTo(o2.getName());
+				}
+			});
+			for (Field f : allStaticFields) {
+				if (f.getType().equals(String.class) &&
+						Modifier.isPublic(f.getModifiers()) &&
+						f.getName().equals(f.getName().toUpperCase())) {// .getName().equals("java.lang.String")) {
+					Object s = f.get(null);
+					allJcsmpPropertiesStaticVarsNames.put(f.getName(), s.toString());
+//					System.out.printf("Name: %s, Type: %s, Val: %s%n", f.getName(), f.getType().getName(), s.toString());
+//				} else {
+//					System.out.println("Ignoring " + f.getName());
+				}
+			}
+		}
 		//		ReplicationGroupMessageId one = f.createReplicationGroupMessageId("rmid1:3477f-a5ce520f5ec-00000000-000f89e2");
 		//		ReplicationGroupMessageId two = f.createReplicationGroupMessageId("rmid1:3477f-a5ce520f5ec-00000000-000f89e2");
 		//		o.println(one.equals(two));
@@ -286,24 +377,15 @@ public class PrettyDump {
 		if (regArgsList.size() > 3) password = regArgsList.get(3);
 		if (regArgsList.size() > 4) {
 			String arg4 = regArgsList.get(4);
-			if (arg4.matches("^[qbf]:.+")) {
-				topics = new String[] { arg4 };  // just the one, queue name will get parsed out later
-			} else {
-				topics = arg4.split("\\s*,\\s*");  // split on commas, remove any whitespace around them, might start with tq:
-			}
+			topics = parseTopics(arg4);
+//			if (arg4.matches("^[qbf]:.+")) {
+//				topics = new String[] { arg4 };  // just the one, queue name will get parsed out later
+//			} else {
+//				topics = arg4.split("\\s*,\\s*");  // split on commas, remove any whitespace around them, might start with tq:
+//			}
 		}
 		if (regArgsList.size() > 5) {
-			String indentStr = regArgsList.get(5);  // grab the correct command-line argument
-			try {
-				config.dealWithIndentParam(indentStr);
-			} catch (IllegalArgumentException e) {
-				o.println(AaAnsi.n().invalid(String.format("Invalid value for indent: '%s'.  ", indentStr)));
-				o.println();
-				HelperText.printHelpIndent();
-				o.println();
-				o.println("prettydump -h  or  -hm for more help details, or see README.md for more details");
-				System.exit(1);
-			}
+			parseIndentString(regArgsList.get(5));
 		}
 		if (regArgsList.size() > 6) {
 			HelperText.printHelpMoreText();
@@ -311,7 +393,6 @@ public class PrettyDump {
 		}
 		// we'll handle the special -- args down below
 		
-		AnsiConsole.systemInstall();
 		if (AnsiConsole.getTerminalWidth() >= 80) o.print(Banner.printBanner(Which.DUMP));
 		else o.println();
 		o.println(APP_NAME + " initializing...");
@@ -335,49 +416,10 @@ public class PrettyDump {
 		JCSMPGlobalProperties.setShouldDropInternalReplyMessages(false);  // neat trick to hear all other req/rep messages
 		// if we're going to override any special settings, do it here
 		
-		if (specialArgsList.contains("--defaults") || specialArgsList.contains("-defaults")) {
-			o.println("These are the default JCSMPProperties that PrettyDump uses.");
-			o.println("Most are defaults in JCSMP, some have been overriden.");
-			o.println("Not all of these are settable, see Javadocs for more info.");
-			List<String> upperProps = new ArrayList<>();
-			Map<String, String> propsMap = new HashMap<>();
-			for (String key : properties.propertyNames()) {
-				upperProps.add(key.toUpperCase());
-				propsMap.put(key.toUpperCase(), key);
-			}
-			upperProps.sort(new Comparator<String>() {
-				@Override
-				public int compare(String o1, String o2) {
-					return o1.compareTo(o2);
-				}
-			});
-			AaAnsi ansi = AaAnsi.n();
-			for (String key : upperProps) {
-				Object o = properties.getProperty(propsMap.get(key));
-//				aa.fg(Elem.KEY).a(key).reset().a('=');
-				if (o instanceof Integer) {
-					ansi.fg(Elem.KEY).a('-').a('-').a(key).reset().a('=');
-					ansi.fg(Elem.NUMBER).a(o.toString()).a('\n');
-				} else if (o instanceof Boolean) {
-					ansi.fg(Elem.KEY).a('-').a('-').a(key).reset().a('=');
-					ansi.fg(Elem.BOOLEAN).a(o.toString()).a('\n');
-				} else if (o instanceof String) {
-					ansi.fg(Elem.KEY).a('-').a('-').a(key).reset().a('=');
-					ansi.fg(Elem.STRING).a(o.toString()).a('\n');
-				} else {  //skip this one
-//					ansi.fg(Elem.KEY).a(key).reset().a('=');
-//					ansi.fg(Elem.DATA_TYPE).a(o.getClass().getSimpleName()).a(' ').a(o.toString());
-				}
-			}
-			o.println(ansi.reset());
-			o.print("For JCSMPProperties descriptions, see Javadocs here: ");
-			o.println(new Ansi().fg(4).a(Attribute.UNDERLINE).a("https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html").reset());
-			System.exit(0);
-		}
-
+		// ok, so now we're gonna parse the rest of the special args, and see what we have
 		int jcscmpPropCount = 0;
 		for (String arg : specialArgsList) {
-			if (arg.startsWith("--selector")) {
+			if (arg.startsWith("--selector=")) {
 				try {
 					selector = arg.substring("--selector=".length());
 					if (selector != null && !selector.isEmpty() && selector.length() > 2000) {
@@ -391,7 +433,7 @@ public class PrettyDump {
 					o.println("See README.md for more detailed help.");
 					System.exit(1);
 				}
-			} else if (arg.startsWith("--filter")) {
+			} else if (arg.startsWith("--filter=")) {
 				try {
 					contentFilter = arg.substring("--filter=".length());
 					if (contentFilter != null && !contentFilter.isEmpty()) {
@@ -404,20 +446,7 @@ public class PrettyDump {
 					HelperText.printHelpMoreText();
 					o.println("See README.md for more detailed help.");
 				}
-			} else if (arg.equals("--trim")) {
-				config.setAutoTrimPayload(true);
-			} else if (arg.equals("--ts")) {
-				config.includeTimestamp = true;
-			} else if (arg.equals("--export")) {
-				config.noExport = false;
-			} else if (arg.equals("--compressed")) {
-				config.isCompressed = true;  // doesn't really matter, we never use this again
-				properties.setProperty(JCSMPProperties.CLIENT_CHANNEL_PROPERTIES_COMPRESSION_LEVEL, 9);  // this is kind of a hidden feature, usually you have to create a ClientChannelProperties object
-			} else if (arg.equals("--raw")) {
-				config.payloadDisplay = DisplayType.RAW;
-			} else if (arg.equals("--dump")) {
-				config.payloadDisplay = DisplayType.DUMP;
-			} else if (arg.startsWith("--count")) {
+			} else if (arg.startsWith("--count=")) {
 				String argVal = "?";
 				try {
 					argVal = arg.substring("--count=".length());
@@ -436,7 +465,34 @@ public class PrettyDump {
 					HelperText.printHelpMoreText();
 					System.exit(1);
 				}
-/*			} else if (arg.startsWith("--skip")) {
+			} else if (arg.equals("--raw")) {
+				config.payloadDisplay = DisplayType.RAW;
+			} else if (arg.equals("--dump")) {
+				config.payloadDisplay = DisplayType.DUMP;
+			} else if (arg.equals("--trim")) {
+				config.setAutoTrimPayload(true);
+			} else if (arg.equals("--ts")) {
+				config.includeTimestamp = true;
+			} else if (arg.equals("--export")) {
+				config.noExport = false;
+			} else if (arg.equals("--compressed")) {
+				config.isCompressed = true;  // doesn't really matter, we never use this again
+				properties.setProperty(JCSMPProperties.CLIENT_CHANNEL_PROPERTIES_COMPRESSION_LEVEL, 9);  // this is kind of a hidden feature, usually you have to create a ClientChannelProperties object
+			} else if ("--defaults".equals(arg) || "-defaults".equals(arg)) { // || "--defaultsAll".equals(arg)) {
+				// skip for now // NOPE let's print it now!
+				o.println("These are the default JCSMPProperties that PrettyDump uses.");
+				o.println("Most are defaults in JCSMP, some have been overriden.");
+				o.println("Not all of these are settable, see Javadocs for more info.");
+				o.println(printJcsmpProperties(properties));
+				o.print("For all possible JCSMPProperties, see Javadocs here: ");
+				o.println(new Ansi().fg(4).a(Attribute.UNDERLINE).a("https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html").reset());
+				System.exit(0);
+			} else if (arg.startsWith("--topics=")) {
+				topics = parseTopics(arg.substring("--topics=".length()));
+			} else if (arg.startsWith("--indent=")) {
+				String indentStr = arg.substring("--indent=".length());
+				parseIndentString(indentStr);
+/*			} else if (arg.startsWith("--skip=")) {
 				String argVal = "?";
 				try {
 					argVal = arg.substring("--skip=".length());
@@ -455,43 +511,109 @@ public class PrettyDump {
 					printHelpMoreText();
 					System.exit(1);
 				}*/
-			} else if (arg.startsWith("--") && arg.length() > 2 && arg.contains("=") && UsefulUtils.setContainsIgnoreCase(properties.propertyNames(), arg.substring(2, arg.indexOf('=')))) {
+//			} else if (arg.startsWith("--") && arg.length() > 2 && arg.contains("=") && UsefulUtils.setContainsIgnoreCase(properties.propertyNames(), arg.substring(2, arg.indexOf('=')))) {
+			} else if (arg.startsWith("--") && arg.length() > 2 && arg.contains("=") && UsefulUtils.setContainsIgnoreCase(allJcsmpPropertiesStaticVarsNames.keySet(), arg.substring(2, arg.indexOf('=')))) {
 				String key = arg.substring(2, arg.indexOf('='));
-				String propName = UsefulUtils.setGetIgnoreCase(properties.propertyNames(), key);
+//				String propName = UsefulUtils.setGetIgnoreCase(properties.propertyNames(), key);
+				String upperCasePropName = UsefulUtils.setGetIgnoreCase(allJcsmpPropertiesStaticVarsNames.keySet(), key);
+				String actualPropNameValue = allJcsmpPropertiesStaticVarsNames.get(upperCasePropName);
 				String val = arg.substring(arg.indexOf('=')+1);
 				if (val.isEmpty()) {
 					throw new IllegalArgumentException("Must provide JCSMPProperty name = value");
 				}
-				Object obj = properties.getProperty(propName);
-				AaAnsi ansi = AaAnsi.n().a(jcscmpPropCount == 0 ? "Overriding " : "           ").fg(Elem.KEY).a("JCSMPProperties.").a(propName.toUpperCase()).reset().a(": ");
-				if (obj instanceof Integer) {
-					int oldVal = (int)obj;
-					properties.setProperty(propName, Integer.parseInt(val));
-					ansi.fg(Elem.NUMBER).a(oldVal).reset().a(" → ").fg(Elem.NUMBER).a(properties.getProperty(propName).toString());
-				} else if (obj instanceof Boolean) {
-					boolean oldVal = (boolean)obj;
-					properties.setProperty(propName, Boolean.parseBoolean(val));
-					ansi.fg(Elem.BOOLEAN).a(oldVal).reset().a(" → ").fg(Elem.BOOLEAN).a(properties.getProperty(propName).toString());
-				} else {  // assume String!
-					String oldVal = (String)obj;
-//					if (oldVal.isEmpty()) oldVal = "\"\"";
-					properties.setProperty(propName, val);
-					if (oldVal.isEmpty()) {
-						ansi.fg(Elem.STRING).faintOn().a("<EMPTY>").reset();
-					} else {
-						ansi.fg(Elem.STRING).a(oldVal).reset();
+				Object obj = properties.getProperty(actualPropNameValue);
+				AaAnsi ansi = AaAnsi.n();
+				ansi.a(jcscmpPropCount == 0 ? "Overriding " : "           ").fg(Elem.KEY).a("JCSMPProperties.").a(upperCasePropName.toUpperCase()).reset().a(": ");
+				if (properties.getProperties().containsKey(actualPropNameValue)) {  // already preconfigured in my properties
+					if (obj instanceof Integer) {
+						int oldVal = (int)obj;
+						properties.setProperty(actualPropNameValue, Integer.parseInt(val));
+						ansi.fg(Elem.NUMBER).a(oldVal).reset().a(" → ").fg(Elem.NUMBER).a(properties.getProperty(actualPropNameValue).toString());
+					} else if (obj instanceof Boolean) {
+						boolean oldVal = (boolean)obj;
+						properties.setProperty(actualPropNameValue, Boolean.parseBoolean(val));
+						ansi.fg(Elem.BOOLEAN).a(oldVal).reset().a(" → ").fg(Elem.BOOLEAN).a(properties.getProperty(actualPropNameValue).toString());
+					} else {  // assume String!
+						String oldVal = (String)obj;
+//						if (oldVal.isEmpty()) oldVal = "\"\"";
+//						properties.setProperty(propName, val);
+						// are we trying to set some supported JCSMP property value? e.g. GD_RECONNECT_FAIL_ACTION_DISCONNECT
+						if (UsefulUtils.setContainsIgnoreCase(allJcsmpPropertiesStaticVarsNames.keySet(), val)) {
+							val = allJcsmpPropertiesStaticVarsNames.get(val.toUpperCase());
+						}
+						properties.setProperty(actualPropNameValue, val);
+						ansi.fg(Elem.STRING);
+						if (oldVal.isEmpty()) {
+							ansi.faintOn().a("<EMPTY>").reset();
+						} else {
+							if (key.toLowerCase().contains("password") || key.toLowerCase().contains("token"))	ansi.a("********");
+							else ansi.a(oldVal);
+							ansi.reset();
+						}
+						ansi.a(" → ").fg(Elem.STRING);
+						if (key.toLowerCase().contains("password") || key.toLowerCase().contains("token")) ansi.a("********");
+						else ansi.a(properties.getProperty(actualPropNameValue).toString());
 					}
-					ansi.a(" → ").fg(Elem.STRING).a(properties.getProperty(propName).toString());
+				} else {  // else this thing we're trying to override is not in the list of properties I have
+					try {
+						obj = Integer.parseInt(val);  // do you think it's an integer?
+						properties.setProperty(actualPropNameValue, obj);
+						ansi.fg(Elem.NUMBER).faintOn().a("N/A").reset().a(" → ").fg(Elem.NUMBER).a(properties.getProperty(upperCasePropName).toString());
+					} catch (NumberFormatException e) {
+						if (val.equalsIgnoreCase("true") || val.equalsIgnoreCase("false")) {
+							obj = Boolean.parseBoolean(val);
+							properties.setProperty(actualPropNameValue, obj);
+							ansi.fg(Elem.BOOLEAN).faintOn().a("N/A").reset().a(" → ").fg(Elem.BOOLEAN).a(properties.getProperty(upperCasePropName).toString());
+						}
+//						else obj = val;  // a String
+						// now, perhaps we're trying to change it to some "supported value" or something..?
+						// e.g. --AUTHENTICATION_SCHEME=AUTHENTICATION_SCHEME_OAUTH2
+						// need to check if the string we're using is already in our list..?
+						if (UsefulUtils.setContainsIgnoreCase(allJcsmpPropertiesStaticVarsNames.keySet(), val)) {
+							String actualVal = allJcsmpPropertiesStaticVarsNames.get(val.toUpperCase());
+							properties.setProperty(actualPropNameValue, actualVal);
+							ansi.fg(Elem.STRING).faintOn().a("N/A").reset();
+							ansi.a(" → ").fg(Elem.STRING);
+							ansi.a(properties.getProperty(allJcsmpPropertiesStaticVarsNames.get(upperCasePropName)).toString());
+						} else {
+							properties.setProperty(actualPropNameValue, val);
+							ansi.fg(Elem.STRING).faintOn().a("N/A").reset();
+							ansi.a(" → ").fg(Elem.STRING);
+							if (key.toLowerCase().contains("password") || key.toLowerCase().contains("token")) ansi.a("********");
+							else ansi.a(properties.getProperty(allJcsmpPropertiesStaticVarsNames.get(upperCasePropName)).toString());
+						}
+					}
 				}
 //				o.println("Overriding JCSMPProperties." + propName + "=" + properties.getProperty(propName));
 				o.println(ansi.reset());
 				jcscmpPropCount++;
 			} else {
-				o.println(AaAnsi.n().invalid("Don't recognize this argument '" + arg + "'! Try: prettydump -hm"));
+				o.println(AaAnsi.n().invalid("Don't recognize this argument '" + arg + "'!\nTry: prettydump -hm  or  prettydump --defaults"));
 				o.println("Quitting! 💀");
 				System.exit(1);
 			}
 		}
+//		if (specialArgsList.contains("--defaults") || specialArgsList.contains("-defaults")) {
+//			o.println("These are the default JCSMPProperties that PrettyDump uses.");
+//			o.println("Most are defaults in JCSMP, some have been overriden.");
+//			o.println("Not all of these are settable, see Javadocs for more info.");
+//			o.println(printJcsmpProperties(properties));
+//			o.print("For all possible JCSMPProperties, see Javadocs here: ");
+//			o.println(new Ansi().fg(4).a(Attribute.UNDERLINE).a("https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html").reset());
+//			System.exit(0);
+//		}  // end of --defaults
+		if (specialArgsList.contains("--defaultsAll")) {
+			o.println("Here are all of the JCSMPProperties constants:");
+			o.print(AaAnsi.n().fg(Elem.KEY));
+			for (String key : allJcsmpPropertiesStaticVarsNames.keySet()) {
+				o.println(key + " (" + allJcsmpPropertiesStaticVarsNames.get(key) + ")");
+//				o.println(key);
+			}
+			o.print(AaAnsi.n().a("\nFor which JCSMPProperties you can use, see Javadocs here: "));
+			o.println(new Ansi().fg(4).a(Attribute.UNDERLINE).a("https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html").reset());
+			System.exit(0);
+		}
+		// all done!  Let's go!
 		
 		session = f.createSession(properties, null, new SessionEventHandler() {
 			@Override
@@ -525,25 +647,35 @@ public class PrettyDump {
 		});
 		session.connect();  // connect to the broker... could throw JCSMPException, so best practice would be to try-catch here..!
 		config.isConnected = true;
-		session.setProperty(JCSMPProperties.CLIENT_NAME, "PrettyDump_" + session.getProperty(JCSMPProperties.CLIENT_NAME));
-		o.printf("%s connected to VPN '%s' on broker '%s' v%s.%n%n",
-				APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE),
+		String clientName;
+		if (properties.getProperty(JCSMPProperties.CLIENT_NAME) == null) {  // we haven't tried to set it on the command line
+			session.setProperty(JCSMPProperties.CLIENT_NAME, "PrettyDump_" + session.getProperty(JCSMPProperties.CLIENT_NAME));
+			clientName = session.getProperty(JCSMPProperties.CLIENT_NAME).toString().split("/")[1];
+		} else {
+			clientName = properties.getProperty(JCSMPProperties.CLIENT_NAME).toString();
+		}
+		o.printf("%s PID '%s' connected to VPN '%s' on broker '%s' v%s.%n%n",
+				APP_NAME,
+				clientName,
+				session.getProperty(JCSMPProperties.VPN_NAME_IN_USE),
 				session.getCapability(CapabilityType.PEER_ROUTER_NAME),
 				session.getCapability(CapabilityType.PEER_SOFTWARE_VERSION));
 
 		{  // print out some nice param info
 			String indentStr = "";  // default
 			String countStr = "";
-			if (regArgsList.size() > 5) indentStr = regArgsList.get(5);  // grab the correct command-line argument
+//			if (regArgsList.size() > 5) indentStr = regArgsList.get(5);  // grab the correct command-line argument
+			if (!config.indentStr.equals("2")) indentStr = config.indentStr;
 			if (origMsgCount != Long.MAX_VALUE) countStr = Long.toString(origMsgCount);
 			else if (config.isLastNMessagesEnabled()) countStr = Integer.toString(-config.getLastNMessagesCapacity());
 			if (regArgsList.size() > 6) countStr = regArgsList.get(6);
 			if (!indentStr.isEmpty() || !countStr.isEmpty()) printParamsInfo(indentStr, countStr);
-		}		
+		}
 
 //				for (CapabilityType cap : CapabilityType.values()) {
 //					o.println(cap + ": " + session.getCapability(cap));
 //				}
+//				o.println("router name: " + session.getProperty(JCSMPProperties.VIRTUAL_ROUTER_NAME));
 
 		// is it a queue?
 		if (topics.length == 1 && topics[0].startsWith("q:") && topics[0].length() > 2) {  // QUEUE CONSUME!
@@ -622,7 +754,7 @@ public class PrettyDump {
 				String answer = reader.readLine().trim().toLowerCase();
 				o.print(AaAnsi.n());  // to reset() the ANSI
 				if (!"y".equals(answer) && !"yes".equals(answer)) {
-					o.println("\nExiting. 👎🏼");
+					o.println("\nDid not say yes. Exiting. 👎🏼");
 					System.exit(0);
 				}
 				latch.countDown();  // this hides the FLOW_ACTIVE until after all this stuff
@@ -642,7 +774,7 @@ public class PrettyDump {
 				//                	o.println(AaAnsi.n().invalid(((JCSMPErrorResponseException)e.getCause()).getMessage()));
 				//            	}
 				o.println("Quitting! 💀");
-				logger.error("Caught this connecting to a queue",e);
+				logger.error(String.format("Caught this connecting to queue '%s'", queueName), e);
 				if (flowQueueReceiver != null) flowQueueReceiver.close();
 				session.closeSession();
 				System.exit(1);
@@ -1043,38 +1175,56 @@ public class PrettyDump {
 			userInput = reader.readLine();
 		}
 		if (userInput != null && !userInput.isEmpty()) {
-			try {
-				userInput = userInput.toLowerCase();
-				int highlight = Integer.parseInt(userInput);
-				if (highlight >= 0 && highlight < 125) {
-					config.setHighlightedTopicLevel(highlight - 1);  // so 0 -> -1 (highlight off), 1 -> 0 (level 1), etc.
+//			userInput = userInput.toLowerCase();
+			if (userInput.charAt(0) >= '0' && userInput.charAt(0) <= '9') {  // some number
+				try {
+					int highlight = Integer.parseInt(userInput);
+					if (highlight >= 0 && highlight < 125) {
+						config.setHighlightedTopicLevel(highlight - 1);  // so 0 -> -1 (highlight off), 1 -> 0 (level 1), etc.
+					}
+				} catch (NumberFormatException e) {
+					logger.warn(String.format("Tried to set the topic highlight, but couldn't parse the input '%' as number", userInput), e);
 				}
-			} catch (NumberFormatException e) {
-				if ("+".equals(userInput)) {
-					config.setAutoSpaceTopicLevels(true);
-				} else if ("-".equals(userInput)) {
-					config.setAutoSpaceTopicLevels(false);
-				} else if ("t".equals(userInput)) {
-					config.toggleAutoTrimPayload();
-				} else if ("q".equals(userInput)) {
-					config.isShutdown = true;  // quit
-				} else if (userInput.charAt(0) == 'c' && userInput.length() == 2) {
-					// assume we're trying to switch colours
-					ColorMode temp = null;
-					switch (userInput.charAt(1)) {
-					case 'v': temp = ColorMode.VIVID; break;
-					case 's': temp = ColorMode.STANDARD; break;
-					case 'm': temp = ColorMode.MINIMAL; break;
-					case 'l': temp = ColorMode.LIGHT; break;
-					case 'o': temp = ColorMode.OFF; break;
-					case 'x': temp = ColorMode.MATRIX; break;
+			} else if ("+".equals(userInput)) {
+				config.setAutoSpaceTopicLevels(true);
+			} else if ("-".equals(userInput)) {
+				config.setAutoSpaceTopicLevels(false);
+			} else if ("t".equals(userInput)) {
+				config.toggleAutoTrimPayload();
+			} else if ("q".equals(userInput)) {
+				config.isShutdown = true;  // quit
+			} else if (userInput.charAt(0) == 'c' && userInput.length() == 2) {
+				// assume we're trying to switch colours
+				ColorMode temp = null;
+				switch (userInput.charAt(1)) {
+				case 'v': temp = ColorMode.VIVID; break;
+				case 's': temp = ColorMode.STANDARD; break;
+				case 'm': temp = ColorMode.MINIMAL; break;
+				case 'l': temp = ColorMode.LIGHT; break;
+				case 'o': temp = ColorMode.OFF; break;
+				case 'x': temp = ColorMode.MATRIX; break;
+				}
+				if (temp != null) {
+					Elem.updateColors(temp);
+					AaAnsi.MODE = temp;
+				}
+			} else if ("ts".equals(userInput)) {
+				config.includeTimestamp = !config.includeTimestamp;
+			} else if (userInput.charAt(0) == 'f') {
+				if (userInput.length() == 1 && (userInput.length() == 2 && userInput.charAt(1) == '=')) {
+					config.setRegexFilterPattern(null);  // blank the regex filter
+				} else if (userInput.length() > 2 && userInput.charAt(1) == '=') {  // trying to change the current filter
+					try {
+						Pattern p = Pattern.compile(userInput.substring(2), Pattern.MULTILINE | Pattern.DOTALL);//| Pattern.CASE_INSENSITIVE);
+						config.setRegexFilterPattern(p);
+//						o.println("Regex pattern set to: " + p.toString());
+						AaAnsi ansi = AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a("Regex pattern set to: '");
+						ansi.fg(Elem.STRING).a(p.toString()).fg(Elem.PAYLOAD_TYPE).a('\'').reset();
+						o.println(ansi);
+					} catch (PatternSyntaxException e) {
+						logger.warn(String.format("Tried to set the local regex filter, but couldn't parse the input '%s' as pattern", userInput), e);
+						o.println(AaAnsi.n().ex(String.format("Couldn't parse input '%s' as regex", userInput), e));
 					}
-					if (temp != null) {
-						Elem.updateColors(temp);
-						AaAnsi.MODE = temp;
-					}
-				} else if ("ts".equals(userInput)) {
-					config.includeTimestamp = !config.includeTimestamp;
 				}
 			}
 		}
@@ -1125,7 +1275,7 @@ public class PrettyDump {
 
 		@Override
 		public void onException(JCSMPException e) {  // uh oh!
-			o.println(AaAnsi.n().ex(" ### MessageListener's onException()", e).a(" - check ~/.pretty/pretty.log for details. "));
+			o.println(AaAnsi.n().ex("### MessageListener's onException()", e).a("; check ~/.pretty/pretty.log for details. "));
 			logger.warn("Caught in my onExecption() callback", e);
 			if (e instanceof JCSMPTransportException) {  // all reconnect attempts failed (impossible now since we're at -1)
 				config.isShutdown = true;  // let's quit

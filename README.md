@@ -1,6 +1,6 @@
 👋🏼 If you find this utility useful, please give it a ⭐ above!  Thanks! 🙏🏼
 
-![PrettyDump Banner](src/prettydump5.png)
+![PrettyDump Banner](src/images/prettydump5.png)
 # Pretty-print for dumped Solace messages
 
 A useful utility that emulates SdkPerf `-md` "message dump" output, echoing received Solace messages to the console, but colour pretty-printed for **JSON**, **XML**, **Protobuf**, and Solace **SDT** Maps and Streams. (And binary too).
@@ -11,10 +11,11 @@ Also with a display option for a minimal one-line-per-message view.  Supports Di
 - [Running](#running)
 - [Command-line parameters](#command-line-parameters)
 - Subscribing options: [Direct topic subscriptions](#direct-subscriptions), [Queue consume](#queue-consume), [Browsing a queue](#browsing-a-queue), [TempQ with subs](#temporary-queue-with-subscriptions)
-- [Output Indent options](#output-indent-options-the-6th-argument) ([One-line Mode](#one-line-mode-indent--0))
+- [Output Indent options](#output-indentdisplay-options-the-6th-argument) ([One-line Mode](#one-line-mode-indent--0))
 - [Count, Selectors and Filtering](#count-selectors-and-filtering)
 - [Additional Parameters](#additional-parameters)
-- [One-line Mode: Runtime options](#one-line-mode-runtime-options)
+- [Certificates and OAuth Authentication](#certificates-and-oauth-authentication)
+- [Runtime options](#runtime-options)
 - [Charset Encoding](#charset-encoding)
 - [Error Checking](#error-checking)
 - [Protobuf Stuff](#protobuf-stuff) & Distributed Trace
@@ -53,7 +54,7 @@ For Docker: `docker run -it --rm solace-pretty-dump:latest broker vpn user pw ">
 $ prettydump
 
 PrettyDump initializing...
-PrettyDump connected to VPN 'default' on broker 'localhost'.
+PrettyDump PID '38135' connected to VPN 'default' on broker 'localhost'.
 
 Subscribed to Direct topic: '#noexport/>'
 
@@ -77,7 +78,7 @@ UTF-8 charset, JSON Object:
 $ prettydump demo.messaging.solace.cloud demo-vpn user pw q:q1
 
 PrettyDump initializing...
-PrettyDump connected to VPN 'demo-vpn' on broker 'demo.messaging.solace.cloud'.
+PrettyDump PID '5911' connected to VPN 'demo-vpn' on broker 'demo.messaging.solace.cloud'.
 
 Attempting to bind to queue 'q1' on the broker... success!
 ```
@@ -87,10 +88,10 @@ Attempting to bind to queue 'q1' on the broker... success!
 $ prettydump "solace/>" -30 --trim
 
 PrettyDump initializing...
-PrettyDump connected to VPN 'default' on broker 'localhost'.
+PrettyDump PID '49732' connected to VPN 'default' on broker 'localhost'.
 
 Indent=-30 (one-line mode, topic width=30, auto-trim payload)
-Subscribed to Direct topic: 'solace/>'
+Subscribed to Direct topic: '#noexport/solace/>'
 
 solace/samples/testing           This is a short text payload.
 solace/test/long/topic/truncat…  Longer text payload that will get trimmed to terminal wid…
@@ -140,22 +141,22 @@ Specify a single topic subscription, or a comma-separated list: e.g. `"bus_trak/
  Remember to "quote" the whole argument if using the `>` wildcard as most shells treat this as a special character.
 
 If you want to see ***all*** messages going through the VPN, then override the 5th argument with `">, #*/>"` and this will also display any "hidden" messages
-such as those published directly to queues, point-to-point messages, request-reply, REST responses in gateway mode, SolCache communication messages, etc.
+such as those published directly to queues, point-to-point messages, request-reply, REST responses in gateway mode, SolCache communication messages, etc. (i.e. messages that start with `#P2P/`).
 
 ```
-Subscribed to Direct topic: '>'
-Subscribed to Direct topic: '#*/>'
+Subscribed to Direct topic: '#noexport/>'
+Subscribed to Direct topic: '#noexport/#*/>'
 ```
 
 **NOTE:** all subscriptions are added as *Deliver Always* (DA) so as not to interfere with any DTO / round-robin messaging.
 
 #### Event Mesh / DMR / MNR considerations
 
-If connecting to a mesh of brokers, take care that adding subscriptions could pull (lots of?) data from remote brokers.  This is because
-subscriptions, by default, are automatically propagated (exported) to other brokers in the mesh.  To ensure you
-only subscribe to data from the broker you connect to, prefix each subscription with `#noexport/`.  E.g. `"#noexport/>, #noexport/#*/>"`
-or `"#noexport/bus_trak/>"`. 
-See the [Solace docs](https://docs.solace.com/Messaging/No-Export.htm) for more details.
+If connecting to a mesh of brokers, take care that adding subscriptions could pull (lots of?) data from remote brokers.  This is because client API subscriptions, by default, are automatically propagated (exported) to other brokers in the mesh.  To help with this, PrettyDump automatically prefixes every subscription with `#noexport/` to ensure subscriptions are not exported to other brokers, and therefore doesn't start pulling data from anywhere.
+
+To disable this feature, include the argument `--export` and PrettyDump will not add the `#noexport/` prefix.
+
+See the [Solace docs on Subscription Export](https://docs.solace.com/Messaging/No-Export.htm) for more details.
 
 
 ### Queue Consume
@@ -181,17 +182,17 @@ To find the Message Spool ID or RGMID of the messages on a queue, either use Pub
 ```
 solace> show queue q1 message-vpn default messages newest detail
 ```
-![View Message IDs in PubSubPlus Manager](https://github.com/SolaceLabs/pretty-dump/blob/main/src/browse-msgs.png)
+![View Message IDs in PubSubPlus Manager](https://github.com/SolaceLabs/pretty-dump/blob/main/src/images/browse-msgs.png)
 
-I'm working on some bash shell scripts to help with this stuff.
 
 **NOTE:** Use `f:<queueName>` to browse just the _first/oldest_ message on the queue. Very useful for "poison pills" or "head-of-line blocking" messages.  This the same as regular browse with `--count=1`.
 
+Here, I enter a spcific Message Spool ID of a message that I want (PrettyDump will filter messages until then), with a count of 1 to only dump that one message:
 ```
 $ prettydump aaron.messaging.solace.cloud aaron-demo-singapore me pw b:q1 --count=1
 
 PrettyDump initializing...
-PrettyDump connected to VPN 'aaron-demo-singapore' on broker 'aaron.messaging.solace.cloud'.
+PrettyDump PID '19563' connected to VPN 'aaron-demo-singapore' on broker 'aaron.messaging.solace.cloud'.
 
 Attempting to browse queue 'q1' on the broker... success!
 
@@ -206,7 +207,7 @@ Starting. Press Ctrl-C to quit.
 Destination:                            Topic 'bus_trak/gps/v2/004M/01398/001.31700/0103.80721/30/OK'
 Priority:                               4
 Class Of Service:                       USER_COS_1
-DeliveryMode:                           NON_PERSISTENT
+DeliveryMode:                           PERSISTENT
 Message Id:                             31737085
 Replication Group Message ID:           rmid1:102ee-0b5760c9706-00000000-01e444fd
 Message Type:                           SDT TextMessage
@@ -233,22 +234,22 @@ Shutdown detected, quitting...
 
 ### Temporary Queue with Subscriptions
 
-This mode allows you to choose the topics you wish to subscribe to, but do so in a Guaranteed fashion by provisioning a temporary / non-durable queue and then adding the topic subscriptions to that.
+This mode allows you to choose the topics you wish to subscribe to, but do so in a Guaranteed fashion by provisioning a temporary / non-durable queue and then adding the topic subscriptions to that.  Using a Guaranteed endpoint (vs. Direct subscriptions) means that NOT subscriptions (subscription exceptions) are supported.
 ```
-$ prettydump 'tq:#noexport/billing/>, #noexport/orders/>, !#noexport/orders/cancelled/>'
+$ prettydump 'tq:billing/>, orders/>, !orders/cancelled/>'
 
 Creating temporary Queue.
 Queue name: #P2P/QTMP/v:solace1081/2ed38d19-ae36-4e0e-ba90-06eea306bb9a
+Subscribed tempQ to *NOT* topic: '!#noexport/orders/cancelled/>'
 Subscribed tempQ to topic: '#noexport/billing/>'
 Subscribed tempQ to topic: '#noexport/orders/>'
-Subscribed tempQ to *NOT* topic: '!#noexport/orders/cancelled/>'
 ```
 
 
 
 
 
-## Output Indent options: the 6th argument
+## Output Indent/Display options: the 6th argument
 
 ### Regular: indent > 0
 
@@ -346,8 +347,7 @@ These modes will still parse the payloads (for validation and possible filtering
 ### One-Line Mode: indent < 0
 
 Removes the majority of SdkPerf-like message metadata printing, only showing the topic and payload per-line.
-Valid values are between -1 and -250, and specify how many chars of the topic are displayed.  indent = -35 in this example.
-
+Valid values are between -1 and -250, and specify how many chars of the topic are displayed.  indent = -35 in this example:
 ```
 pq-demo/stats/pq/sub-pq_3-c222       {"red":0,"oos":0,"queueName":"pq/3","slow":0,"rate":0}
 pq/3/pub-44e7/e7-7/0/_               <EMPTY> Raw BytesMessage
@@ -363,7 +363,7 @@ pq/3/pub-44e7/e7-0/0/_               <EMPTY> Raw BytesMessage
  - Use `-1` for "auto-indenting", where the amount of indent will vary dynamically with topic length
  - Use `-2` for two-line mode, topic on one line, payload on another ("minimal" colour mode is good for this)
  - `-3` .. `-250` will trim the topic length to that amount
- - Change `-` to `+` in the argument to enable topic level alignment
+ - Change `-` to `+` in the argument to enable **topic level alignment**
 
 
 ### One-Line, Topic only: indent = "-0"
@@ -419,9 +419,9 @@ Use "first message" browse mode `f:queueName` to stop after the first message th
 
 As requested by a user, PrettyDump supports the ability to search/filter for specific words or patterns occuring within the entire message output, and only display messages that match this Filter.  This is far less performant than using a Selector (broker-side) as it has to pull down the message first and parse it before it can apply the Filter (client-side).  However, Filters can be used with Direct messages, and can be used in conjunction with Selectors.
 
-Currently, the Filter is treated as a regular expression / regex, and the entire message contents (headers, properties, payload(s)) are evaluated against it.  So a filter of `Aaron` will search each message looking for the case-sensitive word "Aaron".  A filter of `(?i)Aaron.*Singapore` will look for the case-insensitive word "aaron" followed somewhere by "singapore".
+Currently, the Filter is treated as a [regular expression / regex](https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html), and the entire message contents (headers, properties, payload(s)) are evaluated against it.  So a filter of `Aaron` will search each message looking for the case-sensitive word "Aaron".  A filter of `(?i)Aaron.*Singapore` will look for the case-insensitive word "aaron" followed somewhere by "singapore".
 
-A Filter is specified by the command line argument `--filter="blah"` when runnning PrettyDump.  This argument can appear anywhere in the arguments, and won't impact the other ones.
+A Filter is specified by the command line argument `--filter="blah"` when runnning PrettyDump, or by typing `f=<PATTERN>` [while running](#update-client-side-regex-filter).  This argument can appear anywhere in the arguments, and won't impact the other ones.
 
 ```
 ^^^^^^^^^^^^^^^^^^^^ End Message #26710 ^^^^^^^^^^^^^^^^^^^
@@ -448,28 +448,95 @@ There are a number of (argument order doesn't matter) parameters that have been 
 - `--ts` Print the time-of-day the message was received by PrettyDump (not actual message timestamp). Works in both regular and one-line mode. Very useful if needing to observe timings between messages or exactly when live messages were received.
 - `--export` By default, PrettyDump adds `#noexport/` prefix to every topic subscription, to help not overload DMR/MNR links by subscribing to things accidentally.  See https://docs.solace.com/Messaging/No-Export.htm.  Use this to disable.
 - `--compressed` Tell PrettyDump you want to connect using streaming compression (not payload compression new feature). This is super useful when connecting over long RTT / WAN links. For non-TLS, this is port 55003.
-- `--defaults` Print all the JCSMPProperties that you might be able to override.  Or check the docs: https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html
+- `--defaults` Print all the JCSMPProperties that you might be able to override.  Or check the [JCSMP API docs](https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html).
+- `--topics=<blah>` Rather than providing the topic subscriptions or queue to consumer or browse as the 5th command-line argument (usual) or 1st (shortcut mode), you can specify this argument as a parameter; very useful for non-basic authentication schemes where you only need to provide host and VPN to connect to.
+- `--indent=n` As above, specify the indent as a named parameter instead of as the 6th (or 2nd) argument
 
 
 
 
-## One-Line mode: runtime options
 
-When using one-line mode, you can do some extra stuff:
 
- - press 't' [ENTER] to enable trim for message payloads... will cause the payload to get truncated at the terminal width
- - this can also be enabled with arg `--trim` when starting
+## Certificates and OAuth Authentication
+
+Starting in PrettyDump v1.2.0, other types of authentication besdes Basic username/password are now possible.  This is accomplished by overriding some of the JCSMPProperties as required.  Of course, your broker must first be configured to allow client applications to connect using these authentication schemes.
+
+
+### Client Certificates
+
+When using client certificates, you need to tell PrettyDump (and the JCSMP API) where the keystore is that contains the private key certificate for the client username that you wish to connect with.  Default format is `jks`, so you may need to override the format setting as well.
+
+And you will most likely want to download the broker's public certificate and have that in a truststore for PrettyDump to reference.
+
 ```
-bus_trak/gps/v2/022A/01228/001.32266/0103.69693/21/OK       {"psgrCap":0.75,"heading":176,"busNu…(len=178)
-bus_trak/gps/v2/036X/01431/001.37858/0103.92294/32/STOPPED  {"psgrCap":0.5,"heading":288,"busNum…(len=175)
-bus_trak/gps/v2/012A/01271/001.38968/0103.76101/31/STOPPED  {"psgrCap":0,"heading":254,"busNum":…(len=181)
-bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK       {"psgrCap":0.75,"heading":272,"busNu…(len=177)
+prettydump tcps://abc123.messaging.solace.cloud:55443 vpnName \
+  --AUTHENTICATION_SCHEME=AUTHENTICATION_SCHEME_CLIENT_CERTIFICATE \
+  --SSL_KEY_STORE=/home/alee/tls/clients.keystore \
+  --SSL_KEY_STORE_FORMAT=pkcs12 \
+  --SSL_KEY_STORE_PASSWORD=pa55word123 \
+  --SSL_PRIVATE_KEY_ALIAS=aaron
+  --SSL_TRUST_STORE=/home/alee/tls/server.truststore \
+  --SSL_TRUST_STORE_FORMAT=pkcs12 \
+  --SSL_TRUST_STORE_PASSWORD=pa55word456
+```
+
+Reminder: check the [JCSMP API docs](https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html) to see all of the various JCSMPProperties that you can access/override.
+
+
+
+
+### OAuth2
+
+For OAuth authentication to work, you'll need an out-of-band mechanism to fetch a token for PrettyDump to use.  For my testing, I managed to make this work with my Azure OAuth provider using a `curl` script:
+```
+curl https://login.microsoftonline.com/xxxxxxx/oauth2/v2.0/token -d 'grant_type=client_credentials&client_id=xxxxxx&client_secret=xxxxxxxx&scope=api://xxxxxxxx/.default'
+
+{
+    "token_type":"Bearer",
+    "expires_in":3599,
+    "ext_expires_in":3599,
+    "access_token":"eyJ0eXAiOi...SNIP...aK4OCQUIclg"
+}
+```
+
+Then copy the value of the `access_token` tuple, maybe set it as an environment variable, and use that when running PrettyDump:
+```
+prettydump tcps://abc123.messaging.solace.cloud:55443 vpnName \
+  --OAUTH2_ACCESS_TOKEN=xxxxxsuperlongstringxxxxx \
+  --AUTHENTICATION_SCHEME=AUTHENTICATION_SCHEME_OAUTH2
+```
+
+JCSMP support both OAuth2 access tokens (`--OAUTH2_ACCESS_TOKEN=`) and OIDC ID tokens (`--OIDC_ID_TOKEN=`), however only one can be specified at a time.
+
+
+
+
+
+
+
+
+## Runtime options
+
+While PrettyDump is running, you can toggle/configure some stuff.  Most of these are more useful in one-line mode.
+
+
+### Trim
+
+Press **'t' [ENTER]** to enable trim for message payloads, which will cause the payload to get truncated at the terminal width in one-line mode, keeping the display nice and neat.  This can also be enabled with arg `--trim` when starting.
+```
+bus_trak/gps/v2/022A/01228/001.32266/0103.69693/21/OK       {"psgrCap":0.75,"heading":176,"…(len=178)
+bus_trak/gps/v2/036X/01431/001.37858/0103.92294/32/STOPPED  {"psgrCap":0.5,"heading":288,"b…(len=175)
+bus_trak/gps/v2/012A/01271/001.38968/0103.76101/31/STOPPED  {"psgrCap":0,"heading":254,"bus…(len=181)
+bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK       {"psgrCap":0.75,"heading":272,"…(len=177)
 ```
 
 
- - press '+' [ENTER] to add spacing to the topic hierarchy display, more of a "column" view of the topic levels
- - press '-' [ENTER] to go back to regular (compressed) topic display
- - this can also be enabled with by changing indent argument from `-` to `+` when starting
+
+### Topic level alignment
+
+Press **'+' [ENTER]** to add spacing to the topic hierarchy display, more of a "column" view of the topic levels<br>
+Press **'–' [ENTER]** to go back to regular (compressed) topic display<br>
+This can also be enabled with by changing indent argument from `–` to `+` when starting (e.g. `-0` indent for spaced topic-only view).
 ```
 #STATS...../VPN..../sgdemo1.../aaron.............../vpn_stats
 #STATS...../SYSTEM./sgdemo1.../stats_client_detail
@@ -479,10 +546,42 @@ bus_trak/gps/v2/002B/01387/001.27878/0103.82159/32/OK       {"psgrCap":0.75,"hea
 #STATSPUMP./STATS../sg3501vmr./poller-stats......../show-msg-spool
 ```
 
- - press '1..n' [ENTER] to highlight a specific level of the topic hierarchy
- - press '0' [ENTER] to go back to regular full-topic highlighting
- - obviously you need a colour mode enabled to see this
 
+### Topic level highlighting
+
+Press **'1..n' [ENTER]** to highlight a specific level of the topic hierarchy (very useful for demos)<br>
+Press **'0' [ENTER]** to go back to regular full-topic highlighting<br>
+
+
+
+### Colour Modes
+
+**cs [ENTER]** for standard colour mode
+**cv [ENTER]** for vivid colour mode
+**cm [ENTER]** for minimal colour mode
+**cl [ENTER]** for light (inverted) colour mode
+**cx [ENTER]** for matrix (the movie) colour mode
+**co [ENTER]** to disable all colours
+
+The colour mode can also be set by overriding the environment varible `PRETTY_COLORS`.  E.g.:
+```
+$ export PRETTY_COLORS=vivid
+```
+
+
+
+### Add timestamp
+
+Type **'ts' [ENTER]** to toggle received message timestamps.
+
+
+
+
+### Update client-side regex filter
+
+Type **'f=&lt;PATTERN&gt;' [ENTER]** to update the client-side filter using a [regular expression syntax](https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html).  This can be useful if receiving too many messages, and only want to look for / print certain messages.  The regex filter is applied against the entire printed (formatted) contents of the dumped message.  It is case sensitive.
+
+Type **'f' [ENTER]** or **'f=' [ENTER]** to clear the client-side filter.
 
 
 
@@ -542,21 +641,54 @@ SaxParserException - org.xml.sax.SAXParseException; lineNumber: 1; columnNumber:
 ## Protobuf Stuff
 
 PrettyDump comes preloaded with Protobuf decoders for:
-- Sparkplug B
-- OpenTelemtry OTLP Traces
+- Sparkplug B (topics look like `spBv1.0/group_id/message_type/edge_node_id/[device_id]`)
+- OpenTelemetry OTLP Traces
 - Solace Distributed Trace messages (from `#telemetry-default` queue)
 
-Check the `protobuf.properties` file for topic-to-class mapping.  PrettyDump uses [topic dispatch](https://github.com/aaron-613/jcsmp-topic-dispatch) to
-selectively choose which Protobuf decoder to use based on the incoming messages' topics.
+Check the `protobuf.properties` file for topic-to-class mapping.  PrettyDump uses [topic dispatch](https://github.com/aaron-613/jcsmp-topic-dispatch) to selectively choose which Protobuf decoder to use based on the incoming messages' topics.
 
-Check the README file in the `schemas` directory for more information on how to compile and include
-your custom Protobuf decoders.
+Check the README file in the `schemas` directory for more information on how to compile and include your own custom Protobuf decoders.
+
+
+### OpenTelemetry Traces
+
+It is possible to see the trace spans generated by the OpenTelemetry Collector, by intercepting them on the way to the observability backend.  If you modify your OTel Collector configuration file to export to `otlphttp` instead of gRPC, and point the HTTP endpoint at a Solace broker's REST/HTTP API port, you can subscribe to the topic `v1/traces` with your VPN in REST Messaging mode, or `POST/v1/traces` in REST Gateway mode.  This can be quite eye-opening to see how much telemetry data is generated by the broker and enabled applications.
+
+```
+^^^^^^^^^^^^^^^^^^^^^ Start Message #5 ^^^^^^^^^^^^^^^^^^^^^
+Destination:                            Topic 'v1/traces'
+Class Of Service:                       USER_COS_1
+DeliveryMode:                           PERSISTENT
+Message Id:                             5240337
+HTTP Content Type:                      application/x-protobuf
+Replication Group Message ID:           rmid1:3477f-a5ce520f5ec-00000000-004ff611
+Message Type:                           Raw BytesMessage
+Binary Attachment:                      len=1431 bytes
+TracesData ProtoBuf:
+    'resource_spans' (MESSAGE[]): [ (1)
+      (MESSAGE): { (2)
+        'resource' (MESSAGE): { (1)
+            'attributes' (MESSAGE[]): [ (3)
+              (MESSAGE): { (2)
+                'key' (STRING): "service.name"
+                'value' (MESSAGE): { (1)
+                    'string_value' (STRING): "solace1081b" } }
+              (MESSAGE): { (2)
+                'key' (STRING): "service.version"
+                'value' (MESSAGE): { (1)
+                    'string_value' (STRING): "10.8.1.152" } }
+SNIP
+```
+
+You can also configure the `otlphttp` exporter to use JSON instead of Protobuf by including `encoding: json`, then you don't need to worry about Protobuf decoders.
+
+
 
 
 ### Distributed Trace
 
 If you want to demo/test the Solace broker's Distributed Trace functionality without connecting the
-OpenTelemetry Collector and deploying a backend such as Jaeger or DataDog, you can use PrettyDump to 
+OpenTelemetry Collector and deploying a backend such as Jaeger or DataDog, you can also use PrettyDump to 
 sniff the messages from the `#telemetry-xxxxx` (or whatever name) queue.  Simply bind to the queue
 (either `q:xxxxx` or `b:xxxxx`) 
 with whatever username and password you created with the telemetry profile.  PrettyDump will decode
@@ -575,10 +707,10 @@ Raw BytesMessage, SpanData ProtoBuf:
     'peer_ip' (BYTES): [ac 11 00 01] (172.17.0.1)
     'peer_port' (UINT32): 49382
     'broker_receive_time_unix_nano' (SFIXED64): 1719524089241258000 (Thu 2024-06-27 14:34:49.241 PDT)
-    'enqueue_events' (MESSAGE[]): [
-      (MESSAGE):
+    'enqueue_events' (MESSAGE[]): [ (1)
+      (MESSAGE): { (2)
         'time_unix_nano' (SFIXED64): 1719524089241355000 (Thu 2024-06-27 14:34:49.241 PDT)
-        'queue_name' (STRING): "q1" ]
+        'queue_name' (STRING): "q1" } ]
     'router_name' (STRING): "solace1081"
     'message_vpn_name' (STRING): "default"
     'replication_group_message_id' (BYTES): [01 33 ed ce 7c 36 16 84 36 00 00 00 00 00 00 05 c9]
@@ -591,10 +723,7 @@ Raw BytesMessage, SpanData ProtoBuf:
 Note that this is not the full detail of information sent by the Collector to the observability backend... the Collector does further enriching of the data.
 
 
-### OpenTelemetry
 
-You can also see the output of the Collector.  If you modify your OTel configuration file to send HTTP instead of gRPC, and point the Collector at a Solace broker's
-REST/HTTP API port, you can subscribe to the topics (with your VPN in either in REST Messaging mode or REST Gateway mode).
 
 
 
@@ -624,11 +753,15 @@ PUB MR(5s)=10004↑, SUB MR(5s)=10023↓, CPU=0
 ```
 
 
+
+
+
+
 ## Miscellaneous
 
 ### Subscriber ACK window size
 
-PrettyDUmp sets the subscriber window size to 20.  This provides moderate performance.  Override this with environment variable `PRETTY_SUB_ACK_WINDOW_SIZE`, range 1..255.  Note that consumer ACKs are asynchronous, and the API will only send them once a second (by default) unless the ACK window has closed 60% (by default).  Setting the window size to 1 means that ACKs will be flushed immediately, which is quicker but might incur a performance penalty at higher message rates due to chattier comms.  However, when looking at Open Telemetry distributed trace logs, the broker `send` span will complete significantly faster.
+PrettyDUmp sets the subscriber window size to 20.  This provides moderate performance.  Override this with argument  `--SUB_ACK_WINDOW_SIZE=n`, range 1..255.  Note that consumer ACKs are asynchronous, and the API will only send them once a second (by default) unless the ACK window has closed 60% (by default).  Setting the window size to 1 means that ACKs will be flushed immediately, which is quicker but might incur a performance penalty at higher message rates due to chattier comms.  However, when looking at Open Telemetry distributed trace logs, the broker `send` span will complete significantly faster.
 
 
 
@@ -693,6 +826,11 @@ If you have a queue with millions of messages, it might take too long to browse 
 
 Note that the copied messages are _new_ messages, and as such will have different Message Spool IDs and different RGMIDs.  But the contents of the messages with be exactly the same.
 
+The script can be found in the `scripts` directory of the PrettyDump release: `copy-last-n-msgs.sh`
+
+[See Solace Community discussion here](https://solace.community/discussion/comment/7407#Comment_7407).
+
+
 
 
 ### One-Line Dump w/dynamically spaced topics
@@ -715,24 +853,22 @@ And use "vivid" colour mode `export PRETTY_COLORS=vivid` for nice rainbow topic 
 
 If running on Windows PowerShell or Command Prompt, make sure you enable UTF-8 charset / code point encoding to see all the emojis!  Windows _still_ uses its default (and ancient) `Windows-1252` encoding.  Also enable full 256 colour output!
 ```
-C:\> chcp 65001
-C:\> set PRETTYDUMP_OPTS=-Dsun.stdout.encoding=utf-8
-C:\> set TERM=xterm-256color
-C:\> prettydump.bat
+Command Prompt / DOS:
 
- ~or~
+chcp 65001
+set PRETTYDUMP_OPTS=-Dsun.stdout.encoding=utf-8
+set TERM=xterm-256color
+prettydump.bat
 
-PS C:\> chcp 65001
-PS C:\> $Env:PRETTYDUMP_OPTS='-Dsun.stdout.encoding=utf-8'
-PS C:\> $Env:TERM='xterm-256color'
-PS C:\> .\prettydump
+ ~or~ PowerShell:
+
+chcp 65001
+$Env:PRETTYDUMP_OPTS='-Dsun.stdout.encoding=utf-8'
+$Env:TERM='xterm-256color'
+.\prettydump.bat
 ```
 
 See: https://en.wikipedia.org/wiki/Windows-1252
-
-
-
-
 
 
 
