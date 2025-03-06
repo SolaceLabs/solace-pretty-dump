@@ -6,7 +6,7 @@
 There are 3 options for including your Protobuf definitions with PrettyDump:
 
 1. Build the Java source files, copy them into the `src/main/java` directory, and rebuild
-1. Compile the Java source files into class files, and copy into `protobuf/protobufs/protobufs` directory, and rebuild
+1. Compile the Java source files into class files, and copy into `schemas/classes/classes` directory, and rebuild
     - Or, if using the prebuilt distribution, you can simply copy the class files into `lib/protobufs` directory
 1. Build the class files into a JAR and include inside the `lib` directory, and rebuild
     - If using the prebuilt distribution, you can copy the JAR files into `lib` directory, **but** you'll need to update the classpath variable of the scripts in the `bin` directory
