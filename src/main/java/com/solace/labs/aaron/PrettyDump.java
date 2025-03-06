@@ -239,8 +239,8 @@ public class PrettyDump {
 		// let's do the regular arguments now
 		String host = "localhost";
 		String vpn = "default";
-		String username = "foo";
-		String password = "bar";
+		String credentialIdentifier = "foo";
+		String credentialSecret = "bar";
 		// new shortcut MODE... if first arg looks like topics, assume topic wildcard, and assume localhost default connectivity for rest
 		if (regArgsList.size() > 0 && regArgsList.size() <= 2) {  // can only have topic+indent in shortcut mode
 			String arg0 = regArgsList.get(0);
@@ -272,8 +272,8 @@ public class PrettyDump {
 			if (shortcut) {  // add the default params
 				regArgsList.add(0, host);
 				regArgsList.add(1, vpn);
-				regArgsList.add(2, username);
-				regArgsList.add(3, password);
+				regArgsList.add(2, credentialIdentifier);
+				regArgsList.add(3, credentialSecret);
 			} else {
 				host = regArgsList.get(0);
 			}
@@ -282,8 +282,8 @@ public class PrettyDump {
 		}
 //		o.println(argsList);
 		if (regArgsList.size() > 1) vpn = regArgsList.get(1);
-		if (regArgsList.size() > 2) username = regArgsList.get(2);
-		if (regArgsList.size() > 3) password = regArgsList.get(3);
+		if (regArgsList.size() > 2) credentialIdentifier = regArgsList.get(2);
+		if (regArgsList.size() > 3) credentialSecret = regArgsList.get(3);
 		if (regArgsList.size() > 4) {
 			String arg4 = regArgsList.get(4);
 			if (arg4.matches("^[qbf]:.+")) {
@@ -321,8 +321,13 @@ public class PrettyDump {
 //		final JCSMPProperties properties = new JCSMPProperties();
 		properties.setProperty(JCSMPProperties.HOST, host);          // host:port
 		properties.setProperty(JCSMPProperties.VPN_NAME, vpn);     // message-vpn
-		properties.setProperty(JCSMPProperties.USERNAME, username);      // client-username
-		properties.setProperty(JCSMPProperties.PASSWORD, password);  // client-password
+		if (specialArgsList.contains("--oauth")) {
+			properties.setProperty(JCSMPProperties.OAUTH2_ISSUER_IDENTIFIER, credentialIdentifier); // issuer-identifier
+			properties.setProperty(JCSMPProperties.OAUTH2_ACCESS_TOKEN, credentialSecret); // access-token
+		} else {
+			properties.setProperty(JCSMPProperties.USERNAME, credentialIdentifier);  // client-username
+			properties.setProperty(JCSMPProperties.PASSWORD, credentialSecret);  // client-password
+		}
 		properties.setProperty(JCSMPProperties.REAPPLY_SUBSCRIPTIONS, true);  // subscribe Direct subs after reconnect
 		properties.setProperty(JCSMPProperties.SUB_ACK_WINDOW_SIZE, 20);  // moderate performance
 		JCSMPChannelProperties channelProps = new JCSMPChannelProperties();
@@ -417,6 +422,8 @@ public class PrettyDump {
 				config.payloadDisplay = DisplayType.RAW;
 			} else if (arg.equals("--dump")) {
 				config.payloadDisplay = DisplayType.DUMP;
+			} else if (arg.equals("--oauth")) {
+				properties.setProperty(JCSMPProperties.AUTHENTICATION_SCHEME, JCSMPProperties.AUTHENTICATION_SCHEME_OAUTH2);
 			} else if (arg.startsWith("--count")) {
 				String argVal = "?";
 				try {
