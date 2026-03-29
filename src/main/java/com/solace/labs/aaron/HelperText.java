@@ -112,7 +112,7 @@ public class HelperText {
 		
 		o.println("    • --raw         show original message payload, not pretty-printed; text, JSON, XML only");
 		o.println("    • --dump        enable binary dump for every message (useful for charset encoding issues)");
-		o.println("    • --trim        enable paylaod trim for one-line (and two-line) modes");
+		o.println("    • --trim        enable payload trim for one-line (and two-line) modes");
 		o.println("    • --ts          print time when PrettyDump received the message (not messages' timestamp)");
 		o.println("    • --export      disables the automatic prefixing of \"#noexport/\" to the start of all topics");
 		o.println("    • --compressed  tells JCSMP API to use streaming compression (TCP only, not WebSockets)");
