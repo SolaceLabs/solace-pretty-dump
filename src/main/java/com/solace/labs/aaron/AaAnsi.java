@@ -52,7 +52,7 @@ public class AaAnsi /* implements CharSequence */ {
 			} catch (IllegalArgumentException e) {
 				System.err.println(AaAnsi.n().invalid(String.format("Invalid value for environment variable PRETTY_COLORS \"%s\"", System.getenv("PRETTY_COLORS"))));
 //				System.out.println(AaAnsi.n().invalid("asdlfkjalsdkfj"));
-				System.err.println("Valid values are: standard, vivd, light, minimal, matrix, off");
+				System.err.println("Valid values are: standard, vivid, light, minimal, matrix, off");
 			}
 		}
 	}
