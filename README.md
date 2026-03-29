@@ -82,7 +82,7 @@ PrettyDump connected to VPN 'demo-vpn' on broker 'demo.messaging.solace.cloud'.
 Attempting to bind to queue 'q1' on the broker... success!
 ```
 
-#### Shorcut mode: localhost broker, wildcard topics, and one-line output
+#### Shortcut mode: localhost broker, wildcard topics, and one-line output
 ```
 $ prettydump "solace/>" -30 --trim
 
@@ -400,7 +400,7 @@ Specified using `--count=n` anywhere in the arguments, this allows you to:
 
 This allows you to do such things as:
  - consume/ACK the first 5 messages off a queue: `q:q1 --count=5`
- - browse the last 50 messaes on a queue: `b:q1 --count=-50` (must wait until filtering has stopped)
+ - browse the last 50 messages on a queue: `b:q1 --count=-50` (must wait until filtering has stopped)
  - during program development / debugging, have PrettyDump tracking the last 500 messages `'>' --count -500`, and when an error is detected, Ctrl+C PrettyDump to show the last 500 messages for analysis
 
 This can be combined with the Selector and Filter features below to allow even more advanced filtering capabilities.
@@ -412,7 +412,7 @@ Selectors can be very useful if you wish to filter the messages at the broker ba
 
 A Selector is specified by the command line argument `--selector="blah"` when runnning PrettyDump.  This argument can appear anywhere in the arguments, and won't impact the other ones.  Note that Selectors don't work with Direct topic subscriptions, but does with queue consume, queue browsing, and temporary queues with subscriptions.  However!  Selectors are performed on the egress Flow, which means that any messages not matching the Selector will be left on the queue.  For example, a tempQ subscribed to `>` but with a very narrow Selector could fill up quickly.
 
-Use "first message" browse mode `f:queueName` to stop after the first message that matches the Selector.  Or browse with count option `b:queueName --cout=10` to dump the first 10 messages that match the Selector.
+Use "first message" browse mode `f:queueName` to stop after the first message that matches the Selector.  Or browse with count option `b:queueName --count=10` to dump the first 10 messages that match the Selector.
 
 
 ### Client-side Filtering
