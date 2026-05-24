@@ -121,4 +121,15 @@ public class CliOptionsTest {
 		assertTrue(options.getSpecialArgs().contains("--non-interactive"));
 		assertTrue(options.getSpecialArgs().contains("--max-runtime-ms=1000"));
 	}
+
+	@Test
+	public void avroSchemaFlagsAreDetectedButRemainSpecialArgs() {
+		CliOptions options = CliOptions.parse(">", "--avro-schema=order.avsc",
+				"--avro-schema-dir=schemas", "--schema-map=orders/>=order.avsc");
+
+		assertEquals(Arrays.asList("order.avsc"), options.getAvroSchemas());
+		assertEquals("schemas", options.getAvroSchemaDir());
+		assertEquals(Arrays.asList("orders/>=order.avsc"), options.getSchemaMaps());
+		assertTrue(options.getSpecialArgs().contains("--schema-map=orders/>=order.avsc"));
+	}
 }

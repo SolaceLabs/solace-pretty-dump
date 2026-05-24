@@ -236,6 +236,9 @@ public class PrettyDump {
 		config.exitOnEmpty = cliOptions.isExitOnEmpty();
 		config.emptyTimeoutMs = parseOptionalPositiveLong(cliOptions.getEmptyTimeoutMs(), "--empty-timeout-ms");
 		config.maxRuntimeMs = parseOptionalPositiveLong(cliOptions.getMaxRuntimeMs(), "--max-runtime-ms");
+		for (String avroSchema : cliOptions.getAvroSchemas()) config.addAvroSchemaFile(avroSchema);
+		if (cliOptions.getAvroSchemaDir() != null) config.setAvroSchemaDir(cliOptions.getAvroSchemaDir());
+		for (String schemaMap : cliOptions.getSchemaMaps()) config.addSchemaMapSpec(schemaMap);
 		try {
 			config.setOutputMode(OutputMode.valueOf(cliOptions.getOutputMode().toUpperCase()));
 		} catch (IllegalArgumentException e) {
@@ -363,7 +366,9 @@ public class PrettyDump {
 		for (String arg : specialArgsList) {
 			if (arg.startsWith("--output=") || arg.equals("--no-ansi") || arg.equals("--no-banner") || arg.equals("--quiet")
 					|| arg.equals("--non-interactive") || arg.equals("--yes-consume") || arg.equals("--exit-on-empty")
-					|| arg.startsWith("--empty-timeout-ms=") || arg.startsWith("--max-runtime-ms=")) {
+					|| arg.startsWith("--empty-timeout-ms=") || arg.startsWith("--max-runtime-ms=")
+					|| arg.startsWith("--avro-schema=") || arg.startsWith("--avro-schema-dir=")
+					|| arg.startsWith("--schema-map=")) {
 				// handled immediately after CLI parsing
 			} else if (arg.startsWith("--selector")) {
 				try {

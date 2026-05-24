@@ -123,6 +123,9 @@ public class HelperText {
 		o.println("    • --empty-timeout-ms=n  stop after n ms without receiving a message");
 		o.println("    • --max-runtime-ms=n    stop after n ms of runtime");
 		o.println("    • --exit-on-empty       stop browse mode if the queue appears empty immediately");
+		o.println("    • --avro-schema=path    Avro schema for raw Avro payload decoding");
+		o.println("    • --avro-schema-dir=dir resolve relative schemas from this directory");
+		o.println("    • --schema-map=sub=path map topic subscription to schema file");
 		o.println("    • --export      disables the automatic prefixing of \"#noexport/\" to the start of all topics");
 		o.println("    • --compressed  tells JCSMP API to use streaming compression (TCP only, not WebSockets)");
 		o.println("    • --defaults    show all possible JCSMP Session properties to set/override");

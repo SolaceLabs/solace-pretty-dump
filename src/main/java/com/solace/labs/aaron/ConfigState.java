@@ -22,6 +22,7 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,6 +95,9 @@ public class ConfigState {
 
     Map<Sub, Method> protobufCallbacks = new HashMap<>();
     PayloadDecoderRegistry payloadDecoderRegistry = PayloadDecoderRegistry.createDefault(this);
+    List<String> avroSchemaFiles = new ArrayList<>();
+    List<String> schemaMapSpecs = new ArrayList<>();
+    String avroSchemaDir = null;
 
 	
 	static String DTF_FORMAT = "HH:mm:ss.SS ";
@@ -339,6 +343,30 @@ public class ConfigState {
 
 	public PayloadDecoderRegistry getPayloadDecoderRegistry() {
 		return payloadDecoderRegistry;
+	}
+
+	public void addAvroSchemaFile(String path) {
+		avroSchemaFiles.add(path);
+	}
+
+	public List<String> getAvroSchemaFiles() {
+		return Collections.unmodifiableList(avroSchemaFiles);
+	}
+
+	public void setAvroSchemaDir(String path) {
+		avroSchemaDir = path;
+	}
+
+	public String getAvroSchemaDir() {
+		return avroSchemaDir;
+	}
+
+	public void addSchemaMapSpec(String spec) {
+		schemaMapSpecs.add(spec);
+	}
+
+	public List<String> getSchemaMapSpecs() {
+		return Collections.unmodifiableList(schemaMapSpecs);
 	}
 
 

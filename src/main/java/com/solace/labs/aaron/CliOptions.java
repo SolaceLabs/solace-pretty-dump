@@ -50,12 +50,16 @@ final class CliOptions {
 	private final boolean exitOnEmpty;
 	private final String emptyTimeoutMs;
 	private final String maxRuntimeMs;
+	private final List<String> avroSchemas;
+	private final String avroSchemaDir;
+	private final List<String> schemaMaps;
 
 	private CliOptions(List<String> regularArgs, List<String> specialArgs, String host, String vpn,
 			String username, String password, String[] topics, String indentArg, boolean shortcutMode,
 			boolean help, boolean helpMore, boolean helpExamples, boolean wrapMode, String outputMode,
 			boolean noAnsi, boolean noBanner, boolean quiet, boolean nonInteractive, boolean yesConsume,
-			boolean exitOnEmpty, String emptyTimeoutMs, String maxRuntimeMs) {
+			boolean exitOnEmpty, String emptyTimeoutMs, String maxRuntimeMs, List<String> avroSchemas,
+			String avroSchemaDir, List<String> schemaMaps) {
 		this.regularArgs = Collections.unmodifiableList(regularArgs);
 		this.specialArgs = Collections.unmodifiableList(specialArgs);
 		this.host = host;
@@ -78,6 +82,9 @@ final class CliOptions {
 		this.exitOnEmpty = exitOnEmpty;
 		this.emptyTimeoutMs = emptyTimeoutMs;
 		this.maxRuntimeMs = maxRuntimeMs;
+		this.avroSchemas = Collections.unmodifiableList(new ArrayList<>(avroSchemas));
+		this.avroSchemaDir = avroSchemaDir;
+		this.schemaMaps = Collections.unmodifiableList(new ArrayList<>(schemaMaps));
 	}
 
 	static CliOptions parse(String... args) {
@@ -94,6 +101,9 @@ final class CliOptions {
 		boolean exitOnEmpty = false;
 		String emptyTimeoutMs = null;
 		String maxRuntimeMs = null;
+		ArrayList<String> avroSchemas = new ArrayList<>();
+		String avroSchemaDir = null;
+		ArrayList<String> schemaMaps = new ArrayList<>();
 
 		ArrayList<String> regularArgs = new ArrayList<>();
 		ArrayList<String> specialArgs = new ArrayList<>();
@@ -110,6 +120,9 @@ final class CliOptions {
 			else if ("--exit-on-empty".equals(arg)) exitOnEmpty = true;
 			else if (arg.startsWith("--empty-timeout-ms=")) emptyTimeoutMs = arg.substring("--empty-timeout-ms=".length());
 			else if (arg.startsWith("--max-runtime-ms=")) maxRuntimeMs = arg.substring("--max-runtime-ms=".length());
+			else if (arg.startsWith("--avro-schema=")) avroSchemas.add(arg.substring("--avro-schema=".length()));
+			else if (arg.startsWith("--avro-schema-dir=")) avroSchemaDir = arg.substring("--avro-schema-dir=".length());
+			else if (arg.startsWith("--schema-map=")) schemaMaps.add(arg.substring("--schema-map=".length()));
 
 			if (arg.startsWith("--") || "-defaults".equals(arg)) specialArgs.add(arg);
 			else regularArgs.add(arg);
@@ -171,7 +184,8 @@ final class CliOptions {
 
 		return new CliOptions(regularArgs, specialArgs, host, vpn, username, password, topics,
 				indentArg, shortcutMode, help, helpMore, helpExamples, wrapMode, outputMode,
-				noAnsi, noBanner, quiet, nonInteractive, yesConsume, exitOnEmpty, emptyTimeoutMs, maxRuntimeMs);
+				noAnsi, noBanner, quiet, nonInteractive, yesConsume, exitOnEmpty, emptyTimeoutMs,
+				maxRuntimeMs, avroSchemas, avroSchemaDir, schemaMaps);
 	}
 
 	private static boolean isHelpArg(String arg) {
@@ -281,5 +295,17 @@ final class CliOptions {
 
 	String getMaxRuntimeMs() {
 		return maxRuntimeMs;
+	}
+
+	List<String> getAvroSchemas() {
+		return avroSchemas;
+	}
+
+	String getAvroSchemaDir() {
+		return avroSchemaDir;
+	}
+
+	List<String> getSchemaMaps() {
+		return schemaMaps;
 	}
 }

@@ -33,6 +33,7 @@ public final class PayloadDecoderRegistry {
 
 	public static PayloadDecoderRegistry createDefault(ConfigState config) {
 		PayloadDecoderRegistry registry = new PayloadDecoderRegistry();
+		registry.register(new AvroPayloadDecoder(config));
 		registry.register(new ProtobufPayloadDecoder(config));
 		return registry;
 	}

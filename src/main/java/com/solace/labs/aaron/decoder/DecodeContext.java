@@ -50,6 +50,7 @@ public final class DecodeContext {
 	}
 
 	public String getTopicName() {
+		if (message == null) return "";
 		if (message.getDestination() == null) return "";
 		return message.getDestination().getName();
 	}
