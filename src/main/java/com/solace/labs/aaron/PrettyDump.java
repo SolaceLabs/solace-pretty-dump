@@ -45,6 +45,7 @@ import com.solace.labs.aaron.ConfigState.ClockSource;
 import com.solace.labs.aaron.ConfigState.CloudEventsMode;
 import com.solace.labs.aaron.ConfigState.DisplayType;
 import com.solace.labs.aaron.ConfigState.OutputMode;
+import com.solace.labs.aaron.ConfigState.SummaryMode;
 import com.solace.labs.aaron.ConfigState.TimeMode;
 import com.solace.labs.aaron.ConfigState.ValidationMode;
 import com.solacesystems.jcsmp.AccessDeniedException;
@@ -251,6 +252,8 @@ public class PrettyDump {
 		config.emptyTimeoutMs = parseOptionalPositiveLong(cliOptions.getEmptyTimeoutMs(), "--empty-timeout-ms");
 		config.maxRuntimeMs = parseOptionalPositiveLong(cliOptions.getMaxRuntimeMs(), "--max-runtime-ms");
 		config.copyTailCount = parseOptionalPositiveInt(cliOptions.getCopyTail(), "--copy-tail");
+		long statsInterval = parseOptionalPositiveLong(cliOptions.getStatsIntervalMs(), "--stats-interval-ms");
+		if (statsInterval > 0) config.statsIntervalMs = statsInterval;
 		config.sempUrl = cliOptions.getSempUrl();
 		config.sempUser = cliOptions.getSempUser();
 		config.sempPasswordEnv = cliOptions.getSempPasswordEnv();
@@ -279,6 +282,12 @@ public class PrettyDump {
 			config.setClockSource(ClockSource.valueOf(cliOptions.getClockSource().toUpperCase()));
 		} catch (IllegalArgumentException e) {
 			o.println(AaAnsi.n().invalid("Invalid --clock-source value '" + cliOptions.getClockSource() + "'. Use system, ptp, or white-rabbit."));
+			System.exit(ExitCodes.CLI_USAGE);
+		}
+		try {
+			config.setSummaryMode(SummaryMode.valueOf(cliOptions.getSummaryMode().toUpperCase()));
+		} catch (IllegalArgumentException e) {
+			o.println(AaAnsi.n().invalid("Invalid --summary value '" + cliOptions.getSummaryMode() + "'. Use off, final, or live."));
 			System.exit(ExitCodes.CLI_USAGE);
 		}
 		try {
@@ -414,7 +423,8 @@ public class PrettyDump {
 					|| arg.startsWith("--validate-schema=") || arg.startsWith("--time=")
 					|| arg.startsWith("--clock-source=") || arg.startsWith("--copy-tail=")
 					|| arg.startsWith("--semp-url=") || arg.startsWith("--semp-user=")
-					|| arg.startsWith("--semp-password-env=")) {
+					|| arg.startsWith("--semp-password-env=") || arg.startsWith("--summary=")
+					|| arg.startsWith("--stats-interval-ms=")) {
 				// handled immediately after CLI parsing
 			} else if (arg.startsWith("--selector")) {
 				try {
@@ -1269,6 +1279,9 @@ public class PrettyDump {
 			if (!config.isStructuredOutput()) o.println();
 		}
 		if (config.isStructuredOutput()) config.getStructuredOutputWriter().finish();
+		if (config.getSummaryMode() != ConfigState.SummaryMode.OFF) {
+			(config.isStructuredOutput() ? System.err : o).println(config.getRunStats().render());
+		}
 		logger.info("### PrettyDump finishing!");
 		if (!config.quiet) o.println("Goodbye! 👋🏼");
 		AnsiConsole.systemUninstall();

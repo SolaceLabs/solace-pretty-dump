@@ -132,6 +132,8 @@ public class HelperText {
 		o.println("    • --clock-source=system|ptp|white-rabbit annotate local clock source");
 		o.println("    • --copy-tail=n  use SEMP to copy newest n queue messages into a temp browse queue");
 		o.println("    • --semp-url=url --semp-user=user --semp-password-env=ENV configure SEMP access");
+		o.println("    • --summary=off|final|live print final or periodic run summaries");
+		o.println("    • --stats-interval-ms=n set live summary interval");
 		o.println("    • --export      disables the automatic prefixing of \"#noexport/\" to the start of all topics");
 		o.println("    • --compressed  tells JCSMP API to use streaming compression (TCP only, not WebSockets)");
 		o.println("    • --defaults    show all possible JCSMP Session properties to set/override");

@@ -297,6 +297,10 @@ public class MessageHelper {
             	}
             }
             // if you've made it here, that means we're going to print it to console for sure
+            config.getRunStats().record(ms);
+            if (config.getSummaryMode() == ConfigState.SummaryMode.LIVE && config.getRunStats().shouldPrintLive(config.statsIntervalMs)) {
+            	(config.isStructuredOutput() ? System.err : System.out).println(config.getRunStats().render());
+            }
             
             // TODO only update the spacing when we're actually printing it out?
 //            ms.updateTopicSpacing();  // now that we've determined if we're gonna filter this message, do the topic stuff

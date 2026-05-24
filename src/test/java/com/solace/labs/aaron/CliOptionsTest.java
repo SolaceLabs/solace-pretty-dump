@@ -164,4 +164,13 @@ public class CliOptionsTest {
 		assertEquals("SEMP_PASSWORD", options.getSempPasswordEnv());
 		assertTrue(options.getSpecialArgs().contains("--copy-tail=25"));
 	}
+
+	@Test
+	public void summaryFlagsAreDetectedButRemainSpecialArgs() {
+		CliOptions options = CliOptions.parse(">", "--summary=live", "--stats-interval-ms=2500");
+
+		assertEquals("live", options.getSummaryMode());
+		assertEquals("2500", options.getStatsIntervalMs());
+		assertTrue(options.getSpecialArgs().contains("--summary=live"));
+	}
 }

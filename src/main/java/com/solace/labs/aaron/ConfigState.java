@@ -109,12 +109,21 @@ public class ConfigState {
     	WHITE_RABBIT,
     	;
     }
+    enum SummaryMode {
+    	OFF,
+    	FINAL,
+    	LIVE,
+    	;
+    }
     OutputMode outputMode = OutputMode.TEXT;
     CloudEventsMode cloudEventsMode = CloudEventsMode.AUTO;
     ValidationMode validationMode = ValidationMode.OFF;
     TimeMode timeMode = TimeMode.LOCAL;
     ClockSource clockSource = ClockSource.SYSTEM;
+    SummaryMode summaryMode = SummaryMode.OFF;
+    long statsIntervalMs = 5000;
     StructuredOutputWriter structuredOutputWriter = null;
+    RunStats runStats = new RunStats();
     
     BoundedLinkedList.ComparableList<Integer> topicsLengthList = new BoundedLinkedList.ComparableList<>(TOPICS_LENGTH_LIST_SIZE);
     List<BoundedLinkedList.ComparableList<Integer>> topicLevelsLengthList = new ArrayList<>();
@@ -182,6 +191,18 @@ public class ConfigState {
 
 	public ClockSource getClockSource() {
 		return clockSource;
+	}
+
+	public void setSummaryMode(SummaryMode mode) {
+		summaryMode = mode;
+	}
+
+	public SummaryMode getSummaryMode() {
+		return summaryMode;
+	}
+
+	public RunStats getRunStats() {
+		return runStats;
 	}
 
 	public boolean isStructuredOutput() {

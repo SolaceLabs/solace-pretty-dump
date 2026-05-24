@@ -61,6 +61,8 @@ final class CliOptions {
 	private final String sempUrl;
 	private final String sempUser;
 	private final String sempPasswordEnv;
+	private final String summaryMode;
+	private final String statsIntervalMs;
 
 	private CliOptions(List<String> regularArgs, List<String> specialArgs, String host, String vpn,
 			String username, String password, String[] topics, String indentArg, boolean shortcutMode,
@@ -69,7 +71,7 @@ final class CliOptions {
 			boolean exitOnEmpty, String emptyTimeoutMs, String maxRuntimeMs, List<String> avroSchemas,
 			String avroSchemaDir, List<String> schemaMaps, String cloudEventsMode, String validationMode,
 			String timeMode, String clockSource, String copyTail, String sempUrl, String sempUser,
-			String sempPasswordEnv) {
+			String sempPasswordEnv, String summaryMode, String statsIntervalMs) {
 		this.regularArgs = Collections.unmodifiableList(regularArgs);
 		this.specialArgs = Collections.unmodifiableList(specialArgs);
 		this.host = host;
@@ -103,6 +105,8 @@ final class CliOptions {
 		this.sempUrl = sempUrl;
 		this.sempUser = sempUser;
 		this.sempPasswordEnv = sempPasswordEnv;
+		this.summaryMode = summaryMode;
+		this.statsIntervalMs = statsIntervalMs;
 	}
 
 	static CliOptions parse(String... args) {
@@ -130,6 +134,8 @@ final class CliOptions {
 		String sempUrl = null;
 		String sempUser = null;
 		String sempPasswordEnv = null;
+		String summaryMode = "off";
+		String statsIntervalMs = null;
 
 		ArrayList<String> regularArgs = new ArrayList<>();
 		ArrayList<String> specialArgs = new ArrayList<>();
@@ -157,6 +163,8 @@ final class CliOptions {
 			else if (arg.startsWith("--semp-url=")) sempUrl = arg.substring("--semp-url=".length());
 			else if (arg.startsWith("--semp-user=")) sempUser = arg.substring("--semp-user=".length());
 			else if (arg.startsWith("--semp-password-env=")) sempPasswordEnv = arg.substring("--semp-password-env=".length());
+			else if (arg.startsWith("--summary=")) summaryMode = arg.substring("--summary=".length()).toLowerCase();
+			else if (arg.startsWith("--stats-interval-ms=")) statsIntervalMs = arg.substring("--stats-interval-ms=".length());
 
 			if (arg.startsWith("--") || "-defaults".equals(arg)) specialArgs.add(arg);
 			else regularArgs.add(arg);
@@ -220,7 +228,7 @@ final class CliOptions {
 				indentArg, shortcutMode, help, helpMore, helpExamples, wrapMode, outputMode,
 				noAnsi, noBanner, quiet, nonInteractive, yesConsume, exitOnEmpty, emptyTimeoutMs,
 				maxRuntimeMs, avroSchemas, avroSchemaDir, schemaMaps, cloudEventsMode, validationMode,
-				timeMode, clockSource, copyTail, sempUrl, sempUser, sempPasswordEnv);
+				timeMode, clockSource, copyTail, sempUrl, sempUser, sempPasswordEnv, summaryMode, statsIntervalMs);
 	}
 
 	private static boolean isHelpArg(String arg) {
@@ -374,5 +382,13 @@ final class CliOptions {
 
 	String getSempPasswordEnv() {
 		return sempPasswordEnv;
+	}
+
+	String getSummaryMode() {
+		return summaryMode;
+	}
+
+	String getStatsIntervalMs() {
+		return statsIntervalMs;
 	}
 }
