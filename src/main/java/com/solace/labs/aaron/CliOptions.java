@@ -57,6 +57,10 @@ final class CliOptions {
 	private final String validationMode;
 	private final String timeMode;
 	private final String clockSource;
+	private final String copyTail;
+	private final String sempUrl;
+	private final String sempUser;
+	private final String sempPasswordEnv;
 
 	private CliOptions(List<String> regularArgs, List<String> specialArgs, String host, String vpn,
 			String username, String password, String[] topics, String indentArg, boolean shortcutMode,
@@ -64,7 +68,8 @@ final class CliOptions {
 			boolean noAnsi, boolean noBanner, boolean quiet, boolean nonInteractive, boolean yesConsume,
 			boolean exitOnEmpty, String emptyTimeoutMs, String maxRuntimeMs, List<String> avroSchemas,
 			String avroSchemaDir, List<String> schemaMaps, String cloudEventsMode, String validationMode,
-			String timeMode, String clockSource) {
+			String timeMode, String clockSource, String copyTail, String sempUrl, String sempUser,
+			String sempPasswordEnv) {
 		this.regularArgs = Collections.unmodifiableList(regularArgs);
 		this.specialArgs = Collections.unmodifiableList(specialArgs);
 		this.host = host;
@@ -94,6 +99,10 @@ final class CliOptions {
 		this.validationMode = validationMode;
 		this.timeMode = timeMode;
 		this.clockSource = clockSource;
+		this.copyTail = copyTail;
+		this.sempUrl = sempUrl;
+		this.sempUser = sempUser;
+		this.sempPasswordEnv = sempPasswordEnv;
 	}
 
 	static CliOptions parse(String... args) {
@@ -117,6 +126,10 @@ final class CliOptions {
 		String validationMode = "off";
 		String timeMode = "local";
 		String clockSource = "system";
+		String copyTail = null;
+		String sempUrl = null;
+		String sempUser = null;
+		String sempPasswordEnv = null;
 
 		ArrayList<String> regularArgs = new ArrayList<>();
 		ArrayList<String> specialArgs = new ArrayList<>();
@@ -140,6 +153,10 @@ final class CliOptions {
 			else if (arg.startsWith("--validate-schema=")) validationMode = arg.substring("--validate-schema=".length()).toLowerCase();
 			else if (arg.startsWith("--time=")) timeMode = arg.substring("--time=".length()).toLowerCase();
 			else if (arg.startsWith("--clock-source=")) clockSource = arg.substring("--clock-source=".length()).toLowerCase().replace('-', '_');
+			else if (arg.startsWith("--copy-tail=")) copyTail = arg.substring("--copy-tail=".length());
+			else if (arg.startsWith("--semp-url=")) sempUrl = arg.substring("--semp-url=".length());
+			else if (arg.startsWith("--semp-user=")) sempUser = arg.substring("--semp-user=".length());
+			else if (arg.startsWith("--semp-password-env=")) sempPasswordEnv = arg.substring("--semp-password-env=".length());
 
 			if (arg.startsWith("--") || "-defaults".equals(arg)) specialArgs.add(arg);
 			else regularArgs.add(arg);
@@ -203,7 +220,7 @@ final class CliOptions {
 				indentArg, shortcutMode, help, helpMore, helpExamples, wrapMode, outputMode,
 				noAnsi, noBanner, quiet, nonInteractive, yesConsume, exitOnEmpty, emptyTimeoutMs,
 				maxRuntimeMs, avroSchemas, avroSchemaDir, schemaMaps, cloudEventsMode, validationMode,
-				timeMode, clockSource);
+				timeMode, clockSource, copyTail, sempUrl, sempUser, sempPasswordEnv);
 	}
 
 	private static boolean isHelpArg(String arg) {
@@ -341,5 +358,21 @@ final class CliOptions {
 
 	String getClockSource() {
 		return clockSource;
+	}
+
+	String getCopyTail() {
+		return copyTail;
+	}
+
+	String getSempUrl() {
+		return sempUrl;
+	}
+
+	String getSempUser() {
+		return sempUser;
+	}
+
+	String getSempPasswordEnv() {
+		return sempPasswordEnv;
 	}
 }

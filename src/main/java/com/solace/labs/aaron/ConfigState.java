@@ -52,6 +52,10 @@ public class ConfigState {
     boolean exitOnEmpty = false;
     long emptyTimeoutMs = -1;
     long maxRuntimeMs = -1;
+    int copyTailCount = 0;
+    String sempUrl = null;
+    String sempUser = null;
+    String sempPasswordEnv = null;
     long startTimeMs = System.currentTimeMillis();
     long lastReceivedTimeMs = startTimeMs;
     int exitCode = ExitCodes.OK;

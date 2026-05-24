@@ -197,6 +197,16 @@ public class PrettyDump {
 			return -1;
 		}
 	}
+
+	private int parseOptionalPositiveInt(String value, String argName) {
+		if (value == null) return 0;
+		long parsed = parseOptionalPositiveLong(value, argName);
+		if (parsed > Integer.MAX_VALUE) {
+			o.println(AaAnsi.n().invalid("Invalid value for " + argName + ": '" + value + "'. Value is too large."));
+			System.exit(ExitCodes.CLI_USAGE);
+		}
+		return (int)parsed;
+	}
 	
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
 		PrettyDump dump = new PrettyDump();
@@ -240,6 +250,10 @@ public class PrettyDump {
 		config.exitOnEmpty = cliOptions.isExitOnEmpty();
 		config.emptyTimeoutMs = parseOptionalPositiveLong(cliOptions.getEmptyTimeoutMs(), "--empty-timeout-ms");
 		config.maxRuntimeMs = parseOptionalPositiveLong(cliOptions.getMaxRuntimeMs(), "--max-runtime-ms");
+		config.copyTailCount = parseOptionalPositiveInt(cliOptions.getCopyTail(), "--copy-tail");
+		config.sempUrl = cliOptions.getSempUrl();
+		config.sempUser = cliOptions.getSempUser();
+		config.sempPasswordEnv = cliOptions.getSempPasswordEnv();
 		for (String avroSchema : cliOptions.getAvroSchemas()) config.addAvroSchemaFile(avroSchema);
 		if (cliOptions.getAvroSchemaDir() != null) config.setAvroSchemaDir(cliOptions.getAvroSchemaDir());
 		for (String schemaMap : cliOptions.getSchemaMaps()) config.addSchemaMapSpec(schemaMap);
@@ -398,7 +412,9 @@ public class PrettyDump {
 					|| arg.startsWith("--avro-schema=") || arg.startsWith("--avro-schema-dir=")
 					|| arg.startsWith("--schema-map=") || arg.startsWith("--cloudevents=")
 					|| arg.startsWith("--validate-schema=") || arg.startsWith("--time=")
-					|| arg.startsWith("--clock-source=")) {
+					|| arg.startsWith("--clock-source=") || arg.startsWith("--copy-tail=")
+					|| arg.startsWith("--semp-url=") || arg.startsWith("--semp-user=")
+					|| arg.startsWith("--semp-password-env=")) {
 				// handled immediately after CLI parsing
 			} else if (arg.startsWith("--selector")) {
 				try {
@@ -682,14 +698,24 @@ public class PrettyDump {
 			}
 		} else if (topics.length == 1 && (topics[0].startsWith("b:") || topics[0].startsWith("f:")) && topics[0].length() > 2) {  // BROWSING!
 			String queueName = topics[0].substring(2);
-			final Queue queue = f.createQueue(queueName);
+			String sourceQueueName = queueName;
+			Queue browseQueue = f.createQueue(queueName);
+			if (config.copyTailCount > 0) {
+				browseQueue = session.createTemporaryQueue();
+				queueName = browseQueue.getName();
+				if (msgCountRemaining == Long.MAX_VALUE) {
+					msgCountRemaining = config.copyTailCount;
+					origMsgCount = config.copyTailCount;
+				}
+			}
 			final BrowserProperties bp = new BrowserProperties();
-			bp.setEndpoint(queue);
+			bp.setEndpoint(browseQueue);
 			bp.setTransportWindowSize(255);
 			bp.setWaitTimeout(1000);
 			if (selector != null) {
 				bp.setSelector(selector);
 			}
+			final String browseQueueNameForEvents = queueName;
 			o.printf("Attempting to browse queue '%s' on the broker... ", queueName);
 			try {
 				browser = session.createBrowser(bp, new FlowEventHandler() {
@@ -697,7 +723,7 @@ public class PrettyDump {
 					public void handleEvent(Object source, FlowEventArgs event) {
 						// Flow events are usually: active, reconnecting (i.e. unbound), reconnected, active
 						if (event.getEvent() == FlowEvent.FLOW_RECONNECTING && config.isConnected) {
-							o.println(AaAnsi.n().warn("'"+queueName+"' flow closed! Queue egress probably shutdown at the broker."));
+							o.println(AaAnsi.n().warn("'"+browseQueueNameForEvents+"' flow closed! Queue egress probably shutdown at the broker."));
 							o.print(" > FLOW RECONNECTING...");
 						} else if (event.getEvent() == FlowEvent.FLOW_RECONNECTED) {
 							o.println("\n > FLOW RECONNECTED!");
@@ -707,6 +733,10 @@ public class PrettyDump {
 				});
 				o.println("success!");
 				o.println();
+				if (config.copyTailCount > 0) {
+					int copied = copyTailMessages(sourceQueueName, queueName);
+					if (!config.quiet) o.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a("Copied " + copied + " newest messages into temporary browse queue '" + queueName + "'.").reset());
+				}
 				if (selector != null) {
 					//					o.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("🔎 Selector detected: \"%s\"", selector)).reset());
 					o.println(AaAnsi.n().a("🔎 Selector detected: ").fg(Elem.STRING).a(selector).reset());
@@ -714,7 +744,7 @@ public class PrettyDump {
 				if (contentFilter != null) {
 					o.println(AaAnsi.n().a("🔎 Client-side regex Filter detected: ").fg(Elem.STRING).a(contentFilter).reset());
 				}
-				if (topics[0].startsWith("b:")) {  // regular browse, prompt for msg IDs
+				if (topics[0].startsWith("b:") && config.copyTailCount == 0) {  // regular browse, prompt for msg IDs
 					o.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Browse %s messages -> press [ENTER],%n or to/from or range of MsgSpoolIDs (e.g. \"10659-11061\" or \"9817-\" or \"-10845\"),%n or to/from RGMID (e.g. \"-rmid1:3477f-a5ce52...\"): ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining)));
 					o.print(AaAnsi.n().fg(Elem.KEY));  // turn the console blue
 					String answer = reader.readLine().trim().toLowerCase();
@@ -1096,6 +1126,21 @@ public class PrettyDump {
 			return true;
 		}
 		return false;
+	}
+
+	private int copyTailMessages(String sourceQueueName, String destinationQueueName) throws IOException {
+		if (config.sempUrl == null || config.sempUser == null || config.sempPasswordEnv == null) {
+			o.println(AaAnsi.n().invalid("--copy-tail requires --semp-url, --semp-user, and --semp-password-env."));
+			System.exit(ExitCodes.CLI_USAGE);
+		}
+		String sempPassword = System.getenv(config.sempPasswordEnv);
+		if (sempPassword == null || sempPassword.isEmpty()) {
+			o.println(AaAnsi.n().invalid("SEMP password environment variable '" + config.sempPasswordEnv + "' is not set."));
+			System.exit(ExitCodes.CLI_USAGE);
+		}
+		SempCopyTailClient semp = new SempCopyTailClient(config.sempUrl, config.sempUser, sempPassword);
+		return semp.copyNewestMessages((String)session.getProperty(JCSMPProperties.VPN_NAME_IN_USE),
+				sourceQueueName, destinationQueueName, config.copyTailCount);
 	}
 
 	private void handleKeyboardInput(BufferedReader reader) throws IOException {

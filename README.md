@@ -462,6 +462,8 @@ There are a number of (argument order doesn't matter) parameters that have been 
 - `--validate-schema=off|warn|strict` Validate JSON payloads against JSON Schema files referenced by `--schema-map`.
 - `--time=local|jcsmp|sender|trace|all` Include timestamp provenance in structured output. `--ts` remains the shortcut for PrettyDump local receive time in terminal output.
 - `--clock-source=system|ptp|white-rabbit` Annotate the local receive clock source. This is provenance metadata only; PrettyDump does not claim hardware timestamp precision by itself.
+- `--copy-tail=n` In browse mode, use SEMP to copy the newest _n_ source queue messages into a temporary browse queue, avoiding a full browse through older queue contents.
+- `--semp-url=url --semp-user=user --semp-password-env=ENV` Configure SEMP access for `--copy-tail`. The password is read from the named environment variable.
 - `--export` By default, PrettyDump adds `#noexport/` prefix to every topic subscription, to help not overload DMR/MNR links by subscribing to things accidentally.  See https://docs.solace.com/Messaging/No-Export.htm.  Use this to disable.
 - `--compressed` Tell PrettyDump you want to connect using streaming compression (not payload compression new feature). This is super useful when connecting over long RTT / WAN links. For non-TLS, this is port 55003.
 - `--defaults` Print all the JCSMPProperties that you might be able to override.  Or check the docs: https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html
@@ -745,7 +747,6 @@ PS C:\> .\prettydump
 ```
 
 See: https://en.wikipedia.org/wiki/Windows-1252
-
 
 
 

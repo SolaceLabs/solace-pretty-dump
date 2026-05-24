@@ -130,6 +130,8 @@ public class HelperText {
 		o.println("    • --validate-schema=off|warn|strict validate JSON payloads with schema maps");
 		o.println("    • --time=local|jcsmp|sender|trace|all choose timestamp provenance for structured output");
 		o.println("    • --clock-source=system|ptp|white-rabbit annotate local clock source");
+		o.println("    • --copy-tail=n  use SEMP to copy newest n queue messages into a temp browse queue");
+		o.println("    • --semp-url=url --semp-user=user --semp-password-env=ENV configure SEMP access");
 		o.println("    • --export      disables the automatic prefixing of \"#noexport/\" to the start of all topics");
 		o.println("    • --compressed  tells JCSMP API to use streaming compression (TCP only, not WebSockets)");
 		o.println("    • --defaults    show all possible JCSMP Session properties to set/override");

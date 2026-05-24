@@ -152,4 +152,16 @@ public class CliOptionsTest {
 		assertTrue(options.getSpecialArgs().contains("--time=all"));
 		assertTrue(options.getSpecialArgs().contains("--clock-source=white-rabbit"));
 	}
+
+	@Test
+	public void sempCopyTailFlagsAreDetectedButRemainSpecialArgs() {
+		CliOptions options = CliOptions.parse("b:q1", "--copy-tail=25", "--semp-url=http://localhost:8080",
+				"--semp-user=admin", "--semp-password-env=SEMP_PASSWORD");
+
+		assertEquals("25", options.getCopyTail());
+		assertEquals("http://localhost:8080", options.getSempUrl());
+		assertEquals("admin", options.getSempUser());
+		assertEquals("SEMP_PASSWORD", options.getSempPasswordEnv());
+		assertTrue(options.getSpecialArgs().contains("--copy-tail=25"));
+	}
 }
