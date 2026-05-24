@@ -40,6 +40,8 @@ prettydump
 
 Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-dump/releases) with everything already built.
 
+CI builds use a Java 17 toolchain while preserving Java 8 bytecode compatibility for the application.
+
 
 
 ## Running
@@ -749,5 +751,4 @@ PS C:\> .\prettydump
 ```
 
 See: https://en.wikipedia.org/wiki/Windows-1252
-
 

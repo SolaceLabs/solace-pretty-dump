@@ -50,6 +50,12 @@ repositories {
     }
 }
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}
+
 sourceSets {
     main {
         java {
@@ -115,7 +121,7 @@ dependencies {
     implementation("com.google.protobuf:protobuf-java:3.+")
 
     implementation("org.htmlunit:neko-htmlunit:4.+")
-    implementation("org.apache.avro:avro:1.+")
+    implementation("org.apache.avro:avro:1.11.4")
     implementation("com.networknt:json-schema-validator:1.5.9")
     implementation("io.opentelemetry.proto:opentelemetry-proto:1.3.+");
 
