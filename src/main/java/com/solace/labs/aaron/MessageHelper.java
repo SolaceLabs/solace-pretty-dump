@@ -272,6 +272,7 @@ public class MessageHelper {
             	if (!config.isOneLineMode()) ms.userData.formatBytes(message.getUserData(), null);
             	ms.userData.type = null;
             }
+            SchemaValidationSupport.validateIfConfigured(config, ms);
             
             // done preparing the message.  Now we might have to filter it?
             if (config.filterRegexPattern != null) {

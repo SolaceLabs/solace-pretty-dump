@@ -41,8 +41,10 @@ import org.fusesource.jansi.AnsiConsole;
 
 import com.solace.labs.aaron.AaAnsi.ColorMode;
 import com.solace.labs.aaron.Banner.Which;
+import com.solace.labs.aaron.ConfigState.CloudEventsMode;
 import com.solace.labs.aaron.ConfigState.DisplayType;
 import com.solace.labs.aaron.ConfigState.OutputMode;
+import com.solace.labs.aaron.ConfigState.ValidationMode;
 import com.solacesystems.jcsmp.AccessDeniedException;
 import com.solacesystems.jcsmp.Browser;
 import com.solacesystems.jcsmp.BrowserProperties;
@@ -240,6 +242,18 @@ public class PrettyDump {
 		if (cliOptions.getAvroSchemaDir() != null) config.setAvroSchemaDir(cliOptions.getAvroSchemaDir());
 		for (String schemaMap : cliOptions.getSchemaMaps()) config.addSchemaMapSpec(schemaMap);
 		try {
+			config.setCloudEventsMode(CloudEventsMode.valueOf(cliOptions.getCloudEventsMode().toUpperCase()));
+		} catch (IllegalArgumentException e) {
+			o.println(AaAnsi.n().invalid("Invalid --cloudevents value '" + cliOptions.getCloudEventsMode() + "'. Use auto, off, or require."));
+			System.exit(ExitCodes.CLI_USAGE);
+		}
+		try {
+			config.setValidationMode(ValidationMode.valueOf(cliOptions.getValidationMode().toUpperCase()));
+		} catch (IllegalArgumentException e) {
+			o.println(AaAnsi.n().invalid("Invalid --validate-schema value '" + cliOptions.getValidationMode() + "'. Use off, warn, or strict."));
+			System.exit(ExitCodes.CLI_USAGE);
+		}
+		try {
 			config.setOutputMode(OutputMode.valueOf(cliOptions.getOutputMode().toUpperCase()));
 		} catch (IllegalArgumentException e) {
 			o.println(AaAnsi.n().invalid("Invalid --output value '" + cliOptions.getOutputMode() + "'. Use text, jsonl, or json."));
@@ -368,7 +382,8 @@ public class PrettyDump {
 					|| arg.equals("--non-interactive") || arg.equals("--yes-consume") || arg.equals("--exit-on-empty")
 					|| arg.startsWith("--empty-timeout-ms=") || arg.startsWith("--max-runtime-ms=")
 					|| arg.startsWith("--avro-schema=") || arg.startsWith("--avro-schema-dir=")
-					|| arg.startsWith("--schema-map=")) {
+					|| arg.startsWith("--schema-map=") || arg.startsWith("--cloudevents=")
+					|| arg.startsWith("--validate-schema=")) {
 				// handled immediately after CLI parsing
 			} else if (arg.startsWith("--selector")) {
 				try {
@@ -1046,7 +1061,10 @@ public class PrettyDump {
 		config.isShutdown = true;
 		if (!config.quiet) {
 			o.print(AaAnsi.n());
-		o.println("Main thread exiting.");
+			o.println("Main thread exiting.");
+		}
+		if (config.exitCode != ExitCodes.OK) {
+			System.exit(config.exitCode);
 		}
 	}  // end of main()
 

@@ -52,6 +52,16 @@ final class StructuredMessageRenderer {
 		json.addProperty("discardIndication", original.getDiscardIndication());
 		json.addProperty("dmqEligible", original.isDMQEligible());
 		addString(json, "replicationGroupMessageId", original.getReplicationGroupMessageId());
+		JsonObject cloudEvent = msg.getConfig().getCloudEventsMode() == ConfigState.CloudEventsMode.OFF ? null : CloudEventsSupport.detect(original);
+		if (cloudEvent != null) json.add("cloudEvent", cloudEvent);
+		else if (msg.getConfig().getCloudEventsMode() == ConfigState.CloudEventsMode.REQUIRE) json.addProperty("cloudEventMissing", true);
+		if (msg.hasValidationMessages()) {
+			JsonArray validation = new JsonArray();
+			for (String validationMessage : msg.validationMessages) {
+				validation.add(validationMessage);
+			}
+			json.add("validationMessages", validation);
+		}
 
 		JsonArray payloads = new JsonArray();
 		addPayload(payloads, "binaryAttachment", msg.binary);

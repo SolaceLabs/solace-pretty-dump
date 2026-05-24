@@ -79,7 +79,21 @@ public class ConfigState {
     	JSON,
     	;
     }
+    enum CloudEventsMode {
+    	AUTO,
+    	OFF,
+    	REQUIRE,
+    	;
+    }
+    enum ValidationMode {
+    	OFF,
+    	WARN,
+    	STRICT,
+    	;
+    }
     OutputMode outputMode = OutputMode.TEXT;
+    CloudEventsMode cloudEventsMode = CloudEventsMode.AUTO;
+    ValidationMode validationMode = ValidationMode.OFF;
     StructuredOutputWriter structuredOutputWriter = null;
     
     BoundedLinkedList.ComparableList<Integer> topicsLengthList = new BoundedLinkedList.ComparableList<>(TOPICS_LENGTH_LIST_SIZE);
@@ -116,6 +130,22 @@ public class ConfigState {
 
 	public OutputMode getOutputMode() {
 		return outputMode;
+	}
+
+	public void setCloudEventsMode(CloudEventsMode mode) {
+		cloudEventsMode = mode;
+	}
+
+	public CloudEventsMode getCloudEventsMode() {
+		return cloudEventsMode;
+	}
+
+	public void setValidationMode(ValidationMode mode) {
+		validationMode = mode;
+	}
+
+	public ValidationMode getValidationMode() {
+		return validationMode;
 	}
 
 	public boolean isStructuredOutput() {

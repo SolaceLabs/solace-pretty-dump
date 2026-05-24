@@ -22,6 +22,7 @@ final class ExitCodes {
 	static final int SAFETY_CONFIRMATION_REQUIRED = 3;
 	static final int CONNECTION_OR_BROKER = 4;
 	static final int INTERNAL_ERROR = 5;
+	static final int VALIDATION_FAILED = 6;
 
 	private ExitCodes() {
 	}

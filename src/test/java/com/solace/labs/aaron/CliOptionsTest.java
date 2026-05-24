@@ -132,4 +132,14 @@ public class CliOptionsTest {
 		assertEquals(Arrays.asList("orders/>=order.avsc"), options.getSchemaMaps());
 		assertTrue(options.getSpecialArgs().contains("--schema-map=orders/>=order.avsc"));
 	}
+
+	@Test
+	public void cloudEventsAndValidationFlagsAreDetectedButRemainSpecialArgs() {
+		CliOptions options = CliOptions.parse(">", "--cloudevents=require", "--validate-schema=strict");
+
+		assertEquals("require", options.getCloudEventsMode());
+		assertEquals("strict", options.getValidationMode());
+		assertTrue(options.getSpecialArgs().contains("--cloudevents=require"));
+		assertTrue(options.getSpecialArgs().contains("--validate-schema=strict"));
+	}
 }
