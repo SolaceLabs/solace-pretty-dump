@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import com.solace.labs.aaron.decoder.PayloadDecoderRegistry;
 import com.solace.labs.topic.Sub;
 
 import dev.solace.aaron.useful.BoundedLinkedList;
@@ -92,6 +93,7 @@ public class ConfigState {
 	CharsetDecoder decoder = charset.newDecoder().onMalformedInput(CodingErrorAction.REPLACE).onUnmappableCharacter(CodingErrorAction.REPLACE);
 
     Map<Sub, Method> protobufCallbacks = new HashMap<>();
+    PayloadDecoderRegistry payloadDecoderRegistry = PayloadDecoderRegistry.createDefault(this);
 
 	
 	static String DTF_FORMAT = "HH:mm:ss.SS ";
@@ -254,7 +256,7 @@ public class ConfigState {
     }
     
     /** for auto-indent one-line "-1" mode */
-    int getFormattingIndent() {
+    public int getFormattingIndent() {
     	if (oneLineMode) return 0;
     	return INDENT;
 //    	return Math.min(INDENT, currentScreenWidth - 15);
@@ -329,6 +331,14 @@ public class ConfigState {
 	
 	public void setProtobufCallbacks(Map<Sub, Method> map) {
 		protobufCallbacks = map;
+	}
+
+	public Map<Sub, Method> getProtobufCallbacks() {
+		return protobufCallbacks;
+	}
+
+	public PayloadDecoderRegistry getPayloadDecoderRegistry() {
+		return payloadDecoderRegistry;
 	}
 
 
