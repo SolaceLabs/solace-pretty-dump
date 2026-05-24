@@ -41,9 +41,11 @@ import org.fusesource.jansi.AnsiConsole;
 
 import com.solace.labs.aaron.AaAnsi.ColorMode;
 import com.solace.labs.aaron.Banner.Which;
+import com.solace.labs.aaron.ConfigState.ClockSource;
 import com.solace.labs.aaron.ConfigState.CloudEventsMode;
 import com.solace.labs.aaron.ConfigState.DisplayType;
 import com.solace.labs.aaron.ConfigState.OutputMode;
+import com.solace.labs.aaron.ConfigState.TimeMode;
 import com.solace.labs.aaron.ConfigState.ValidationMode;
 import com.solacesystems.jcsmp.AccessDeniedException;
 import com.solacesystems.jcsmp.Browser;
@@ -254,6 +256,18 @@ public class PrettyDump {
 			System.exit(ExitCodes.CLI_USAGE);
 		}
 		try {
+			config.setTimeMode(TimeMode.valueOf(cliOptions.getTimeMode().toUpperCase()));
+		} catch (IllegalArgumentException e) {
+			o.println(AaAnsi.n().invalid("Invalid --time value '" + cliOptions.getTimeMode() + "'. Use local, jcsmp, sender, trace, or all."));
+			System.exit(ExitCodes.CLI_USAGE);
+		}
+		try {
+			config.setClockSource(ClockSource.valueOf(cliOptions.getClockSource().toUpperCase()));
+		} catch (IllegalArgumentException e) {
+			o.println(AaAnsi.n().invalid("Invalid --clock-source value '" + cliOptions.getClockSource() + "'. Use system, ptp, or white-rabbit."));
+			System.exit(ExitCodes.CLI_USAGE);
+		}
+		try {
 			config.setOutputMode(OutputMode.valueOf(cliOptions.getOutputMode().toUpperCase()));
 		} catch (IllegalArgumentException e) {
 			o.println(AaAnsi.n().invalid("Invalid --output value '" + cliOptions.getOutputMode() + "'. Use text, jsonl, or json."));
@@ -383,7 +397,8 @@ public class PrettyDump {
 					|| arg.startsWith("--empty-timeout-ms=") || arg.startsWith("--max-runtime-ms=")
 					|| arg.startsWith("--avro-schema=") || arg.startsWith("--avro-schema-dir=")
 					|| arg.startsWith("--schema-map=") || arg.startsWith("--cloudevents=")
-					|| arg.startsWith("--validate-schema=")) {
+					|| arg.startsWith("--validate-schema=") || arg.startsWith("--time=")
+					|| arg.startsWith("--clock-source=")) {
 				// handled immediately after CLI parsing
 			} else if (arg.startsWith("--selector")) {
 				try {
@@ -416,6 +431,7 @@ public class PrettyDump {
 				config.setAutoTrimPayload(true);
 			} else if (arg.equals("--ts")) {
 				config.includeTimestamp = true;
+				config.setTimeMode(TimeMode.LOCAL);
 			} else if (arg.equals("--export")) {
 				config.noExport = false;
 			} else if (arg.equals("--compressed")) {

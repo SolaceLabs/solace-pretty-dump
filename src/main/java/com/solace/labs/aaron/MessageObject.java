@@ -18,6 +18,7 @@ package com.solace.labs.aaron;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.Instant;
 
 import org.fusesource.jansi.AnsiConsole;
 
@@ -36,6 +37,8 @@ public class MessageObject {
 	final BytesXMLMessage orig;
 	final long lockedMsgCountNumber;
 	final String lockedTimestamp;
+	final long lockedEpochMillis;
+	final String lockedInstant;
 	final String[] headerLines;
 //	final String msgDestName;  // this would only be used in the 1-line version
 	AaAnsi msgDestNameFormatted;
@@ -54,6 +57,8 @@ public class MessageObject {
     	this.config = config;
     	orig = message;
     	this.lockedMsgCountNumber = msgCountNumber;
+    	this.lockedEpochMillis = System.currentTimeMillis();
+    	this.lockedInstant = Instant.ofEpochMilli(lockedEpochMillis).toString();
     	this.lockedTimestamp = UsefulUtils.getCurrentTimestamp();
 //    	this.msgCountNumber = config.;
 //    	this.msgDestName = message.getDestination().getName();
@@ -214,6 +219,9 @@ public class MessageObject {
         SystemOutHelper systemOut = new SystemOutHelper();
         if (!config.isOneLineMode()) {
             systemOut.println(printMessageStart());
+            if (config.getTimeMode() != ConfigState.TimeMode.LOCAL || config.getClockSource() != ConfigState.ClockSource.SYSTEM) {
+            	systemOut.println("Timestamp Provenance:                   " + TimestampSupport.renderSummary(this));
+            }
             for (String line : headerLines) {
             	if (line.isEmpty() || line.matches("\\s*")) continue;  // testing 
 				if (line.startsWith("User Property Map:") && userProps != null) {

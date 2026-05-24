@@ -91,9 +91,25 @@ public class ConfigState {
     	STRICT,
     	;
     }
+    enum TimeMode {
+    	LOCAL,
+    	JCSMP,
+    	SENDER,
+    	TRACE,
+    	ALL,
+    	;
+    }
+    enum ClockSource {
+    	SYSTEM,
+    	PTP,
+    	WHITE_RABBIT,
+    	;
+    }
     OutputMode outputMode = OutputMode.TEXT;
     CloudEventsMode cloudEventsMode = CloudEventsMode.AUTO;
     ValidationMode validationMode = ValidationMode.OFF;
+    TimeMode timeMode = TimeMode.LOCAL;
+    ClockSource clockSource = ClockSource.SYSTEM;
     StructuredOutputWriter structuredOutputWriter = null;
     
     BoundedLinkedList.ComparableList<Integer> topicsLengthList = new BoundedLinkedList.ComparableList<>(TOPICS_LENGTH_LIST_SIZE);
@@ -146,6 +162,22 @@ public class ConfigState {
 
 	public ValidationMode getValidationMode() {
 		return validationMode;
+	}
+
+	public void setTimeMode(TimeMode mode) {
+		timeMode = mode;
+	}
+
+	public TimeMode getTimeMode() {
+		return timeMode;
+	}
+
+	public void setClockSource(ClockSource source) {
+		clockSource = source;
+	}
+
+	public ClockSource getClockSource() {
+		return clockSource;
 	}
 
 	public boolean isStructuredOutput() {

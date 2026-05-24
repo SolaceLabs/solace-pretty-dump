@@ -30,6 +30,7 @@ final class StructuredMessageRenderer {
 
 		json.addProperty("messageNumber", msg.lockedMsgCountNumber);
 		json.addProperty("prettyDumpReceiveTime", msg.lockedTimestamp);
+		json.add("timestamps", TimestampSupport.render(msg));
 		addDestination(json, original.getDestination());
 		json.addProperty("messageType", msg.msgType);
 		addString(json, "deliveryMode", original.getDeliveryMode());

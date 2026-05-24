@@ -142,4 +142,14 @@ public class CliOptionsTest {
 		assertTrue(options.getSpecialArgs().contains("--cloudevents=require"));
 		assertTrue(options.getSpecialArgs().contains("--validate-schema=strict"));
 	}
+
+	@Test
+	public void timestampFlagsAreDetectedButRemainSpecialArgs() {
+		CliOptions options = CliOptions.parse(">", "--time=all", "--clock-source=white-rabbit");
+
+		assertEquals("all", options.getTimeMode());
+		assertEquals("white_rabbit", options.getClockSource());
+		assertTrue(options.getSpecialArgs().contains("--time=all"));
+		assertTrue(options.getSpecialArgs().contains("--clock-source=white-rabbit"));
+	}
 }

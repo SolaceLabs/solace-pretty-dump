@@ -55,13 +55,16 @@ final class CliOptions {
 	private final List<String> schemaMaps;
 	private final String cloudEventsMode;
 	private final String validationMode;
+	private final String timeMode;
+	private final String clockSource;
 
 	private CliOptions(List<String> regularArgs, List<String> specialArgs, String host, String vpn,
 			String username, String password, String[] topics, String indentArg, boolean shortcutMode,
 			boolean help, boolean helpMore, boolean helpExamples, boolean wrapMode, String outputMode,
 			boolean noAnsi, boolean noBanner, boolean quiet, boolean nonInteractive, boolean yesConsume,
 			boolean exitOnEmpty, String emptyTimeoutMs, String maxRuntimeMs, List<String> avroSchemas,
-			String avroSchemaDir, List<String> schemaMaps, String cloudEventsMode, String validationMode) {
+			String avroSchemaDir, List<String> schemaMaps, String cloudEventsMode, String validationMode,
+			String timeMode, String clockSource) {
 		this.regularArgs = Collections.unmodifiableList(regularArgs);
 		this.specialArgs = Collections.unmodifiableList(specialArgs);
 		this.host = host;
@@ -89,6 +92,8 @@ final class CliOptions {
 		this.schemaMaps = Collections.unmodifiableList(new ArrayList<>(schemaMaps));
 		this.cloudEventsMode = cloudEventsMode;
 		this.validationMode = validationMode;
+		this.timeMode = timeMode;
+		this.clockSource = clockSource;
 	}
 
 	static CliOptions parse(String... args) {
@@ -110,6 +115,8 @@ final class CliOptions {
 		ArrayList<String> schemaMaps = new ArrayList<>();
 		String cloudEventsMode = "auto";
 		String validationMode = "off";
+		String timeMode = "local";
+		String clockSource = "system";
 
 		ArrayList<String> regularArgs = new ArrayList<>();
 		ArrayList<String> specialArgs = new ArrayList<>();
@@ -131,6 +138,8 @@ final class CliOptions {
 			else if (arg.startsWith("--schema-map=")) schemaMaps.add(arg.substring("--schema-map=".length()));
 			else if (arg.startsWith("--cloudevents=")) cloudEventsMode = arg.substring("--cloudevents=".length()).toLowerCase();
 			else if (arg.startsWith("--validate-schema=")) validationMode = arg.substring("--validate-schema=".length()).toLowerCase();
+			else if (arg.startsWith("--time=")) timeMode = arg.substring("--time=".length()).toLowerCase();
+			else if (arg.startsWith("--clock-source=")) clockSource = arg.substring("--clock-source=".length()).toLowerCase().replace('-', '_');
 
 			if (arg.startsWith("--") || "-defaults".equals(arg)) specialArgs.add(arg);
 			else regularArgs.add(arg);
@@ -193,7 +202,8 @@ final class CliOptions {
 		return new CliOptions(regularArgs, specialArgs, host, vpn, username, password, topics,
 				indentArg, shortcutMode, help, helpMore, helpExamples, wrapMode, outputMode,
 				noAnsi, noBanner, quiet, nonInteractive, yesConsume, exitOnEmpty, emptyTimeoutMs,
-				maxRuntimeMs, avroSchemas, avroSchemaDir, schemaMaps, cloudEventsMode, validationMode);
+				maxRuntimeMs, avroSchemas, avroSchemaDir, schemaMaps, cloudEventsMode, validationMode,
+				timeMode, clockSource);
 	}
 
 	private static boolean isHelpArg(String arg) {
@@ -323,5 +333,13 @@ final class CliOptions {
 
 	String getValidationMode() {
 		return validationMode;
+	}
+
+	String getTimeMode() {
+		return timeMode;
+	}
+
+	String getClockSource() {
+		return clockSource;
 	}
 }

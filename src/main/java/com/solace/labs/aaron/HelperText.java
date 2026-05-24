@@ -128,6 +128,8 @@ public class HelperText {
 		o.println("    • --schema-map=sub=path map topic subscription to schema file");
 		o.println("    • --cloudevents=auto|off|require detect CloudEvents binary metadata");
 		o.println("    • --validate-schema=off|warn|strict validate JSON payloads with schema maps");
+		o.println("    • --time=local|jcsmp|sender|trace|all choose timestamp provenance for structured output");
+		o.println("    • --clock-source=system|ptp|white-rabbit annotate local clock source");
 		o.println("    • --export      disables the automatic prefixing of \"#noexport/\" to the start of all topics");
 		o.println("    • --compressed  tells JCSMP API to use streaming compression (TCP only, not WebSockets)");
 		o.println("    • --defaults    show all possible JCSMP Session properties to set/override");
