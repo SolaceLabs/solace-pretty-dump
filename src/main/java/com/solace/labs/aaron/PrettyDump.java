@@ -42,6 +42,7 @@ import org.fusesource.jansi.AnsiConsole;
 import com.solace.labs.aaron.AaAnsi.ColorMode;
 import com.solace.labs.aaron.Banner.Which;
 import com.solace.labs.aaron.ConfigState.DisplayType;
+import com.solace.labs.aaron.ConfigState.OutputMode;
 import com.solacesystems.jcsmp.AccessDeniedException;
 import com.solacesystems.jcsmp.Browser;
 import com.solacesystems.jcsmp.BrowserProperties;
@@ -87,7 +88,7 @@ public class PrettyDump {
 	}
 	private static final String DEFAULT_TOPIC = "#noexport/>";
 
-	private static final PrintStream o = System.out;
+	private static PrintStream o = System.out;
 	private static final JCSMPFactory f = JCSMPFactory.onlyInstance();
 	private final JCSMPProperties properties = new JCSMPProperties();
 	private JCSMPSession session;
@@ -215,6 +216,24 @@ public class PrettyDump {
 			PrettyWrap.main(new String[0]);
 			System.exit(0);
 		}
+		config.quiet = cliOptions.isQuiet();
+		config.noBanner = cliOptions.isNoBanner();
+		try {
+			config.setOutputMode(OutputMode.valueOf(cliOptions.getOutputMode().toUpperCase()));
+		} catch (IllegalArgumentException e) {
+			o.println(AaAnsi.n().invalid("Invalid --output value '" + cliOptions.getOutputMode() + "'. Use text, jsonl, or json."));
+			System.exit(1);
+		}
+		if (config.isStructuredOutput()) {
+			o = System.err;
+			config.quiet = true;
+			config.noBanner = true;
+			config.setStructuredOutputWriter(new StructuredOutputWriter(config.getOutputMode(), System.out));
+		}
+		if (cliOptions.isNoAnsi() || config.isStructuredOutput()) {
+			AaAnsi.MODE = ColorMode.OFF;
+			Elem.updateColors(ColorMode.OFF);
+		}
 		config.setCharset(CHARSET);
 		if (System.getenv("PRETTY_SELECTOR") != null && !System.getenv("PRETTY_SELECTOR").isEmpty()) {
 			o.println(AaAnsi.n().invalid(String.format("Env var PRETTY_SELECTOR deprecated, use argument --selector=\"%s\" instead.%n", System.getenv("PRETTY_SELECTOR"))));
@@ -257,9 +276,11 @@ public class PrettyDump {
 		// we'll handle the special -- args down below
 		
 		AnsiConsole.systemInstall();
-		if (AnsiConsole.getTerminalWidth() >= 80) o.print(Banner.printBanner(Which.DUMP));
-		else o.println();
-		o.println(APP_NAME + " initializing...");
+		if (!config.noBanner && !config.quiet) {
+			if (AnsiConsole.getTerminalWidth() >= 80) o.print(Banner.printBanner(Which.DUMP));
+			else o.println();
+		}
+		if (!config.quiet) o.println(APP_NAME + " initializing...");
 		config.setProtobufCallbacks(ProtoBufUtils.loadProtobufDefinitions());
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		// now let's get on with it!
@@ -322,7 +343,9 @@ public class PrettyDump {
 
 		int jcscmpPropCount = 0;
 		for (String arg : specialArgsList) {
-			if (arg.startsWith("--selector")) {
+			if (arg.startsWith("--output=") || arg.equals("--no-ansi") || arg.equals("--no-banner") || arg.equals("--quiet")) {
+				// handled immediately after CLI parsing
+			} else if (arg.startsWith("--selector")) {
 				try {
 					selector = arg.substring("--selector=".length());
 					if (selector != null && !selector.isEmpty() && selector.length() > 2000) {
@@ -441,6 +464,7 @@ public class PrettyDump {
 		session = f.createSession(properties, null, new SessionEventHandler() {
 			@Override
 			public void handleEvent(SessionEventArgs event) {  // could be reconnecting, connection lost, etc.
+				if (config.quiet) return;
 				//        		o.println(" > " + event.getEvent());
 				if (event.getEvent() == SessionEvent.RECONNECTING) {
 					if (config.isConnected) {  // first time
@@ -471,7 +495,7 @@ public class PrettyDump {
 		session.connect();  // connect to the broker... could throw JCSMPException, so best practice would be to try-catch here..!
 		config.isConnected = true;
 		session.setProperty(JCSMPProperties.CLIENT_NAME, "PrettyDump_" + session.getProperty(JCSMPProperties.CLIENT_NAME));
-		o.printf("%s connected to VPN '%s' on broker '%s' v%s.%n%n",
+		if (!config.quiet) o.printf("%s connected to VPN '%s' on broker '%s' v%s.%n%n",
 				APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE),
 				session.getCapability(CapabilityType.PEER_ROUTER_NAME),
 				session.getCapability(CapabilityType.PEER_SOFTWARE_VERSION));
@@ -483,7 +507,7 @@ public class PrettyDump {
 			if (origMsgCount != Long.MAX_VALUE) countStr = Long.toString(origMsgCount);
 			else if (config.isLastNMessagesEnabled()) countStr = Integer.toString(-config.getLastNMessagesCapacity());
 			if (regArgsList.size() > 6) countStr = regArgsList.get(6);
-			if (!indentStr.isEmpty() || !countStr.isEmpty()) printParamsInfo(indentStr, countStr);
+			if (!config.quiet && (!indentStr.isEmpty() || !countStr.isEmpty())) printParamsInfo(indentStr, countStr);
 		}		
 
 //				for (CapabilityType cap : CapabilityType.values()) {
@@ -809,10 +833,12 @@ public class PrettyDump {
 			}
 		}
 		// DONE!!!!   READY TO ROCK!
-		o.println();
-		o.println("Starting. Press Ctrl-C to quit.");
+		if (!config.quiet) {
+			o.println();
+			o.println("Starting. Press Ctrl-C to quit.");
+		}
 		if (config.isLastNMessagesEnabled()) {
-			ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered(null, 0, 0, 0, config.getLastNMessagesCapacity()));
+			if (config.shouldPrintStatus()) ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered(null, 0, 0, 0, config.getLastNMessagesCapacity()));
 			//			ThinkingAnsiHelper.tick(String.format("%d messages gathered, # messages received = ", config.getLastNMessagesSize()));
 //		} else if (config.) {
 		}
@@ -961,8 +987,10 @@ public class PrettyDump {
 					System.exit(1);
 				}
 			} finally {
-				o.println(AaAnsi.n());
-				o.println("Browsing finished!");
+				if (!config.quiet) {
+					o.println(AaAnsi.n());
+					o.println("Browsing finished!");
+				}
 				browser.close();
 			}
 		} else {  // async receive, either Direct sub or from a queue, so just wait here until Ctrl+C pressed
@@ -978,8 +1006,10 @@ public class PrettyDump {
 			}
 		}
 		config.isShutdown = true;
-		o.print(AaAnsi.n());
-		o.println("Main thread exiting.");
+		if (!config.quiet) {
+			o.print(AaAnsi.n());
+			o.println("Main thread exiting.");
+		}
 	}  // end of main()
 
 	private void handleKeyboardInput(BufferedReader reader) throws IOException {
@@ -1060,7 +1090,7 @@ public class PrettyDump {
 			// NOTE!  You can still ACK a browsed message!!
 			if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
 			if (msgCountRemaining == 0) {
-				o.println("\n" + AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(origMsgCount + " messages received. Quitting.").reset());
+				if (!config.quiet) o.println("\n" + AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(origMsgCount + " messages received. Quitting.").reset());
 //				config.stop();
 				config.isShutdown = true;
 //				if (flowQueueReceiver != null) flowQueueReceiver.close();
@@ -1083,8 +1113,10 @@ public class PrettyDump {
 		{
 //		config.stop();
 		ThinkingAnsiHelper.filteringOff();
-		o.print(AaAnsi.n());
-		o.println("\nShutdown hook triggered, quitting...");
+		if (!config.quiet) {
+			o.print(AaAnsi.n());
+			o.println("\nShutdown hook triggered, quitting...");
+		}
 		config.isShutdown = true;
 		if (config.isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
 			if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
@@ -1098,12 +1130,14 @@ public class PrettyDump {
 		}
 		if (config.isLastNMessagesEnabled()) {  // got some messages to dump!
 			for (MessageObject msg : config.getLastNMessages()) {
-				o.print(msg.printMessage());
+				if (config.isStructuredOutput()) config.getStructuredOutputWriter().print(msg);
+				else o.print(msg.printMessage());
 			}
-			o.println();
+			if (!config.isStructuredOutput()) o.println();
 		}
+		if (config.isStructuredOutput()) config.getStructuredOutputWriter().finish();
 		logger.info("### PrettyDump finishing!");
-		o.println("Goodbye! 👋🏼");
+		if (!config.quiet) o.println("Goodbye! 👋🏼");
 		AnsiConsole.systemUninstall();
 		}
 	}

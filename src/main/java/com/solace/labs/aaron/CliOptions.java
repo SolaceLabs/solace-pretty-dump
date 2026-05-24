@@ -41,10 +41,15 @@ final class CliOptions {
 	private final boolean helpMore;
 	private final boolean helpExamples;
 	private final boolean wrapMode;
+	private final String outputMode;
+	private final boolean noAnsi;
+	private final boolean noBanner;
+	private final boolean quiet;
 
 	private CliOptions(List<String> regularArgs, List<String> specialArgs, String host, String vpn,
 			String username, String password, String[] topics, String indentArg, boolean shortcutMode,
-			boolean help, boolean helpMore, boolean helpExamples, boolean wrapMode) {
+			boolean help, boolean helpMore, boolean helpExamples, boolean wrapMode, String outputMode,
+			boolean noAnsi, boolean noBanner, boolean quiet) {
 		this.regularArgs = Collections.unmodifiableList(regularArgs);
 		this.specialArgs = Collections.unmodifiableList(specialArgs);
 		this.host = host;
@@ -58,6 +63,10 @@ final class CliOptions {
 		this.helpMore = helpMore;
 		this.helpExamples = helpExamples;
 		this.wrapMode = wrapMode;
+		this.outputMode = outputMode;
+		this.noAnsi = noAnsi;
+		this.noBanner = noBanner;
+		this.quiet = quiet;
 	}
 
 	static CliOptions parse(String... args) {
@@ -65,6 +74,10 @@ final class CliOptions {
 		boolean helpMore = false;
 		boolean helpExamples = false;
 		boolean wrapMode = args.length == 1 && "wrap".equalsIgnoreCase(args[0]);
+		String outputMode = "text";
+		boolean noAnsi = false;
+		boolean noBanner = false;
+		boolean quiet = false;
 
 		ArrayList<String> regularArgs = new ArrayList<>();
 		ArrayList<String> specialArgs = new ArrayList<>();
@@ -72,6 +85,10 @@ final class CliOptions {
 			if (isHelpArg(arg)) help = true;
 			else if (isHelpMoreArg(arg)) helpMore = true;
 			else if (isHelpExamplesArg(arg)) helpExamples = true;
+			else if (arg.startsWith("--output=")) outputMode = arg.substring("--output=".length()).toLowerCase();
+			else if ("--no-ansi".equals(arg)) noAnsi = true;
+			else if ("--no-banner".equals(arg)) noBanner = true;
+			else if ("--quiet".equals(arg)) quiet = true;
 
 			if (arg.startsWith("--") || "-defaults".equals(arg)) specialArgs.add(arg);
 			else regularArgs.add(arg);
@@ -132,7 +149,8 @@ final class CliOptions {
 		if (regularArgs.size() > 5) indentArg = regularArgs.get(5);
 
 		return new CliOptions(regularArgs, specialArgs, host, vpn, username, password, topics,
-				indentArg, shortcutMode, help, helpMore, helpExamples, wrapMode);
+				indentArg, shortcutMode, help, helpMore, helpExamples, wrapMode, outputMode,
+				noAnsi, noBanner, quiet);
 	}
 
 	private static boolean isHelpArg(String arg) {
@@ -206,5 +224,21 @@ final class CliOptions {
 
 	boolean isWrapMode() {
 		return wrapMode;
+	}
+
+	String getOutputMode() {
+		return outputMode;
+	}
+
+	boolean isNoAnsi() {
+		return noAnsi;
+	}
+
+	boolean isNoBanner() {
+		return noBanner;
+	}
+
+	boolean isQuiet() {
+		return quiet;
 	}
 }

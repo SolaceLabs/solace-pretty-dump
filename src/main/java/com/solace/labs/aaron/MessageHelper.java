@@ -303,7 +303,9 @@ public class MessageHelper {
             	String rawDump = ms.buildFullStringObject();
             	if (!config.filterRegexPattern.matcher(rawDump).find()) {  // no match
             		config.incFilteredCount();
-					if (config.isLastNMessagesEnabled()) {  // gathering
+					if (!config.shouldPrintStatus()) {
+						// Structured and quiet modes keep stdout stable for automation.
+					} else if (config.isLastNMessagesEnabled()) {  // gathering
 						ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("Msg filtered.",
 								config.getMessageCount(), config.getFilteredCount(), config.getMessageCount()-config.getFilteredCount(), config.getLastNMessagesCapacity()));
 					} else {
@@ -326,9 +328,11 @@ public class MessageHelper {
             // now it's time to try printing it!
 			if (config.isLastNMessagesEnabled()) {  // gathering
 				config.lastNMessagesList.add(ms);
-				ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("",
+				if (config.shouldPrintStatus()) ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("",
 						config.getMessageCount(), config.getFilteredCount(), config.getMessageCount()-config.getFilteredCount(), config.getLastNMessagesCapacity()));
 //            	ThinkingAnsiHelper.tick("Gathering last " + lastNMessages.capacity() + " messages, received ");
+            } else if (config.isStructuredOutput()) {
+            	config.getStructuredOutputWriter().print(ms);
             } else {
             	if (isStopped()) return;  // stop if we're stopped!
             	if (ThinkingAnsiHelper.isFilteringOn()) ThinkingAnsiHelper.filteringOff();

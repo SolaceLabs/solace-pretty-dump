@@ -95,4 +95,16 @@ public class CliOptionsTest {
 		assertTrue(CliOptions.parse("-he").isHelpExamples());
 		assertTrue(CliOptions.parse("wrap").isWrapMode());
 	}
+
+	@Test
+	public void structuredOutputFlagsAreDetectedButRemainSpecialArgs() {
+		CliOptions options = CliOptions.parse(">", "--output=jsonl", "--no-ansi", "--no-banner", "--quiet");
+
+		assertEquals("jsonl", options.getOutputMode());
+		assertTrue(options.isNoAnsi());
+		assertTrue(options.isNoBanner());
+		assertTrue(options.isQuiet());
+		assertTrue(options.getSpecialArgs().contains("--output=jsonl"));
+		assertTrue(options.getSpecialArgs().contains("--no-ansi"));
+	}
 }
