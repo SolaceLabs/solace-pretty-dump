@@ -180,6 +180,19 @@ public class PrettyDump {
 		//    	}
 		o.println(ansi);
 	}
+
+	private long parseOptionalPositiveLong(String value, String argName) {
+		if (value == null) return -1;
+		try {
+			long parsed = Long.parseLong(value);
+			if (parsed <= 0) throw new NumberFormatException("not positive");
+			return parsed;
+		} catch (NumberFormatException e) {
+			o.println(AaAnsi.n().invalid("Invalid value for " + argName + ": '" + value + "'. Value must be a positive integer."));
+			System.exit(ExitCodes.CLI_USAGE);
+			return -1;
+		}
+	}
 	
 	public static void main(String... args) throws JCSMPException, IOException, InterruptedException {
 		PrettyDump dump = new PrettyDump();
@@ -218,6 +231,11 @@ public class PrettyDump {
 		}
 		config.quiet = cliOptions.isQuiet();
 		config.noBanner = cliOptions.isNoBanner();
+		config.nonInteractive = cliOptions.isNonInteractive();
+		config.yesConsume = cliOptions.isYesConsume();
+		config.exitOnEmpty = cliOptions.isExitOnEmpty();
+		config.emptyTimeoutMs = parseOptionalPositiveLong(cliOptions.getEmptyTimeoutMs(), "--empty-timeout-ms");
+		config.maxRuntimeMs = parseOptionalPositiveLong(cliOptions.getMaxRuntimeMs(), "--max-runtime-ms");
 		try {
 			config.setOutputMode(OutputMode.valueOf(cliOptions.getOutputMode().toUpperCase()));
 		} catch (IllegalArgumentException e) {
@@ -343,7 +361,9 @@ public class PrettyDump {
 
 		int jcscmpPropCount = 0;
 		for (String arg : specialArgsList) {
-			if (arg.startsWith("--output=") || arg.equals("--no-ansi") || arg.equals("--no-banner") || arg.equals("--quiet")) {
+			if (arg.startsWith("--output=") || arg.equals("--no-ansi") || arg.equals("--no-banner") || arg.equals("--quiet")
+					|| arg.equals("--non-interactive") || arg.equals("--yes-consume") || arg.equals("--exit-on-empty")
+					|| arg.startsWith("--empty-timeout-ms=") || arg.startsWith("--max-runtime-ms=")) {
 				// handled immediately after CLI parsing
 			} else if (arg.startsWith("--selector")) {
 				try {
@@ -581,18 +601,26 @@ public class PrettyDump {
 				if (config.isLastNMessagesEnabled()) {
 					o.println(AaAnsi.n().warn(String.format("Only last %d will be displayed, but all received messages will still be ACKed!", config.getLastNMessagesCapacity())));
 				}
-				if (selector != null) {
+				if (!config.yesConsume) {
+					if (config.nonInteractive) {
+						o.println(AaAnsi.n().invalid("Queue consume requires --yes-consume when --non-interactive is enabled."));
+						System.exit(ExitCodes.SAFETY_CONFIRMATION_REQUIRED);
+					}
+					if (selector != null) {
+						o.println(AaAnsi.n().a("🔎 Selector detected: ").fg(Elem.STRING).a(selector).reset());
+						o.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s' that match Selector.%nUse browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
+					} else {  // no selectors, consume all
+						o.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s'.%nUse browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
+					}
+					o.print(AaAnsi.n().fg(Elem.WARN));  // turn the console yellow
+					String answer = reader.readLine().trim().toLowerCase();
+					o.print(AaAnsi.n());  // to reset() the ANSI
+					if (!"y".equals(answer) && !"yes".equals(answer)) {
+						o.println("\nExiting. 👎🏼");
+						System.exit(0);
+					}
+				} else if (selector != null) {
 					o.println(AaAnsi.n().a("🔎 Selector detected: ").fg(Elem.STRING).a(selector).reset());
-					o.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s' that match Selector.%nUse browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
-				} else {  // no selectors, consume all
-					o.print(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(String.format("Will consume/ACK %s messages on queue '%s'.%nUse browse 'b:' command-line option otherwise.%nAre you sure? [y|yes]: ", msgCountRemaining == Long.MAX_VALUE ? "all" : msgCountRemaining, queueName)));
-				}
-				o.print(AaAnsi.n().fg(Elem.WARN));  // turn the console yellow
-				String answer = reader.readLine().trim().toLowerCase();
-				o.print(AaAnsi.n());  // to reset() the ANSI
-				if (!"y".equals(answer) && !"yes".equals(answer)) {
-					o.println("\nExiting. 👎🏼");
-					System.exit(0);
 				}
 				latch.countDown();  // this hides the FLOW_ACTIVE until after all this stuff
 				//                reader.close();
@@ -833,6 +861,8 @@ public class PrettyDump {
 			}
 		}
 		// DONE!!!!   READY TO ROCK!
+		config.startTimeMs = System.currentTimeMillis();
+		config.lastReceivedTimeMs = config.startTimeMs;
 		if (!config.quiet) {
 			o.println();
 			o.println("Starting. Press Ctrl-C to quit.");
@@ -889,9 +919,11 @@ public class PrettyDump {
 			BytesXMLMessage nextMsg;
 			try {
 				while (!config.isShutdown && msgCountRemaining > 0) {
+					if (shouldStopForAutomationLimit()) break;
 					handleKeyboardInput(reader);
 					nextMsg = browser.getNext(-1);  // don't wait, return immediately
 					if (nextMsg == null) {
+						if (config.exitOnEmpty && config.getMessageCount() == 0) break;
 						Thread.sleep(50);
 						continue;
 					}
@@ -996,6 +1028,7 @@ public class PrettyDump {
 		} else {  // async receive, either Direct sub or from a queue, so just wait here until Ctrl+C pressed
 			//        	BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
 			while (!config.isShutdown) {
+				if (shouldStopForAutomationLimit()) break;
 				Thread.sleep(50);
 				// blocking receive test code
 				//				BytesXMLMessage msg;
@@ -1008,11 +1041,26 @@ public class PrettyDump {
 		config.isShutdown = true;
 		if (!config.quiet) {
 			o.print(AaAnsi.n());
-			o.println("Main thread exiting.");
+		o.println("Main thread exiting.");
 		}
 	}  // end of main()
 
+	private boolean shouldStopForAutomationLimit() {
+		if (config.shouldStopForRuntimeLimit()) {
+			if (!config.quiet) o.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a("Max runtime reached. Quitting.").reset());
+			config.isShutdown = true;
+			return true;
+		}
+		if (config.shouldStopForEmptyTimeout()) {
+			if (!config.quiet) o.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a("Empty timeout reached. Quitting.").reset());
+			config.isShutdown = true;
+			return true;
+		}
+		return false;
+	}
+
 	private void handleKeyboardInput(BufferedReader reader) throws IOException {
+		if (config.nonInteractive) return;
 		String userInput = null;
 		if (System.in.available() > 0) {
 			userInput = reader.readLine();
@@ -1084,6 +1132,7 @@ public class PrettyDump {
 		@Override
 		public void onReceive(BytesXMLMessage message) {
 			if (config.isShutdown) return;  // we're done, don't do anything with this
+			config.markMessageActivity();
 			ph.dealWithMessage(message);
 			if (!ThinkingAnsiHelper.isFilteringOn()) msgCountRemaining--;  // payload helper would turn it off
 			// if we're not browsing, and it's not a Direct message (doesn't matter if we ACK a Direct message anyhow)

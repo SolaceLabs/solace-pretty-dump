@@ -45,11 +45,17 @@ final class CliOptions {
 	private final boolean noAnsi;
 	private final boolean noBanner;
 	private final boolean quiet;
+	private final boolean nonInteractive;
+	private final boolean yesConsume;
+	private final boolean exitOnEmpty;
+	private final String emptyTimeoutMs;
+	private final String maxRuntimeMs;
 
 	private CliOptions(List<String> regularArgs, List<String> specialArgs, String host, String vpn,
 			String username, String password, String[] topics, String indentArg, boolean shortcutMode,
 			boolean help, boolean helpMore, boolean helpExamples, boolean wrapMode, String outputMode,
-			boolean noAnsi, boolean noBanner, boolean quiet) {
+			boolean noAnsi, boolean noBanner, boolean quiet, boolean nonInteractive, boolean yesConsume,
+			boolean exitOnEmpty, String emptyTimeoutMs, String maxRuntimeMs) {
 		this.regularArgs = Collections.unmodifiableList(regularArgs);
 		this.specialArgs = Collections.unmodifiableList(specialArgs);
 		this.host = host;
@@ -67,6 +73,11 @@ final class CliOptions {
 		this.noAnsi = noAnsi;
 		this.noBanner = noBanner;
 		this.quiet = quiet;
+		this.nonInteractive = nonInteractive;
+		this.yesConsume = yesConsume;
+		this.exitOnEmpty = exitOnEmpty;
+		this.emptyTimeoutMs = emptyTimeoutMs;
+		this.maxRuntimeMs = maxRuntimeMs;
 	}
 
 	static CliOptions parse(String... args) {
@@ -78,6 +89,11 @@ final class CliOptions {
 		boolean noAnsi = false;
 		boolean noBanner = false;
 		boolean quiet = false;
+		boolean nonInteractive = false;
+		boolean yesConsume = false;
+		boolean exitOnEmpty = false;
+		String emptyTimeoutMs = null;
+		String maxRuntimeMs = null;
 
 		ArrayList<String> regularArgs = new ArrayList<>();
 		ArrayList<String> specialArgs = new ArrayList<>();
@@ -89,6 +105,11 @@ final class CliOptions {
 			else if ("--no-ansi".equals(arg)) noAnsi = true;
 			else if ("--no-banner".equals(arg)) noBanner = true;
 			else if ("--quiet".equals(arg)) quiet = true;
+			else if ("--non-interactive".equals(arg)) nonInteractive = true;
+			else if ("--yes-consume".equals(arg)) yesConsume = true;
+			else if ("--exit-on-empty".equals(arg)) exitOnEmpty = true;
+			else if (arg.startsWith("--empty-timeout-ms=")) emptyTimeoutMs = arg.substring("--empty-timeout-ms=".length());
+			else if (arg.startsWith("--max-runtime-ms=")) maxRuntimeMs = arg.substring("--max-runtime-ms=".length());
 
 			if (arg.startsWith("--") || "-defaults".equals(arg)) specialArgs.add(arg);
 			else regularArgs.add(arg);
@@ -150,7 +171,7 @@ final class CliOptions {
 
 		return new CliOptions(regularArgs, specialArgs, host, vpn, username, password, topics,
 				indentArg, shortcutMode, help, helpMore, helpExamples, wrapMode, outputMode,
-				noAnsi, noBanner, quiet);
+				noAnsi, noBanner, quiet, nonInteractive, yesConsume, exitOnEmpty, emptyTimeoutMs, maxRuntimeMs);
 	}
 
 	private static boolean isHelpArg(String arg) {
@@ -240,5 +261,25 @@ final class CliOptions {
 
 	boolean isQuiet() {
 		return quiet;
+	}
+
+	boolean isNonInteractive() {
+		return nonInteractive;
+	}
+
+	boolean isYesConsume() {
+		return yesConsume;
+	}
+
+	boolean isExitOnEmpty() {
+		return exitOnEmpty;
+	}
+
+	String getEmptyTimeoutMs() {
+		return emptyTimeoutMs;
+	}
+
+	String getMaxRuntimeMs() {
+		return maxRuntimeMs;
 	}
 }

@@ -107,4 +107,18 @@ public class CliOptionsTest {
 		assertTrue(options.getSpecialArgs().contains("--output=jsonl"));
 		assertTrue(options.getSpecialArgs().contains("--no-ansi"));
 	}
+
+	@Test
+	public void nonInteractiveFlagsAreDetectedButRemainSpecialArgs() {
+		CliOptions options = CliOptions.parse("b:q1", "--non-interactive", "--yes-consume",
+				"--exit-on-empty", "--empty-timeout-ms=250", "--max-runtime-ms=1000");
+
+		assertTrue(options.isNonInteractive());
+		assertTrue(options.isYesConsume());
+		assertTrue(options.isExitOnEmpty());
+		assertEquals("250", options.getEmptyTimeoutMs());
+		assertEquals("1000", options.getMaxRuntimeMs());
+		assertTrue(options.getSpecialArgs().contains("--non-interactive"));
+		assertTrue(options.getSpecialArgs().contains("--max-runtime-ms=1000"));
+	}
 }

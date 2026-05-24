@@ -45,6 +45,14 @@ public class ConfigState {
     boolean isCompressed = false;
     boolean quiet = false;
     boolean noBanner = false;
+    boolean nonInteractive = false;
+    boolean yesConsume = false;
+    boolean exitOnEmpty = false;
+    long emptyTimeoutMs = -1;
+    long maxRuntimeMs = -1;
+    long startTimeMs = System.currentTimeMillis();
+    long lastReceivedTimeMs = startTimeMs;
+    int exitCode = ExitCodes.OK;
 
     int highlightTopicLevel = -1;
     int INDENT = 2;  // default starting value, keeping it all-caps for retro v0.0.1 value
@@ -118,6 +126,18 @@ public class ConfigState {
 
 	public boolean shouldPrintStatus() {
 		return !quiet && !isStructuredOutput();
+	}
+
+	public void markMessageActivity() {
+		lastReceivedTimeMs = System.currentTimeMillis();
+	}
+
+	public boolean shouldStopForRuntimeLimit() {
+		return maxRuntimeMs > 0 && System.currentTimeMillis() - startTimeMs >= maxRuntimeMs;
+	}
+
+	public boolean shouldStopForEmptyTimeout() {
+		return emptyTimeoutMs > 0 && System.currentTimeMillis() - lastReceivedTimeMs >= emptyTimeoutMs;
 	}
 
 	public void enableLastNMessage(int amount) {
