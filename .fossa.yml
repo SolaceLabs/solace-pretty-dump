@@ -1,0 +1,25 @@
+version: 3
+
+project:
+  locator: SolaceLabs_solace-pretty-dump
+  id: SolaceLabs_solace-pretty-dump
+  name: solace-pretty-dump
+  teams: []
+  labels:
+    - java
+
+vendoredDependencies:
+  forceRescans: false
+  scanMethod: CLILicenseScan
+  licenseScanPathFilters:
+    exclude:
+      - "./.git"
+      - "./.github"
+
+paths:
+  exclude:
+    - ./.git
+    - ./.github
+
+telemetry:
+  scope: full
