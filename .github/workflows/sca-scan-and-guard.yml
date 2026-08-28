@@ -24,6 +24,24 @@ jobs:
     secrets:
       FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
 
+  verify_manifest_role_secret:
+    # TEMPORARY -- delete once verified. update_manifest never runs on a PR, so
+    # this is the only way to confirm the org secret reaches this repository.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assert MANIFEST_AWS_ROLE is present
+        env:
+          ROLE: ${{ secrets.MANIFEST_AWS_ROLE }}
+        run: |
+          if [[ -z "$ROLE" ]]; then
+            echo "::error::MANIFEST_AWS_ROLE is empty - org secret not visible to this repo"
+            exit 1
+          fi
+          echo "MANIFEST_AWS_ROLE is set (${#ROLE} chars)"
+          [[ "$ROLE" == arn:aws:iam::*:role/* ]] \
+            && echo "shape looks like an IAM role ARN" \
+            || { echo "::error::value does not look like an IAM role ARN"; exit 1; }
+
   update_manifest:
     needs: sca_scan
     # The manifest records what landed on the default branch, so it must never
@@ -41,7 +59,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
-          role-to-assume: arn:aws:iam::868978040651:role/github-solace-cloud-manifest-rw
+          role-to-assume: ${{ secrets.MANIFEST_AWS_ROLE }}
           aws-region: us-east-1
 
       - name: Update solace-cloud-manifest
