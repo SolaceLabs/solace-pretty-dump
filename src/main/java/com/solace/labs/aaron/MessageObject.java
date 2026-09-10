@@ -16,6 +16,10 @@
 
 package com.solace.labs.aaron;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.time.Instant;
+
 import org.fusesource.jansi.AnsiConsole;
 
 import com.solacesystems.jcsmp.BytesXMLMessage;
@@ -33,6 +37,8 @@ public class MessageObject {
 	final BytesXMLMessage orig;
 	final long lockedMsgCountNumber;
 	final String lockedTimestamp;
+	final long lockedEpochMillis;
+	final String lockedInstant;
 	final String[] headerLines;
 //	final String msgDestName;  // this would only be used in the 1-line version
 	AaAnsi msgDestNameFormatted;
@@ -43,6 +49,7 @@ public class MessageObject {
     PayloadSection xml = null;
     PayloadSection userProps = null;
     PayloadSection userData = null;
+    List<String> validationMessages = new ArrayList<>();
     
     private final ConfigState config;
             
@@ -50,11 +57,25 @@ public class MessageObject {
     	this.config = config;
     	orig = message;
     	this.lockedMsgCountNumber = msgCountNumber;
+    	this.lockedEpochMillis = System.currentTimeMillis();
+    	this.lockedInstant = Instant.ofEpochMilli(lockedEpochMillis).toString();
     	this.lockedTimestamp = UsefulUtils.getCurrentTimestamp();
 //    	this.msgCountNumber = config.;
 //    	this.msgDestName = message.getDestination().getName();
     	headerLines = orig.dump(XMLMessage.MSGDUMP_BRIEF).split("\n");
     	msgType = orig.getClass().getSimpleName();  // will be "Impl" unless overridden later
+    }
+
+    void addValidationMessage(String message) {
+    	validationMessages.add(message);
+    }
+
+    boolean hasValidationMessages() {
+    	return !validationMessages.isEmpty();
+    }
+
+    ConfigState getConfig() {
+    	return config;
     }
 
     /** this only gets called in non-one-line mode, otherwise we might have to do some trimming first */
@@ -198,6 +219,9 @@ public class MessageObject {
         SystemOutHelper systemOut = new SystemOutHelper();
         if (!config.isOneLineMode()) {
             systemOut.println(printMessageStart());
+            if (config.getTimeMode() != ConfigState.TimeMode.LOCAL || config.getClockSource() != ConfigState.ClockSource.SYSTEM) {
+            	systemOut.println("Timestamp Provenance:                   " + TimestampSupport.renderSummary(this));
+            }
             for (String line : headerLines) {
             	if (line.isEmpty() || line.matches("\\s*")) continue;  // testing 
 				if (line.startsWith("User Property Map:") && userProps != null) {
@@ -267,6 +291,9 @@ public class MessageObject {
 //            	systemOut.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(UsefulUtils.capitalizeFirst(msgType)).a(", <EMPTY PAYLOAD>").reset().toString());
             	systemOut.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a("<EMPTY PAYLOAD>").reset().toString());
             	
+            }
+            if (hasValidationMessages()) {
+            	systemOut.println(AaAnsi.n().invalid("Schema Validation: " + validationMessages));
             }
 			if (config.getFormattingIndent() > 0) systemOut.println(printMessageEnd());
     	} else {  // one-line mode!
