@@ -30,10 +30,10 @@ import java.util.regex.Pattern;
 
 import com.solacesystems.common.util.ByteArray;
 
+import dev.solace.aaron.useful.WordUtils;
+
 public class UsefulUtils {
 
-//	private static Charset DEFAULT_CHARSET = StandardCharsets.ISO_8859_1;
-//	private static CharsetDecoder DECODER = DEFAULT_CHARSET.newDecoder();
 
 	// https://en.wikipedia.org/wiki/Bullet_(typography)#In_Unicode
 	// https://stackoverflow.com/a/36743430/101766
@@ -162,19 +162,8 @@ public class UsefulUtils {
 		return new String(bytes, StandardCharsets.US_ASCII);
 	}
 */	
-	/**
-	 * Removes only trailing '\n' chars (unlike String.trim())
-	 * @param s
-	 * @return
-	 */
-	static String chop(String s) {
-		if (s.endsWith("\n") || s.endsWith("\r")) {
-			// recursive call!
-			return chop(s.substring(0, s.length()-1));  // just in case there's 2 trailing carriage returns?
-		}
-		return s;
-	}
-	
+
+
 //	private static final byte[] HEX_ARRAY_BYTES = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
 //	private static final char[] HEX_ARRAY_CHARS = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
 	private static final String[] BYTE_REPS = new String[256];  // static config, only 256 possible Strings
@@ -273,9 +262,9 @@ public class UsefulUtils {
 		if (ba.getLength() > 100) {
 			String ts = ba.toString();  // this toString() only returns the first 100 bytes of the array
 			ts = ts.replace("]", ",...]");  // to indicate there is more
-			return indent(indent) + ts;
+			return WordUtils.indent(indent) + ts;
 		}
-		return indent(indent) + ba.toString();
+		return WordUtils.indent(indent) + ba.toString();
 	}
 	
 //	static AaAnsi printBinaryBytesSdkPerfStyle(byte[] bytes, int indent) {
@@ -292,7 +281,7 @@ public class UsefulUtils {
 //			return new AaAnsi().reset().fg(Elem.BYTES).a(printBinaryBytesSdkPerfStyle2(bytes)).reset();  // byte values
 			return AaAnsi.n().reset().fg(Elem.BYTES).a(bytesToSpacedHexString(bytes)).reset();  // byte values
 		}
-		if (terminalWidth > 151) return printBytes3(bytes, indent, 32);  // widescreen
+		if (terminalWidth > 151 && bytes.length > 16) return printBytes3(bytes, indent, 32);  // widescreen
 		else return printBytes3(bytes, indent, 16);
 	}
 	
@@ -421,7 +410,7 @@ public class UsefulUtils {
 
 	
 
-	private static final String[] INDENTS = new String[80];
+/*	private static final String[] INDENTS = new String[80];
 	static {
 		for (int i=0; i<80; i++) {
 			INDENTS[i] = pad(i, ' ');
@@ -443,7 +432,7 @@ public class UsefulUtils {
 		}
 		return sb.toString();
 	}
-
+*/
 
 	// 5 year range around whatever today is
 	static final int YEAR_RANGE = 5;

@@ -14,7 +14,7 @@
  * the License.
  */
 
-package com.solace.labs.aaron;
+package com.solace.labs.aaron.utils;
 
 import java.io.BufferedReader;
 import java.io.IOException;

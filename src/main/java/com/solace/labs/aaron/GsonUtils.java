@@ -16,8 +16,6 @@
 
 package com.solace.labs.aaron;
 
-import static com.solace.labs.aaron.UsefulUtils.indent;
-
 import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigInteger;
@@ -27,6 +25,8 @@ import org.apache.logging.log4j.Logger;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
+
+import dev.solace.aaron.useful.WordUtils;
 
 public class GsonUtils {
 	
@@ -135,10 +135,10 @@ public class GsonUtils {
 				reader.endArray();
 				break;
 			} else if (token.equals(JsonToken.BEGIN_OBJECT)) {
-				ansi.a(indent(curIndent + indentFactor));
+				ansi.a(WordUtils.indent(curIndent + indentFactor));
 				handleObject(reader, ansi, indentFactor, curIndent + indentFactor);
 			} else if (token.equals(JsonToken.BEGIN_ARRAY)) {
-				ansi.a(indent(curIndent + indentFactor));
+				ansi.a(WordUtils.indent(curIndent + indentFactor));
 				handleArray(reader, ansi, indentFactor, curIndent + indentFactor);
 			} else if (token.equals(JsonToken.END_OBJECT)) {
 				reader.endObject();
@@ -189,7 +189,7 @@ public class GsonUtils {
 	 * @throws IOException
 	 */
 	private static void handleRegularToken(JsonReader reader, JsonToken token, AaAnsi ansi, int indentFactor, int curIndent) throws IOException {
-		ansi.a(indent(curIndent));
+		ansi.a(WordUtils.indent(curIndent));
 		if (token.equals(JsonToken.NAME)) {
 //			ansi.fg(Color.BLUE);
 			lastKeyName = reader.nextName();

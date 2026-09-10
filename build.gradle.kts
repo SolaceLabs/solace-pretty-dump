@@ -15,7 +15,7 @@ plugins {
     //id("com.gradleup.shadow") version "8.3.2"  // https://gradleup.com/shadow/
 }
 
-version = "1.1.1"
+version = "1.2.0"
 
 
 tasks.withType<JavaCompile> {
@@ -70,6 +70,7 @@ buildscript {
 distributions {
     main {
         distributionBaseName = "solace-pretty-dump"
+	// uncomment this next line when doing the actual release build
         distributionClassifier = "dev"
         contents {
             from("README.md")
@@ -186,7 +187,7 @@ createAdditionalScript("AllMsgGenerator") {
 }
 
 //createAdditionalScript("KeyboardHandler") {
-//  mainClass = "com.solace.labs.aaron.KeyboardHandler"
+//  mainClass = "com.solace.labs.aaron.utils.KeyboardHandler"
 //}
 
 //tasks {

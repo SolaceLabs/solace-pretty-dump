@@ -106,7 +106,7 @@ public enum Elem {
 		map.put(KEY, new Col(-1));
 		map.put(DATA_TYPE, new Col(-1));
 		map.put(PAYLOAD_TYPE, new Col(15));
-		map.put(NULL, new Col(2, false, true));
+		map.put(NULL, new Col(1, false, true));  // TODO: this was 2 (green), why??
 		map.put(STRING, new Col(-1));
 		map.put(CHAR, new Col(-1));
 		map.put(NUMBER, new Col(-1));

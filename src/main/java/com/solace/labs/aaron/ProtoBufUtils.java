@@ -16,8 +16,6 @@
 
 package com.solace.labs.aaron;
 
-import static com.solace.labs.aaron.UsefulUtils.indent;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -37,6 +35,7 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.Type;
 import com.google.protobuf.MessageOrBuilder;
 import com.solace.labs.topic.Sub;
+import dev.solace.aaron.useful.WordUtils;
 
 public class ProtoBufUtils {
 
@@ -181,7 +180,7 @@ public class ProtoBufUtils {
 	private static void handleMessage(Map<FieldDescriptor, Object> map, AaAnsi ansi, final int indent, final int indentFactor) {
 		if (map == null) return;
 		if (map.isEmpty()) {
-			ansi.a(indent(indent)).fg(Elem.NULL).a("<EMPTY>").reset();
+			ansi.a(WordUtils.indent(indent)).fg(Elem.NULL).a("<EMPTY>").reset();
 			return;
 		}
 		try {
@@ -189,7 +188,7 @@ public class ProtoBufUtils {
 			while (it.hasNext()) {
 				FieldDescriptor fd = it.next();
 				Object val = map.get(fd);  // can't be null, by protobuf definition
-				ansi.reset().a(indent(indent));
+				ansi.reset().a(WordUtils.indent(indent));
 				// key
 //				if (indentFactor > 0) ansi.a("Key ");
 				ansi.fg(Elem.KEY).a("'").a(fd.getName()).a("'");
@@ -348,7 +347,7 @@ public class ProtoBufUtils {
 							if (indentFactor > 0) ansi.a('\n');
 							while (listIt.hasNext()) {
 								AbstractMessage obj = (AbstractMessage)listIt.next();
-								if (indentFactor > 0) ansi.a(indent(indent + (indent/2)));
+								if (indentFactor > 0) ansi.a(WordUtils.indent(indent + (indentFactor/2)));
 								ansi.fg(Elem.DATA_TYPE).a("(MESSAGE)").reset();
 								if (indentFactor > 0) ansi.a(":\n");
 								ansi.aa(handleMessage(obj.getAllFields(), indent + indentFactor, indentFactor));

@@ -24,6 +24,7 @@ import com.solacesystems.jcsmp.Queue;
 import com.solacesystems.jcsmp.XMLMessage;
 
 import dev.solace.aaron.useful.BoundedLinkedList;
+import dev.solace.aaron.useful.WordUtils;
 
 public class MessageObject {
 	
@@ -138,8 +139,8 @@ public class MessageObject {
 	private static final int DIVIDER_LENGTH = 60;  // same as SdkPerf JCSMP
 
 	private static AaAnsi printMessageBoundary(String header) {
-        String headPre = UsefulUtils.pad((int)Math.ceil((DIVIDER_LENGTH - header.length()) / 2.0) , '^');
-        String headPost = UsefulUtils.pad((int)Math.floor((DIVIDER_LENGTH - header.length()) / 2.0) , '^');
+        String headPre = WordUtils.pad((int)Math.ceil((DIVIDER_LENGTH - header.length()) / 2.0) , '^');
+        String headPost = WordUtils.pad((int)Math.floor((DIVIDER_LENGTH - header.length()) / 2.0) , '^');
         return AaAnsi.n().fg(Elem.MSG_BREAK).a(headPre).a(header).a(headPost).reset();
 	}
 	
@@ -153,7 +154,7 @@ public class MessageObject {
 	
 	AaAnsi printMessageEnd() {
 		if (config.includeTimestamp) {
-			return printMessageBoundary(String.format(" %s- End Message #%d ", lockedTimestamp, lockedMsgCountNumber));
+			return printMessageBoundary(String.format(" %s- End Message #%d ^^", lockedTimestamp, lockedMsgCountNumber));
 		} else {
             return printMessageBoundary(String.format(" End Message #%d ", lockedMsgCountNumber));
 		}
@@ -164,7 +165,7 @@ public class MessageObject {
 	}
 	
 	static AaAnsi printMessageEnd(int num) {
-		return printMessageBoundary(String.format(" %s- End Message #%d ", UsefulUtils.getCurrentTimestamp(), num));
+		return printMessageBoundary(String.format(" %s- End Message #%d ^^", UsefulUtils.getCurrentTimestamp(), num));
 	}
 	
 	private void handlePayloadSection(PayloadSection ps, AaAnsi ansi) {
@@ -191,15 +192,17 @@ public class MessageObject {
 		}
 	}
 
-
-
     SystemOutHelper printMessage() {
+    	return printMessage(true);
+    }
+
+    SystemOutHelper printMessage(boolean includeMsgBreaks) {
         // now it's time to try printing it!
         SystemOutHelper systemOut = new SystemOutHelper();
         if (!config.isOneLineMode()) {
-            systemOut.println(printMessageStart());
+            if (includeMsgBreaks) systemOut.println(printMessageStart());
             for (String line : headerLines) {
-            	if (line.isEmpty() || line.matches("\\s*")) continue;  // testing 
+            	if (line.isEmpty() || line.matches("\\s*")) continue;  // TODO do I need this? It had a comment "testing", not sure.  DO some testing with SDTMaps or something, with text payloads it looks ok
 				if (line.startsWith("User Property Map:") && userProps != null) {
             		if (config.getFormattingIndent() == 0) {
             			if (config.isAutoTrimPayload()) {
@@ -212,6 +215,7 @@ public class MessageObject {
 //                		systemOut.println(new AaAnsi().a(line));
                 		systemOut.println("User Property Map:                      " + userProps.numElements + " elements");
                 		systemOut.println(userProps.formatted);
+//                		systemOut.println(config.isAutoTrimPayload() ? userProps.formatted.trim(1000) : userProps.formatted.toString());
             		}
             		if (config.getFormattingIndent() > 0 && !config.isNoPayload()) systemOut.println();
             	} else if (line.startsWith("User Data:") && userData != null) {
@@ -253,6 +257,24 @@ public class MessageObject {
             		systemOut.println(msgDestNameFormatted);  // just print out since it's already formatted
             	} else if (line.startsWith("Message Id:") && orig.getDeliveryMode() == DeliveryMode.DIRECT) {
             		// skip it, hide the auto-generated message ID on Direct messages
+            	} else if ("Deliver To One".equals(line) || "Eliding Eligible".equals(line)) {  // let's highlight this so it's obvious
+            		systemOut.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(line).reset());
+            	} else if (line.startsWith("Priority:                 ")) {
+            		// blue is less than 4, default 4, green 5, 6, yellow 7, 8, red 9
+            		int val = Integer.parseInt(line.substring(40));
+            		systemOut.print(line.substring(0, 40));
+            		if (val == 4) systemOut.println("4");
+            		else {  // time for colour!
+            			if (val < 4) {
+            				systemOut.println(AaAnsi.n().fg(Elem.DATA_TYPE).a(val).reset());  // blue
+            			} else if (val > 4 && val < 7) {
+            				systemOut.println(AaAnsi.n().fg(Elem.STRING).a(val).reset());  // green
+            			} else if (val > 6 && val < 9) {
+            				systemOut.println(AaAnsi.n().fg(Elem.NUMBER).a(val).reset());  // yellow
+            			} else {
+            				systemOut.println(AaAnsi.n().fg(Elem.BOOLEAN).a(val).reset());  // purple?
+            			}
+            		}
             	} else {  // everything else
 //            		System.out.println(new AaAnsi().a(line));
             		systemOut.println(UsefulUtils.guessIfMapLookingThing(line));
@@ -266,9 +288,8 @@ public class MessageObject {
             	printMsgTypeIfRequired(systemOut);
 //            	systemOut.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(UsefulUtils.capitalizeFirst(msgType)).a(", <EMPTY PAYLOAD>").reset().toString());
             	systemOut.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a("<EMPTY PAYLOAD>").reset().toString());
-            	
             }
-			if (config.getFormattingIndent() > 0) systemOut.println(printMessageEnd());
+			if (includeMsgBreaks && config.getFormattingIndent() > 0) systemOut.println(printMessageEnd());
     	} else {  // one-line mode!
             updateTopicSpacing();  // now that we've determined if we're gonna filter this message, do the topic stuff
     		String payloadSizeString;
@@ -300,7 +321,6 @@ public class MessageObject {
 				int currentScreenWidth = AnsiConsole.getTerminalWidth();
 				if (currentScreenWidth == 0) currentScreenWidth = 80;  // force
 				// we need all that in case we're in -1 mode and we need to trim
-				
 				if (userProps != null) {
 					if (userProps.numElements == 0) maxLengthUserPropsList.add(0);
 					if (userProps.numElements < 10) maxLengthUserPropsList.add(1);
@@ -343,7 +363,7 @@ public class MessageObject {
 //	    	    		System.out.println("no trim");
 	    				systemOut.print(msgDestNameFormatted);
 	    				if (maxLengthUserPropsList.max() > 0) {
-		    				systemOut.print(UsefulUtils.pad(spaceToAdd + 2, ' '));
+		    				systemOut.print(WordUtils.indent(spaceToAdd + 2));
 		    				if (userProps != null) systemOut.print(AaAnsi.n().fg(Elem.MSG_BREAK).a(userProps.formatted.toRawString()));
 		    				else  systemOut.print(minProps);  // at least some messages have user props
 	    				}
@@ -379,30 +399,36 @@ public class MessageObject {
     						if (config.includeTimestamp) systemOut.print(lockedTimestamp);
     						systemOut.print(msgDestNameFormatted.trim(effectiveIndent-1));
     						int spaceToAdd = effectiveIndent - Math.min(msgDestNameFormatted.length(), effectiveIndent-1);
-    						systemOut.print(UsefulUtils.pad(spaceToAdd + PADDING_CORRECTION, ' '));
+    						systemOut.print(WordUtils.indent(spaceToAdd + PADDING_CORRECTION));
     					} else {
     						if (config.includeTimestamp) systemOut.print(lockedTimestamp);
     						systemOut.print(msgDestNameFormatted);
     						int spaceToAdd = config.getCurrentIndent() - msgDestNameFormatted.length();
-    						systemOut.print(UsefulUtils.pad(spaceToAdd + PADDING_CORRECTION, ' '));
+    						systemOut.print(WordUtils.indent(spaceToAdd + PADDING_CORRECTION));
     					}
     				} else {
 						if (config.includeTimestamp) systemOut.print(lockedTimestamp);
     					systemOut.print(msgDestNameFormatted.trim(config.getCurrentIndent()-1));
     					int spaceToAdd = config.getCurrentIndent() - Math.min(msgDestNameFormatted.length(), config.getCurrentIndent()-1);
-    					systemOut.print(UsefulUtils.pad(spaceToAdd + PADDING_CORRECTION, ' '));
+    					systemOut.print(WordUtils.indent(spaceToAdd + PADDING_CORRECTION));
     				}
     				
 					AaAnsi props = AaAnsi.n().fg(Elem.PAYLOAD_TYPE);
 //					AaAnsi props = AaAnsi.n().insertBlackSpace().a(' ').fg(Elem.BYTES);
 					if (maxLengthUserPropsList.max() > 0) {
 //						props.blackOn();
-						if (userProps == null || userProps.numElements == 0) props.faintOn().a('-');
-						else props.a(userProps.numElements);
+						if (userProps == null || userProps.numElements == 0) {
+							props.faintOn();
+//							props.a(WordUtils.indent(maxLengthUserPropsList.max()-1)).a('-');
+							if (maxLengthUserPropsList.max() == 1) props.a('-');
+							else props.a(String.format("%"+maxLengthUserPropsList.max()+"s", "-"));
+						} else {  // else 
+							props.a(String.format("%"+maxLengthUserPropsList.max()+"d", userProps.numElements));
+						}
 //						props.blackOff();
 						props.a(' ');
+						systemOut.print(props.reset());
 					}
-					systemOut.print(props.reset());
 					if (config.isAutoTrimPayload()) {
 						int trimLength = currentScreenWidth - effectiveIndent - PADDING_CORRECTION - props.length() - config.getTimestampIndentIfEnabled();
 						if (payload.length() <= trimLength) {

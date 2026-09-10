@@ -18,6 +18,8 @@ package com.solace.labs.aaron;
 
 import org.fusesource.jansi.AnsiConsole;
 
+import dev.solace.aaron.useful.WordUtils;
+
 public class ThinkingAnsiHelper {
 
 	private static boolean isFilteringOn = false;
@@ -63,7 +65,7 @@ public class ThinkingAnsiHelper {
 //		else System.out.print(UsefulUtils.pad(screenPosX, (char)8));
 //		if (rainbowIndex == 0) charIndex = (charIndex + 1) % 4;
 //		rainbowIndex = (rainbowIndex + 1) % AaAnsi.rainbowTable.length;  // pretty colours
-		System.out.print(UsefulUtils.indent(lastStringsWidth + 20));  // some buffer
+		System.out.print(WordUtils.indent(lastStringsWidth + 20));  // some buffer
 		System.out.print(BACKSPACES);
 		lastStringsWidth = 0;
 	}

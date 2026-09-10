@@ -290,7 +290,7 @@ public class MessageHelper {
             if (message.getProperties() != null && !message.getProperties().isEmpty()) {
             	ms.userProps = new PayloadSection(config);
 				ms.userProps.formatted = SdtUtils.printMap(message.getProperties(), config.getFormattingIndent());
-            	ms.userProps.numElements = SdtUtils.countElements(message.getProperties());
+            	ms.userProps.numElements = SdtUtils.countElementsRecursive(message.getProperties());
             }
             if (message.getUserData() != null && message.getUserData().length > 0) {
             	ms.userData = new PayloadSection(config);
