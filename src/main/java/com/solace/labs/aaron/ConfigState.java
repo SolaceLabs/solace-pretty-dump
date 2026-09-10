@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import com.solace.labs.aaron.decoder.PayloadDecoderRegistry;
 import com.solace.labs.topic.Sub;
 
 import dev.solace.aaron.useful.BoundedLinkedList;
@@ -40,9 +41,19 @@ public class ConfigState {
 	boolean isShutdown = false;          // are we done yet?
 	boolean isConnected = false;
 	boolean isFlowActive = false;
-	boolean includeTimestamp = false;
-	boolean noExport = true;
-	boolean isCompressed = false;
+    boolean includeTimestamp = false;
+    boolean noExport = true;
+    boolean isCompressed = false;
+    boolean quiet = false;
+    boolean noBanner = false;
+    boolean nonInteractive = false;
+    boolean yesConsume = false;
+    boolean exitOnEmpty = false;
+    long emptyTimeoutMs = -1;
+    long maxRuntimeMs = -1;
+    long startTimeMs = System.currentTimeMillis();
+    long lastReceivedTimeMs = startTimeMs;
+    int exitCode = ExitCodes.OK;
 
     int highlightTopicLevel = -1;
     int INDENT = 2;  // default starting value, keeping it all-caps for retro v0.0.1 value
@@ -60,6 +71,15 @@ public class ConfigState {
     	;
     }
     DisplayType payloadDisplay = DisplayType.NORMAL;
+
+    enum OutputMode {
+    	TEXT,
+    	JSONL,
+    	JSON,
+    	;
+    }
+    OutputMode outputMode = OutputMode.TEXT;
+    StructuredOutputWriter structuredOutputWriter = null;
     
     BoundedLinkedList.ComparableList<Integer> topicsLengthList = new BoundedLinkedList.ComparableList<>(TOPICS_LENGTH_LIST_SIZE);
     List<BoundedLinkedList.ComparableList<Integer>> topicLevelsLengthList = new ArrayList<>();
@@ -73,6 +93,7 @@ public class ConfigState {
 	CharsetDecoder decoder = charset.newDecoder().onMalformedInput(CodingErrorAction.REPLACE).onUnmappableCharacter(CodingErrorAction.REPLACE);
 
     Map<Sub, Method> protobufCallbacks = new HashMap<>();
+    PayloadDecoderRegistry payloadDecoderRegistry = PayloadDecoderRegistry.createDefault(this);
 
 	
 	static String DTF_FORMAT = "HH:mm:ss.SS ";
@@ -83,6 +104,42 @@ public class ConfigState {
 
 	public void toggleAutoTrimPayload() {
 		autoTrimPayload = !autoTrimPayload;
+	}
+
+	public void setOutputMode(OutputMode outputMode) {
+		this.outputMode = outputMode;
+	}
+
+	public OutputMode getOutputMode() {
+		return outputMode;
+	}
+
+	public boolean isStructuredOutput() {
+		return outputMode != OutputMode.TEXT;
+	}
+
+	public void setStructuredOutputWriter(StructuredOutputWriter writer) {
+		structuredOutputWriter = writer;
+	}
+
+	public StructuredOutputWriter getStructuredOutputWriter() {
+		return structuredOutputWriter;
+	}
+
+	public boolean shouldPrintStatus() {
+		return !quiet && !isStructuredOutput();
+	}
+
+	public void markMessageActivity() {
+		lastReceivedTimeMs = System.currentTimeMillis();
+	}
+
+	public boolean shouldStopForRuntimeLimit() {
+		return maxRuntimeMs > 0 && System.currentTimeMillis() - startTimeMs >= maxRuntimeMs;
+	}
+
+	public boolean shouldStopForEmptyTimeout() {
+		return emptyTimeoutMs > 0 && System.currentTimeMillis() - lastReceivedTimeMs >= emptyTimeoutMs;
 	}
 
 	public void enableLastNMessage(int amount) {
@@ -199,7 +256,7 @@ public class ConfigState {
     }
     
     /** for auto-indent one-line "-1" mode */
-    int getFormattingIndent() {
+    public int getFormattingIndent() {
     	if (oneLineMode) return 0;
     	return INDENT;
 //    	return Math.min(INDENT, currentScreenWidth - 15);
@@ -274,6 +331,14 @@ public class ConfigState {
 	
 	public void setProtobufCallbacks(Map<Sub, Method> map) {
 		protobufCallbacks = map;
+	}
+
+	public Map<Sub, Method> getProtobufCallbacks() {
+		return protobufCallbacks;
+	}
+
+	public PayloadDecoderRegistry getPayloadDecoderRegistry() {
+		return payloadDecoderRegistry;
 	}
 
 
