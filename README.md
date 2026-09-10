@@ -40,6 +40,8 @@ prettydump
 
 Or just download a [Release distribution](https://github.com/SolaceLabs/pretty-dump/releases) with everything already built.
 
+CI builds use a Java 17 toolchain while preserving Java 8 bytecode compatibility for the application.
+
 
 
 ## Running
@@ -446,6 +448,26 @@ There are a number of (argument order doesn't matter) parameters that have been 
 - `--dump` Binary dump (à la SdkPerf `-md`) all message payloads to screen. This parameter overrides `--raw`.
 - `--trim` In one-line mode, trim payloads to console width to keep terminal display nice and neat 
 - `--ts` Print the time-of-day the message was received by PrettyDump (not actual message timestamp). Works in both regular and one-line mode. Very useful if needing to observe timings between messages or exactly when live messages were received.
+- `--output=text|jsonl|json` Print machine-readable JSON records for automation and agents. Structured modes keep operational chatter off stdout.
+- `--no-ansi` Disable colour/ANSI output.
+- `--no-banner` Skip the startup banner.
+- `--quiet` Reduce startup/status output.
+- `--non-interactive` Disable runtime keyboard prompts for automation.
+- `--yes-consume` Explicitly approve destructive `q:` queue consume mode without a prompt. Required with `q:` and `--non-interactive`.
+- `--empty-timeout-ms=n` Stop after _n_ milliseconds without receiving a message.
+- `--max-runtime-ms=n` Stop after _n_ milliseconds of runtime.
+- `--exit-on-empty` Stop browse mode if the queue appears empty immediately.
+- `--avro-schema=path` Decode raw Avro payloads with a local Avro schema file. Repeat for multiple schemas when using `--schema-map`.
+- `--avro-schema-dir=dir` Resolve relative Avro schema paths from this directory.
+- `--schema-map=subscription=path` Map a Solace topic subscription to a schema file, e.g. `--schema-map='orders/>=orders.avsc'`.
+- `--cloudevents=auto|off|require` Detect CloudEvents binary metadata in message properties and structured output.
+- `--validate-schema=off|warn|strict` Validate JSON payloads against JSON Schema files referenced by `--schema-map`.
+- `--time=local|jcsmp|sender|trace|all` Include timestamp provenance in structured output. `--ts` remains the shortcut for PrettyDump local receive time in terminal output.
+- `--clock-source=system|ptp|white-rabbit` Annotate the local receive clock source. This is provenance metadata only; PrettyDump does not claim hardware timestamp precision by itself.
+- `--copy-tail=n` In browse mode, use SEMP to copy the newest _n_ source queue messages into a temporary browse queue, avoiding a full browse through older queue contents.
+- `--semp-url=url --semp-user=user --semp-password-env=ENV` Configure SEMP access for `--copy-tail`. The password is read from the named environment variable.
+- `--summary=off|final|live` Print a final or periodic summary with message rate, top destinations, payload types, malformed payload count, and largest payload.
+- `--stats-interval-ms=n` Set the live summary interval.
 - `--export` By default, PrettyDump adds `#noexport/` prefix to every topic subscription, to help not overload DMR/MNR links by subscribing to things accidentally.  See https://docs.solace.com/Messaging/No-Export.htm.  Use this to disable.
 - `--compressed` Tell PrettyDump you want to connect using streaming compression (not payload compression new feature). This is super useful when connecting over long RTT / WAN links. For non-TLS, this is port 55003.
 - `--defaults` Print all the JCSMPProperties that you might be able to override.  Or check the docs: https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html
@@ -729,12 +751,4 @@ PS C:\> .\prettydump
 ```
 
 See: https://en.wikipedia.org/wiki/Windows-1252
-
-
-
-
-
-
-
-
 
