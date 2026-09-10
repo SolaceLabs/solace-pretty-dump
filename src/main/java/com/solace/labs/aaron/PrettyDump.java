@@ -42,6 +42,7 @@ import org.fusesource.jansi.AnsiConsole;
 import com.solace.labs.aaron.AaAnsi.ColorMode;
 import com.solace.labs.aaron.Banner.Which;
 import com.solace.labs.aaron.ConfigState.DisplayType;
+import com.solace.labs.aaron.ConfigState.OutputMode;
 import com.solacesystems.jcsmp.AccessDeniedException;
 import com.solacesystems.jcsmp.Browser;
 import com.solacesystems.jcsmp.BrowserProperties;
@@ -87,7 +88,7 @@ public class PrettyDump {
 	}
 	private static final String DEFAULT_TOPIC = "#noexport/>";
 
-	private static final PrintStream o = System.out;
+	private static PrintStream o = System.out;
 	private static final JCSMPFactory f = JCSMPFactory.onlyInstance();
 	private final JCSMPProperties properties = new JCSMPProperties();
 	private JCSMPSession session;
@@ -199,22 +200,39 @@ public class PrettyDump {
 		//		o.println(one.equals(two));
 		//		System.exit(0);
 		//		
-		for (String arg : args) {
-			if (arg.equals("-h") || arg.equals("--h") || arg.equals("-?") || arg.startsWith("--?") || arg.equals("-help") || arg.equals("--help")) {
-				HelperText.printHelpText(true);
-//				o.println("Use -hm  for more help");
-				System.exit(0);
-			} else if (arg.equals("-hm") || arg.equals("--hm") || arg.equals("-??")) {
-				HelperText.printHelpMoreText();
-				System.exit(0);
-			} else if (arg.equals("-he") || arg.equals("--he")) {
-				HelperText.printHelpExamples();
-				System.exit(0);
-			}
+		CliOptions cliOptions = CliOptions.parse(args);
+		if (cliOptions.isHelp()) {
+			HelperText.printHelpText(true);
+//			o.println("Use -hm  for more help");
+			System.exit(0);
+		} else if (cliOptions.isHelpMore()) {
+			HelperText.printHelpMoreText();
+			System.exit(0);
+		} else if (cliOptions.isHelpExamples()) {
+			HelperText.printHelpExamples();
+			System.exit(0);
 		}
-		if (args.length == 1 && args[0].toLowerCase().equals("wrap")) {
+		if (cliOptions.isWrapMode()) {
 			PrettyWrap.main(new String[0]);
 			System.exit(0);
+		}
+		config.quiet = cliOptions.isQuiet();
+		config.noBanner = cliOptions.isNoBanner();
+		try {
+			config.setOutputMode(OutputMode.valueOf(cliOptions.getOutputMode().toUpperCase()));
+		} catch (IllegalArgumentException e) {
+			o.println(AaAnsi.n().invalid("Invalid --output value '" + cliOptions.getOutputMode() + "'. Use text, jsonl, or json."));
+			System.exit(1);
+		}
+		if (config.isStructuredOutput()) {
+			o = System.err;
+			config.quiet = true;
+			config.noBanner = true;
+			config.setStructuredOutputWriter(new StructuredOutputWriter(config.getOutputMode(), System.out));
+		}
+		if (cliOptions.isNoAnsi() || config.isStructuredOutput()) {
+			AaAnsi.MODE = ColorMode.OFF;
+			Elem.updateColors(ColorMode.OFF);
 		}
 		config.setCharset(CHARSET);
 		if (System.getenv("PRETTY_SELECTOR") != null && !System.getenv("PRETTY_SELECTOR").isEmpty()) {
@@ -229,71 +247,17 @@ public class PrettyDump {
 		}
 
 		// special command-line argument handling
-		ArrayList<String> regArgsList = new ArrayList<>();
-		ArrayList<String> specialArgsList = new ArrayList<>();
-		for (String arg : args) {
-			if (arg.startsWith("--") || (arg.equals("-defaults"))) specialArgsList.add(arg);
-			else regArgsList.add(arg);
-		}
+		ArrayList<String> regArgsList = new ArrayList<>(cliOptions.getRegularArgs());
+		ArrayList<String> specialArgsList = new ArrayList<>(cliOptions.getSpecialArgs());
 
 		// let's do the regular arguments now
-		String host = "localhost";
-		String vpn = "default";
-		String username = "foo";
-		String password = "bar";
-		// new shortcut MODE... if first arg looks like topics, assume topic wildcard, and assume localhost default connectivity for rest
-		if (regArgsList.size() > 0 && regArgsList.size() <= 2) {  // can only have topic+indent in shortcut mode
-			String arg0 = regArgsList.get(0);
-			boolean shortcut = false;
-			if ((arg0.contains("/") && !arg0.contains("//"))  // hosts can't have any of these "topic-looking" chars
-					|| arg0.contains(">")
-					|| arg0.contains("*")
-					|| arg0.contains("#")
-					|| arg0.startsWith("tq:")) {  // shortcut MODE
-				shortcut = true;
-				//				topics = args[0].split("\\s*,\\s*");  // split on commas, remove any whitespace around them
-			} else if (arg0.matches("^[qbf]:.+")) {  // either browse, queue consume, or browse first to localhost
-				shortcut = true;
-				//				topics = new String[] { args[0] };  // just the one, queue name will get parsed out later
-			} else if (regArgsList.size() == 1) {  // just one param, maybe its indent?
-				// see if it's an integer, we'll use for indent
-				try {
-					config.dealWithIndentParam(arg0);
-					// if nothing thrown, then it's a valid indent, so assume shortcut mode
-					shortcut = true;
-					regArgsList.add(0, DEFAULT_TOPIC);  // stick the default topic in front of this arg
-				} catch (NumberFormatException e) {  // not a number
-					// do nothing, host will get set below because !shortcut
-				} catch (IllegalArgumentException e) {  // a number, but not valid... let the check code later deal with it
-					shortcut = true;
-					regArgsList.add(0, DEFAULT_TOPIC);  // stick the default topic in front of this arg
-				}
-			}
-			if (shortcut) {  // add the default params
-				regArgsList.add(0, host);
-				regArgsList.add(1, vpn);
-				regArgsList.add(2, username);
-				regArgsList.add(3, password);
-			} else {
-				host = regArgsList.get(0);
-			}
-		} else if (regArgsList.size() > 0) {
-			host = regArgsList.get(0);
-		}
-//		o.println(argsList);
-		if (regArgsList.size() > 1) vpn = regArgsList.get(1);
-		if (regArgsList.size() > 2) username = regArgsList.get(2);
-		if (regArgsList.size() > 3) password = regArgsList.get(3);
-		if (regArgsList.size() > 4) {
-			String arg4 = regArgsList.get(4);
-			if (arg4.matches("^[qbf]:.+")) {
-				topics = new String[] { arg4 };  // just the one, queue name will get parsed out later
-			} else {
-				topics = arg4.split("\\s*,\\s*");  // split on commas, remove any whitespace around them, might start with tq:
-			}
-		}
-		if (regArgsList.size() > 5) {
-			String indentStr = regArgsList.get(5);  // grab the correct command-line argument
+		String host = cliOptions.getHost();
+		String vpn = cliOptions.getVpn();
+		String username = cliOptions.getUsername();
+		String password = cliOptions.getPassword();
+		topics = cliOptions.getTopics();
+		if (cliOptions.getIndentArg() != null) {
+			String indentStr = cliOptions.getIndentArg();  // grab the correct command-line argument
 			try {
 				config.dealWithIndentParam(indentStr);
 			} catch (IllegalArgumentException e) {
@@ -312,9 +276,11 @@ public class PrettyDump {
 		// we'll handle the special -- args down below
 		
 		AnsiConsole.systemInstall();
-		if (AnsiConsole.getTerminalWidth() >= 80) o.print(Banner.printBanner(Which.DUMP));
-		else o.println();
-		o.println(APP_NAME + " initializing...");
+		if (!config.noBanner && !config.quiet) {
+			if (AnsiConsole.getTerminalWidth() >= 80) o.print(Banner.printBanner(Which.DUMP));
+			else o.println();
+		}
+		if (!config.quiet) o.println(APP_NAME + " initializing...");
 		config.setProtobufCallbacks(ProtoBufUtils.loadProtobufDefinitions());
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		// now let's get on with it!
@@ -377,7 +343,9 @@ public class PrettyDump {
 
 		int jcscmpPropCount = 0;
 		for (String arg : specialArgsList) {
-			if (arg.startsWith("--selector")) {
+			if (arg.startsWith("--output=") || arg.equals("--no-ansi") || arg.equals("--no-banner") || arg.equals("--quiet")) {
+				// handled immediately after CLI parsing
+			} else if (arg.startsWith("--selector")) {
 				try {
 					selector = arg.substring("--selector=".length());
 					if (selector != null && !selector.isEmpty() && selector.length() > 2000) {
@@ -496,6 +464,7 @@ public class PrettyDump {
 		session = f.createSession(properties, null, new SessionEventHandler() {
 			@Override
 			public void handleEvent(SessionEventArgs event) {  // could be reconnecting, connection lost, etc.
+				if (config.quiet) return;
 				//        		o.println(" > " + event.getEvent());
 				if (event.getEvent() == SessionEvent.RECONNECTING) {
 					if (config.isConnected) {  // first time
@@ -526,7 +495,7 @@ public class PrettyDump {
 		session.connect();  // connect to the broker... could throw JCSMPException, so best practice would be to try-catch here..!
 		config.isConnected = true;
 		session.setProperty(JCSMPProperties.CLIENT_NAME, "PrettyDump_" + session.getProperty(JCSMPProperties.CLIENT_NAME));
-		o.printf("%s connected to VPN '%s' on broker '%s' v%s.%n%n",
+		if (!config.quiet) o.printf("%s connected to VPN '%s' on broker '%s' v%s.%n%n",
 				APP_NAME, session.getProperty(JCSMPProperties.VPN_NAME_IN_USE),
 				session.getCapability(CapabilityType.PEER_ROUTER_NAME),
 				session.getCapability(CapabilityType.PEER_SOFTWARE_VERSION));
@@ -538,7 +507,7 @@ public class PrettyDump {
 			if (origMsgCount != Long.MAX_VALUE) countStr = Long.toString(origMsgCount);
 			else if (config.isLastNMessagesEnabled()) countStr = Integer.toString(-config.getLastNMessagesCapacity());
 			if (regArgsList.size() > 6) countStr = regArgsList.get(6);
-			if (!indentStr.isEmpty() || !countStr.isEmpty()) printParamsInfo(indentStr, countStr);
+			if (!config.quiet && (!indentStr.isEmpty() || !countStr.isEmpty())) printParamsInfo(indentStr, countStr);
 		}		
 
 //				for (CapabilityType cap : CapabilityType.values()) {
@@ -864,10 +833,12 @@ public class PrettyDump {
 			}
 		}
 		// DONE!!!!   READY TO ROCK!
-		o.println();
-		o.println("Starting. Press Ctrl-C to quit.");
+		if (!config.quiet) {
+			o.println();
+			o.println("Starting. Press Ctrl-C to quit.");
+		}
 		if (config.isLastNMessagesEnabled()) {
-			ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered(null, 0, 0, 0, config.getLastNMessagesCapacity()));
+			if (config.shouldPrintStatus()) ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered(null, 0, 0, 0, config.getLastNMessagesCapacity()));
 			//			ThinkingAnsiHelper.tick(String.format("%d messages gathered, # messages received = ", config.getLastNMessagesSize()));
 //		} else if (config.) {
 		}
@@ -1016,8 +987,10 @@ public class PrettyDump {
 					System.exit(1);
 				}
 			} finally {
-				o.println(AaAnsi.n());
-				o.println("Browsing finished!");
+				if (!config.quiet) {
+					o.println(AaAnsi.n());
+					o.println("Browsing finished!");
+				}
 				browser.close();
 			}
 		} else {  // async receive, either Direct sub or from a queue, so just wait here until Ctrl+C pressed
@@ -1033,8 +1006,10 @@ public class PrettyDump {
 			}
 		}
 		config.isShutdown = true;
-		o.print(AaAnsi.n());
-		o.println("Main thread exiting.");
+		if (!config.quiet) {
+			o.print(AaAnsi.n());
+			o.println("Main thread exiting.");
+		}
 	}  // end of main()
 
 	private void handleKeyboardInput(BufferedReader reader) throws IOException {
@@ -1115,7 +1090,7 @@ public class PrettyDump {
 			// NOTE!  You can still ACK a browsed message!!
 			if (browser == null && message.getDeliveryMode() != DeliveryMode.DIRECT) message.ackMessage();  // if it's a queue
 			if (msgCountRemaining == 0) {
-				o.println("\n" + AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(origMsgCount + " messages received. Quitting.").reset());
+				if (!config.quiet) o.println("\n" + AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a(origMsgCount + " messages received. Quitting.").reset());
 //				config.stop();
 				config.isShutdown = true;
 //				if (flowQueueReceiver != null) flowQueueReceiver.close();
@@ -1138,8 +1113,10 @@ public class PrettyDump {
 		{
 //		config.stop();
 		ThinkingAnsiHelper.filteringOff();
-		o.print(AaAnsi.n());
-		o.println("\nShutdown hook triggered, quitting...");
+		if (!config.quiet) {
+			o.print(AaAnsi.n());
+			o.println("\nShutdown hook triggered, quitting...");
+		}
 		config.isShutdown = true;
 		if (config.isConnected) {  // if we're disconnected, skip this because these will block/lock waiting on the reconnect to happen
 			if (flowQueueReceiver != null) flowQueueReceiver.close();  // will remove the temp queue if required
@@ -1153,12 +1130,14 @@ public class PrettyDump {
 		}
 		if (config.isLastNMessagesEnabled()) {  // got some messages to dump!
 			for (MessageObject msg : config.getLastNMessages()) {
-				o.print(msg.printMessage());
+				if (config.isStructuredOutput()) config.getStructuredOutputWriter().print(msg);
+				else o.print(msg.printMessage());
 			}
-			o.println();
+			if (!config.isStructuredOutput()) o.println();
 		}
+		if (config.isStructuredOutput()) config.getStructuredOutputWriter().finish();
 		logger.info("### PrettyDump finishing!");
-		o.println("Goodbye! 👋🏼");
+		if (!config.quiet) o.println("Goodbye! 👋🏼");
 		AnsiConsole.systemUninstall();
 		}
 	}
