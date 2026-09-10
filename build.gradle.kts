@@ -116,6 +116,7 @@ dependencies {
 
     implementation("org.htmlunit:neko-htmlunit:4.+")
     implementation("org.apache.avro:avro:1.+")
+    implementation("com.networknt:json-schema-validator:1.5.9")
     implementation("io.opentelemetry.proto:opentelemetry-proto:1.3.+");
 
     implementation(fileTree(mapOf("dir" to "lib", "include" to listOf("*.jar"))))
@@ -231,4 +232,3 @@ createAdditionalScript("AllMsgGenerator") {
 //  applicationName = "myApp"
 //  classpath = files("path/to/some.jar")
 //}
-
