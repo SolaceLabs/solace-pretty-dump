@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   sca_scan:
-    uses: SolaceDev/solace-public-workflows/.github/workflows/sca-scan-and-guard.yaml@3cb03730e52b4b0337e9a3b50a4f1ed74d44bb3c # main
+    uses: SolaceDev/solace-public-workflows/.github/workflows/sca-scan-and-guard.yaml@main
     with:
       setup_actions: '["setup-java"]'
       java_distribution: temurin
