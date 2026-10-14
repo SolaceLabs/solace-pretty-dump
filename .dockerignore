@@ -1,0 +1,10 @@
+.git
+.github
+.gradle
+build/distributions
+build/libs
+build/reports
+build/test-results
+build/tmp
+**/.DS_Store
+**/*.log

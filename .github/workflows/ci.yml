@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "codex/**"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test and smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Test
+        run: ./gradlew clean test installDist --no-daemon
+
+      - name: CLI help smoke test
+        run: build/staged/bin/prettydump --help >/tmp/prettydump-help.txt
+
+      - name: Docker build smoke test
+        run: docker build -t solace-pretty-dump:ci .
