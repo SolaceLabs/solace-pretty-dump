@@ -16,6 +16,9 @@
 
 package com.solace.labs.aaron;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.fusesource.jansi.AnsiConsole;
 
 import com.solacesystems.jcsmp.BytesXMLMessage;
@@ -43,6 +46,7 @@ public class MessageObject {
     PayloadSection xml = null;
     PayloadSection userProps = null;
     PayloadSection userData = null;
+    List<String> validationMessages = new ArrayList<>();
     
     private final ConfigState config;
             
@@ -55,6 +59,18 @@ public class MessageObject {
 //    	this.msgDestName = message.getDestination().getName();
     	headerLines = orig.dump(XMLMessage.MSGDUMP_BRIEF).split("\n");
     	msgType = orig.getClass().getSimpleName();  // will be "Impl" unless overridden later
+    }
+
+    void addValidationMessage(String message) {
+    	validationMessages.add(message);
+    }
+
+    boolean hasValidationMessages() {
+    	return !validationMessages.isEmpty();
+    }
+
+    ConfigState getConfig() {
+    	return config;
     }
 
     /** this only gets called in non-one-line mode, otherwise we might have to do some trimming first */
@@ -267,6 +283,9 @@ public class MessageObject {
 //            	systemOut.println(new AaAnsi().fg(Elem.PAYLOAD_TYPE).a(UsefulUtils.capitalizeFirst(msgType)).a(", <EMPTY PAYLOAD>").reset().toString());
             	systemOut.println(AaAnsi.n().fg(Elem.PAYLOAD_TYPE).a("<EMPTY PAYLOAD>").reset().toString());
             	
+            }
+            if (hasValidationMessages()) {
+            	systemOut.println(AaAnsi.n().invalid("Schema Validation: " + validationMessages));
             }
 			if (config.getFormattingIndent() > 0) systemOut.println(printMessageEnd());
     	} else {  // one-line mode!

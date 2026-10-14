@@ -19,10 +19,7 @@ package com.solace.labs.aaron;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.util.Map.Entry;
 import java.util.zip.DataFormatException;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.Inflater;
@@ -31,9 +28,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.fusesource.jansi.AnsiConsole;
 
-import com.google.protobuf.MessageOrBuilder;
 import com.solace.labs.aaron.ConfigState.DisplayType;
-import com.solace.labs.topic.Sub;
+import com.solace.labs.aaron.decoder.DecodeContext;
+import com.solace.labs.aaron.decoder.DecodeResult;
 import com.solacesystems.jcsmp.BytesMessage;
 import com.solacesystems.jcsmp.BytesXMLMessage;
 import com.solacesystems.jcsmp.Destination;
@@ -178,38 +175,16 @@ public class MessageHelper {
 			}
 		}
 
-		boolean topicMatch = false;
 		if (config.payloadDisplay != DisplayType.DUMP) {
-			// Protobuf stuff...
-			for (Entry<Sub,Method> entry : config.protobufCallbacks.entrySet()) {
-    			Sub sub = entry.getKey();
-    			String topic = message.getDestination().getName();
-//			            			System.out.printf("Sub: %s, topic: %s%n", sub, topic);
-//			            			System.out.println("Matches?  " + sub.matches(topic));
-//			            			System.out.println("regex?  " + sub.pattern.matcher(topic).matches());
-    			if (sub.matches(topic)) {
-    				if (topicMatch == true) {  // we already found a match!
-    					logger.error("Found multiple Protobuf subscriptions that matched " + topic);
-    					return;  // done here, just log but don't overwrite
-    				}
-    				topicMatch = true;
-    				Object o;
-					try {
-						o = entry.getValue().invoke(null, bytes);
-						MessageOrBuilder protoMsg = (MessageOrBuilder)o;
-						ms.binary.formatted = ProtoBufUtils.decode(protoMsg, config.getFormattingIndent());
-						ms.binary.type = protoMsg.getClass().getSimpleName() + " ProtoBuf";
-					} catch (IllegalAccessException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					} catch (InvocationTargetException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-    			}
-    		}
+			DecodeContext context = new DecodeContext(config, message, bytes, message.getHTTPContentType());
+			DecodeResult decoded = config.getPayloadDecoderRegistry().decodeFirst(context);
+			if (decoded != null) {
+				ms.binary.formatted = decoded.getFormatted();
+				ms.binary.type = decoded.getType();
+				return;
+			}
 		}
-		if (!topicMatch) ms.binary.formatBytes(bytes, message.getHTTPContentType());  // didn't match anything
+		ms.binary.formatBytes(bytes, message.getHTTPContentType());  // didn't match anything
 	}
 	
 
@@ -297,13 +272,16 @@ public class MessageHelper {
             	if (!config.isOneLineMode()) ms.userData.formatBytes(message.getUserData(), null);
             	ms.userData.type = null;
             }
+            SchemaValidationSupport.validateIfConfigured(config, ms);
             
             // done preparing the message.  Now we might have to filter it?
             if (config.filterRegexPattern != null) {
             	String rawDump = ms.buildFullStringObject();
             	if (!config.filterRegexPattern.matcher(rawDump).find()) {  // no match
             		config.incFilteredCount();
-					if (config.isLastNMessagesEnabled()) {  // gathering
+					if (!config.shouldPrintStatus()) {
+						// Structured and quiet modes keep stdout stable for automation.
+					} else if (config.isLastNMessagesEnabled()) {  // gathering
 						ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("Msg filtered.",
 								config.getMessageCount(), config.getFilteredCount(), config.getMessageCount()-config.getFilteredCount(), config.getLastNMessagesCapacity()));
 					} else {
@@ -326,9 +304,11 @@ public class MessageHelper {
             // now it's time to try printing it!
 			if (config.isLastNMessagesEnabled()) {  // gathering
 				config.lastNMessagesList.add(ms);
-				ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("",
+				if (config.shouldPrintStatus()) ThinkingAnsiHelper.tick2(ThinkingAnsiHelper.makeStringGathered("",
 						config.getMessageCount(), config.getFilteredCount(), config.getMessageCount()-config.getFilteredCount(), config.getLastNMessagesCapacity()));
 //            	ThinkingAnsiHelper.tick("Gathering last " + lastNMessages.capacity() + " messages, received ");
+            } else if (config.isStructuredOutput()) {
+            	config.getStructuredOutputWriter().print(ms);
             } else {
             	if (isStopped()) return;  // stop if we're stopped!
             	if (ThinkingAnsiHelper.isFilteringOn()) ThinkingAnsiHelper.filteringOff();
