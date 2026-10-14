@@ -199,20 +199,19 @@ public class PrettyDump {
 		//		o.println(one.equals(two));
 		//		System.exit(0);
 		//		
-		for (String arg : args) {
-			if (arg.equals("-h") || arg.equals("--h") || arg.equals("-?") || arg.startsWith("--?") || arg.equals("-help") || arg.equals("--help")) {
-				HelperText.printHelpText(true);
-//				o.println("Use -hm  for more help");
-				System.exit(0);
-			} else if (arg.equals("-hm") || arg.equals("--hm") || arg.equals("-??")) {
-				HelperText.printHelpMoreText();
-				System.exit(0);
-			} else if (arg.equals("-he") || arg.equals("--he")) {
-				HelperText.printHelpExamples();
-				System.exit(0);
-			}
+		CliOptions cliOptions = CliOptions.parse(args);
+		if (cliOptions.isHelp()) {
+			HelperText.printHelpText(true);
+//			o.println("Use -hm  for more help");
+			System.exit(0);
+		} else if (cliOptions.isHelpMore()) {
+			HelperText.printHelpMoreText();
+			System.exit(0);
+		} else if (cliOptions.isHelpExamples()) {
+			HelperText.printHelpExamples();
+			System.exit(0);
 		}
-		if (args.length == 1 && args[0].toLowerCase().equals("wrap")) {
+		if (cliOptions.isWrapMode()) {
 			PrettyWrap.main(new String[0]);
 			System.exit(0);
 		}
@@ -229,71 +228,17 @@ public class PrettyDump {
 		}
 
 		// special command-line argument handling
-		ArrayList<String> regArgsList = new ArrayList<>();
-		ArrayList<String> specialArgsList = new ArrayList<>();
-		for (String arg : args) {
-			if (arg.startsWith("--") || (arg.equals("-defaults"))) specialArgsList.add(arg);
-			else regArgsList.add(arg);
-		}
+		ArrayList<String> regArgsList = new ArrayList<>(cliOptions.getRegularArgs());
+		ArrayList<String> specialArgsList = new ArrayList<>(cliOptions.getSpecialArgs());
 
 		// let's do the regular arguments now
-		String host = "localhost";
-		String vpn = "default";
-		String username = "foo";
-		String password = "bar";
-		// new shortcut MODE... if first arg looks like topics, assume topic wildcard, and assume localhost default connectivity for rest
-		if (regArgsList.size() > 0 && regArgsList.size() <= 2) {  // can only have topic+indent in shortcut mode
-			String arg0 = regArgsList.get(0);
-			boolean shortcut = false;
-			if ((arg0.contains("/") && !arg0.contains("//"))  // hosts can't have any of these "topic-looking" chars
-					|| arg0.contains(">")
-					|| arg0.contains("*")
-					|| arg0.contains("#")
-					|| arg0.startsWith("tq:")) {  // shortcut MODE
-				shortcut = true;
-				//				topics = args[0].split("\\s*,\\s*");  // split on commas, remove any whitespace around them
-			} else if (arg0.matches("^[qbf]:.+")) {  // either browse, queue consume, or browse first to localhost
-				shortcut = true;
-				//				topics = new String[] { args[0] };  // just the one, queue name will get parsed out later
-			} else if (regArgsList.size() == 1) {  // just one param, maybe its indent?
-				// see if it's an integer, we'll use for indent
-				try {
-					config.dealWithIndentParam(arg0);
-					// if nothing thrown, then it's a valid indent, so assume shortcut mode
-					shortcut = true;
-					regArgsList.add(0, DEFAULT_TOPIC);  // stick the default topic in front of this arg
-				} catch (NumberFormatException e) {  // not a number
-					// do nothing, host will get set below because !shortcut
-				} catch (IllegalArgumentException e) {  // a number, but not valid... let the check code later deal with it
-					shortcut = true;
-					regArgsList.add(0, DEFAULT_TOPIC);  // stick the default topic in front of this arg
-				}
-			}
-			if (shortcut) {  // add the default params
-				regArgsList.add(0, host);
-				regArgsList.add(1, vpn);
-				regArgsList.add(2, username);
-				regArgsList.add(3, password);
-			} else {
-				host = regArgsList.get(0);
-			}
-		} else if (regArgsList.size() > 0) {
-			host = regArgsList.get(0);
-		}
-//		o.println(argsList);
-		if (regArgsList.size() > 1) vpn = regArgsList.get(1);
-		if (regArgsList.size() > 2) username = regArgsList.get(2);
-		if (regArgsList.size() > 3) password = regArgsList.get(3);
-		if (regArgsList.size() > 4) {
-			String arg4 = regArgsList.get(4);
-			if (arg4.matches("^[qbf]:.+")) {
-				topics = new String[] { arg4 };  // just the one, queue name will get parsed out later
-			} else {
-				topics = arg4.split("\\s*,\\s*");  // split on commas, remove any whitespace around them, might start with tq:
-			}
-		}
-		if (regArgsList.size() > 5) {
-			String indentStr = regArgsList.get(5);  // grab the correct command-line argument
+		String host = cliOptions.getHost();
+		String vpn = cliOptions.getVpn();
+		String username = cliOptions.getUsername();
+		String password = cliOptions.getPassword();
+		topics = cliOptions.getTopics();
+		if (cliOptions.getIndentArg() != null) {
+			String indentStr = cliOptions.getIndentArg();  // grab the correct command-line argument
 			try {
 				config.dealWithIndentParam(indentStr);
 			} catch (IllegalArgumentException e) {
