@@ -114,6 +114,10 @@ public class HelperText {
 		o.println("    • --dump        enable binary dump for every message (useful for charset encoding issues)");
 		o.println("    • --trim        enable paylaod trim for one-line (and two-line) modes");
 		o.println("    • --ts          print time when PrettyDump received the message (not messages' timestamp)");
+		o.println("    • --output=text|jsonl|json  print structured records for automation (default text)");
+		o.println("    • --no-ansi     disable colour/ANSI output");
+		o.println("    • --no-banner   skip startup banner");
+		o.println("    • --quiet       reduce startup/status output");
 		o.println("    • --export      disables the automatic prefixing of \"#noexport/\" to the start of all topics");
 		o.println("    • --compressed  tells JCSMP API to use streaming compression (TCP only, not WebSockets)");
 		o.println("    • --defaults    show all possible JCSMP Session properties to set/override");

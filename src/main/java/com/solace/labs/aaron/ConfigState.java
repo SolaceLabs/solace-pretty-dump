@@ -40,9 +40,11 @@ public class ConfigState {
 	boolean isShutdown = false;          // are we done yet?
 	boolean isConnected = false;
 	boolean isFlowActive = false;
-	boolean includeTimestamp = false;
-	boolean noExport = true;
-	boolean isCompressed = false;
+    boolean includeTimestamp = false;
+    boolean noExport = true;
+    boolean isCompressed = false;
+    boolean quiet = false;
+    boolean noBanner = false;
 
     int highlightTopicLevel = -1;
     int INDENT = 2;  // default starting value, keeping it all-caps for retro v0.0.1 value
@@ -60,6 +62,15 @@ public class ConfigState {
     	;
     }
     DisplayType payloadDisplay = DisplayType.NORMAL;
+
+    enum OutputMode {
+    	TEXT,
+    	JSONL,
+    	JSON,
+    	;
+    }
+    OutputMode outputMode = OutputMode.TEXT;
+    StructuredOutputWriter structuredOutputWriter = null;
     
     BoundedLinkedList.ComparableList<Integer> topicsLengthList = new BoundedLinkedList.ComparableList<>(TOPICS_LENGTH_LIST_SIZE);
     List<BoundedLinkedList.ComparableList<Integer>> topicLevelsLengthList = new ArrayList<>();
@@ -83,6 +94,30 @@ public class ConfigState {
 
 	public void toggleAutoTrimPayload() {
 		autoTrimPayload = !autoTrimPayload;
+	}
+
+	public void setOutputMode(OutputMode outputMode) {
+		this.outputMode = outputMode;
+	}
+
+	public OutputMode getOutputMode() {
+		return outputMode;
+	}
+
+	public boolean isStructuredOutput() {
+		return outputMode != OutputMode.TEXT;
+	}
+
+	public void setStructuredOutputWriter(StructuredOutputWriter writer) {
+		structuredOutputWriter = writer;
+	}
+
+	public StructuredOutputWriter getStructuredOutputWriter() {
+		return structuredOutputWriter;
+	}
+
+	public boolean shouldPrintStatus() {
+		return !quiet && !isStructuredOutput();
 	}
 
 	public void enableLastNMessage(int amount) {

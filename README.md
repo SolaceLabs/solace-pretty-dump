@@ -446,6 +446,10 @@ There are a number of (argument order doesn't matter) parameters that have been 
 - `--dump` Binary dump (à la SdkPerf `-md`) all message payloads to screen. This parameter overrides `--raw`.
 - `--trim` In one-line mode, trim payloads to console width to keep terminal display nice and neat 
 - `--ts` Print the time-of-day the message was received by PrettyDump (not actual message timestamp). Works in both regular and one-line mode. Very useful if needing to observe timings between messages or exactly when live messages were received.
+- `--output=text|jsonl|json` Print machine-readable JSON records for automation and agents. Structured modes keep operational chatter off stdout.
+- `--no-ansi` Disable colour/ANSI output.
+- `--no-banner` Skip the startup banner.
+- `--quiet` Reduce startup/status output.
 - `--export` By default, PrettyDump adds `#noexport/` prefix to every topic subscription, to help not overload DMR/MNR links by subscribing to things accidentally.  See https://docs.solace.com/Messaging/No-Export.htm.  Use this to disable.
 - `--compressed` Tell PrettyDump you want to connect using streaming compression (not payload compression new feature). This is super useful when connecting over long RTT / WAN links. For non-TLS, this is port 55003.
 - `--defaults` Print all the JCSMPProperties that you might be able to override.  Or check the docs: https://docs.solace.com/API-Developer-Online-Ref-Documentation/java/com/solacesystems/jcsmp/JCSMPProperties.html
@@ -729,7 +733,6 @@ PS C:\> .\prettydump
 ```
 
 See: https://en.wikipedia.org/wiki/Windows-1252
-
 
 
 
