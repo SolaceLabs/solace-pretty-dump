@@ -22,11 +22,13 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import com.solace.labs.aaron.decoder.PayloadDecoderRegistry;
 import com.solace.labs.topic.Sub;
 
 import dev.solace.aaron.useful.BoundedLinkedList;
@@ -40,9 +42,19 @@ public class ConfigState {
 	boolean isShutdown = false;          // are we done yet?
 	boolean isConnected = false;
 	boolean isFlowActive = false;
-	boolean includeTimestamp = false;
-	boolean noExport = true;
-	boolean isCompressed = false;
+    boolean includeTimestamp = false;
+    boolean noExport = true;
+    boolean isCompressed = false;
+    boolean quiet = false;
+    boolean noBanner = false;
+    boolean nonInteractive = false;
+    boolean yesConsume = false;
+    boolean exitOnEmpty = false;
+    long emptyTimeoutMs = -1;
+    long maxRuntimeMs = -1;
+    long startTimeMs = System.currentTimeMillis();
+    long lastReceivedTimeMs = startTimeMs;
+    int exitCode = ExitCodes.OK;
 
     int highlightTopicLevel = -1;
     int INDENT = 2;  // default starting value, keeping it all-caps for retro v0.0.1 value
@@ -60,6 +72,45 @@ public class ConfigState {
     	;
     }
     DisplayType payloadDisplay = DisplayType.NORMAL;
+
+    enum OutputMode {
+    	TEXT,
+    	JSONL,
+    	JSON,
+    	;
+    }
+    enum CloudEventsMode {
+    	AUTO,
+    	OFF,
+    	REQUIRE,
+    	;
+    }
+    enum ValidationMode {
+    	OFF,
+    	WARN,
+    	STRICT,
+    	;
+    }
+    enum TimeMode {
+    	LOCAL,
+    	JCSMP,
+    	SENDER,
+    	TRACE,
+    	ALL,
+    	;
+    }
+    enum ClockSource {
+    	SYSTEM,
+    	PTP,
+    	WHITE_RABBIT,
+    	;
+    }
+    OutputMode outputMode = OutputMode.TEXT;
+    CloudEventsMode cloudEventsMode = CloudEventsMode.AUTO;
+    ValidationMode validationMode = ValidationMode.OFF;
+    TimeMode timeMode = TimeMode.LOCAL;
+    ClockSource clockSource = ClockSource.SYSTEM;
+    StructuredOutputWriter structuredOutputWriter = null;
     
     BoundedLinkedList.ComparableList<Integer> topicsLengthList = new BoundedLinkedList.ComparableList<>(TOPICS_LENGTH_LIST_SIZE);
     List<BoundedLinkedList.ComparableList<Integer>> topicLevelsLengthList = new ArrayList<>();
@@ -73,6 +124,10 @@ public class ConfigState {
 	CharsetDecoder decoder = charset.newDecoder().onMalformedInput(CodingErrorAction.REPLACE).onUnmappableCharacter(CodingErrorAction.REPLACE);
 
     Map<Sub, Method> protobufCallbacks = new HashMap<>();
+    PayloadDecoderRegistry payloadDecoderRegistry = PayloadDecoderRegistry.createDefault(this);
+    List<String> avroSchemaFiles = new ArrayList<>();
+    List<String> schemaMapSpecs = new ArrayList<>();
+    String avroSchemaDir = null;
 
 	
 	static String DTF_FORMAT = "HH:mm:ss.SS ";
@@ -83,6 +138,74 @@ public class ConfigState {
 
 	public void toggleAutoTrimPayload() {
 		autoTrimPayload = !autoTrimPayload;
+	}
+
+	public void setOutputMode(OutputMode outputMode) {
+		this.outputMode = outputMode;
+	}
+
+	public OutputMode getOutputMode() {
+		return outputMode;
+	}
+
+	public void setCloudEventsMode(CloudEventsMode mode) {
+		cloudEventsMode = mode;
+	}
+
+	public CloudEventsMode getCloudEventsMode() {
+		return cloudEventsMode;
+	}
+
+	public void setValidationMode(ValidationMode mode) {
+		validationMode = mode;
+	}
+
+	public ValidationMode getValidationMode() {
+		return validationMode;
+	}
+
+	public void setTimeMode(TimeMode mode) {
+		timeMode = mode;
+	}
+
+	public TimeMode getTimeMode() {
+		return timeMode;
+	}
+
+	public void setClockSource(ClockSource source) {
+		clockSource = source;
+	}
+
+	public ClockSource getClockSource() {
+		return clockSource;
+	}
+
+	public boolean isStructuredOutput() {
+		return outputMode != OutputMode.TEXT;
+	}
+
+	public void setStructuredOutputWriter(StructuredOutputWriter writer) {
+		structuredOutputWriter = writer;
+	}
+
+	public StructuredOutputWriter getStructuredOutputWriter() {
+		return structuredOutputWriter;
+	}
+
+	public boolean shouldPrintStatus() {
+		return !quiet && !isStructuredOutput();
+	}
+
+	public void markMessageActivity() {
+		lastReceivedTimeMs = System.currentTimeMillis();
+	}
+
+	public boolean shouldStopForRuntimeLimit() {
+		return maxRuntimeMs > 0 && System.currentTimeMillis() - startTimeMs >= maxRuntimeMs;
+	}
+
+	public boolean shouldStopForEmptyTimeout() {
+		return emptyTimeoutMs > 0 && System.currentTimeMillis() - lastReceivedTimeMs >= emptyTimeoutMs;
 	}
 
 	public void enableLastNMessage(int amount) {
@@ -199,7 +322,7 @@ public class ConfigState {
     }
     
     /** for auto-indent one-line "-1" mode */
-    int getFormattingIndent() {
+    public int getFormattingIndent() {
     	if (oneLineMode) return 0;
     	return INDENT;
 //    	return Math.min(INDENT, currentScreenWidth - 15);
@@ -274,6 +397,38 @@ public class ConfigState {
 	
 	public void setProtobufCallbacks(Map<Sub, Method> map) {
 		protobufCallbacks = map;
+	}
+
+	public Map<Sub, Method> getProtobufCallbacks() {
+		return protobufCallbacks;
+	}
+
+	public PayloadDecoderRegistry getPayloadDecoderRegistry() {
+		return payloadDecoderRegistry;
+	}
+
+	public void addAvroSchemaFile(String path) {
+		avroSchemaFiles.add(path);
+	}
+
+	public List<String> getAvroSchemaFiles() {
+		return Collections.unmodifiableList(avroSchemaFiles);
+	}
+
+	public void setAvroSchemaDir(String path) {
+		avroSchemaDir = path;
+	}
+
+	public String getAvroSchemaDir() {
+		return avroSchemaDir;
+	}
+
+	public void addSchemaMapSpec(String spec) {
+		schemaMapSpecs.add(spec);
+	}
+
+	public List<String> getSchemaMapSpecs() {
+		return Collections.unmodifiableList(schemaMapSpecs);
 	}
 
 
